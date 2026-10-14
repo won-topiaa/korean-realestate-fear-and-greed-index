@@ -278,7 +278,8 @@ def run_script(rel):
         if r.stderr:
             f.write(f"--- {rel} stderr ---\n{r.stderr[-3000:]}\n")
     if r.returncode != 0:
-        raise RuntimeError(f"{rel} 종료코드 {r.returncode}")
+        last = (r.stderr or r.stdout).strip().splitlines()[-1:] or [""]
+        raise RuntimeError(f"{rel} 종료코드 {r.returncode}: {_scrub(last[0])[:200]}")  # 원인을 공개 상태 파일에서도 보이게
 
 
 # ---------------- 점검 ----------------

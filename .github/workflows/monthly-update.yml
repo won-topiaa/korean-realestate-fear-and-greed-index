@@ -61,6 +61,22 @@ jobs:
           path: logs/
           retention-days: 90
 
+      - name: 실패하면 단계별 결과만 남기기 (원인 확인용, 키는 지운 상태)
+        if: failure()
+        run: |
+          python - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import json
+          d = json.load(open("results_zone/update_status.json"))
+          print("| 단계 | 결과 | 내용 |\n|---|---|---|")
+          for s in d["steps"]:
+              print(f"| {s['step']} | {'OK' if s['ok'] else 'FAIL'} | {s['detail'][:200].replace('|', '/')} |")
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add results_zone/update_status.json
+          git diff --cached --quiet || git commit -m "월간 갱신 실패 기록 $(TZ=Asia/Seoul date +%Y-%m-%d)"
+          git pull --rebase -X theirs origin main && git push origin HEAD:main || true
+
       - name: 갱신된 자료 커밋
         run: |
           git config user.name "github-actions[bot]"
