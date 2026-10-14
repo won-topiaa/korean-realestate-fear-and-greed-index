@@ -1,0 +1,221 @@
+"""원자료 → 서울 월간 지표 테이블 (data/indicators.csv) + 메타 (data/indicator_meta.csv).
+
+모든 지표는 '값이 클수록 탐욕'이 되도록 부호를 맞춘다. 미래 정보가 섞이지 않게
+발표 시차가 있는 자료(BIS 가계신용)는 뒤로 미룬다.
+"""
+import json
+from pathlib import Path
+
+import numpy as np
+import pandas as pd
+
+ROOT = Path(__file__).parent
+RAW = ROOT / "data" / "raw"
+
+
+def _ym(s):
+    return pd.to_datetime(s, format="%Y%m")
+
+
+def kb_survey(name, field, region="서울"):
+    d = json.loads((RAW / "kb" / f"{name}.json").read_text())
+    row = next(x for x in d["데이터리스트"] if x["지역명"] == region)
+    s = pd.Series({_ym(e["기준날짜"]): e[field] for e in row["dataList"]})
+    return s.astype(float).sort_index()
+
+
+def kb_aligned(name, region="서울"):
+    """날짜리스트와 위치로 맞춰진 dataList (가격지수, 전세가율)."""
+    d = json.loads((RAW / "kb" / f"{name}.json").read_text())
+    dates = d["날짜리스트"]
+    row = next(x for x in d["데이터리스트"] if x["지역명"] == region)
+    return pd.Series(row["dataList"][: len(dates)], index=_ym(pd.Series(dates))).astype(float)
+
+
+def kb_gu_panel():
+    d = json.loads((RAW / "kb" / "아파트매매지수_월간_서울구.json").read_text())
+    dates = _ym(pd.Series(d["날짜리스트"]))
+    return pd.DataFrame({x["지역명"]: pd.Series(x["dataList"][: len(dates)], index=dates, dtype=float)
+                         for x in d["데이터리스트"]})
+
+
+def kb_lead50():
+    d = json.loads((RAW / "kb" / "선도50.json").read_text())
+    return pd.Series(d["선도50지수리스트"], index=_ym(pd.Series(d["날짜리스트"]))).astype(float)
+
+
+def kb_hai():
+    d = json.loads((RAW / "kb" / "HAI.json").read_text())
+    dates = _ym(pd.Series(d["날짜리스트"]))
+    rate = pd.Series({_ym(e["기준날짜"]): e["주택담보대출금리"] for e in d["주담보월소득리스트"]}).astype(float)
+    seoul = next(x for x in d["주택구매력리스트"] if x["지역명"] == "서울")
+    apt = next(e for e in seoul["지역구분리스트"] if e["매물종별구분"] == "아파트")
+    return rate.sort_index(), pd.Series(apt["매물종별구분리스트"], index=dates).astype(float)
+
+
+def kb_pir(house_q=3, income_q=3):
+    d = json.loads((RAW / "kb" / "PIR.json").read_text())
+    dates = _ym(pd.Series(d["날짜리스트"]))
+    seoul = next(x for x in d["데이터리스트"] if x["지역명"] == "서울")
+    h = next(e for e in seoul["주택분위구분"] if e["주택분위"] == house_q)
+    i = next(e for e in h["소득분위구분"] if e["소득분위"] == income_q)
+    return pd.Series(i["dataList"][: len(dates)], index=dates).astype(float)
+
+
+def fred(sid):
+    df = pd.read_csv(RAW / "fred" / f"{sid}.csv", parse_dates=["observation_date"], index_col="observation_date")
+    return df.iloc[:, 0].astype(float)
+
+
+def kb_supply(name):
+    df = pd.read_csv(RAW / "kb" / f"{name}.csv")
+    s = pd.Series(df["합계.세대수"].values, index=_ym(df["일정"].astype(str))).astype(float)
+    full = pd.date_range(s.index.min(), s.index.max(), freq="MS")
+    return s.groupby(level=0).sum().reindex(full, fill_value=0.0)
+
+
+def trend(kw):
+    df = pd.read_csv(RAW / "trends" / f"{kw}.csv", parse_dates=[0], index_col=0)
+    return df.iloc[:, 0].astype(float)
+
+
+def chg(s, n):
+    return np.log(s).diff(n)
+
+
+def attention(s):
+    """단기 관심 급증: 최근 3개월 평균 / 직전 24개월 평균 (구글 사용 점유율 추세 제거)."""
+    s = s.clip(lower=1)
+    return np.log(s.rolling(3).mean() / s.rolling(24).mean())
+
+
+# 지표 메타: 키 → (설명, 주제, 속도, 출처성격, 행위자, 시장, cnn, 사용자원안)
+META = {
+    # 가격
+    "가격_3개월모멘텀": ("서울 아파트 매매지수 3개월 변화", "가격", "동행", "가격실측", "시장전체", "매매", "", ""),
+    "가격_12개월이평괴리": ("매매지수 / 12개월 이동평균 - 1 (CNN 모멘텀 대응)", "가격", "후행", "가격실측", "시장전체", "매매", "모멘텀", ""),
+    "가격_선도50모멘텀": ("KB 선도아파트50 3개월 변화 (상급지 강도)", "가격", "동행", "가격실측", "시장전체", "매매", "강도", ""),
+    "가격_상승구비율": ("25개 구 중 전월 대비 상승한 구 비율 (3개월 평균)", "가격", "동행", "가격실측", "시장전체", "매매", "폭", ""),
+    # 중개사 설문
+    "설문_매수우위": ("KB 매수우위지수", "수급심리", "동행", "설문", "매수자", "매매", "풋콜", ""),
+    "설문_매수우위변화": ("매수우위지수 3개월 변화", "수급심리", "선행", "설문", "매수자", "매매", "", ""),
+    "설문_거래활발": ("KB 매매거래활발지수 (거래량 대리)", "수급심리", "동행", "설문", "중개사", "매매", "변동성→거래량", ""),
+    "설문_가격전망": ("KB 매매가격전망지수 (2013.4~)", "수급심리", "선행", "설문", "중개사", "매매", "", ""),
+    # 전세
+    "전세_수급": ("KB 전세수급지수 (높을수록 전세 부족)", "전세", "선행", "설문", "임차인", "전세", "", ""),
+    "전세_가격전망": ("KB 전세가격전망지수 (2016~)", "전세", "선행", "설문", "중개사", "전세", "", ""),
+    "전세_3개월모멘텀": ("서울 아파트 전세지수 3개월 변화", "전세", "선행", "가격실측", "임차인", "전세", "", ""),
+    "전세_매매선호": ("매수우위지수 / 전세수급지수 (전세 대신 매수 선택, 안전자산 대응)", "전세", "동행", "설문", "매수자", "전세", "안전자산", ""),
+    # 자금
+    "자금_기준금리수준": ("콜금리 수준 (부호 반대: 낮을수록 탐욕) — 사용자 원안 '기준금리'", "자금", "후행", "거시정책", "금융기관", "금융", "", "기준금리"),
+    "자금_기준금리변화": ("콜금리 6개월 변화 (부호 반대)", "자금", "선행", "거시정책", "금융기관", "금융", "", "기준금리"),
+    "자금_주담대금리변화": ("주담대 금리 6개월 변화 (부호 반대, 2008.12~)", "자금", "선행", "거시정책", "금융기관", "금융", "", ""),
+    "자금_국고채10년변화": ("국고채 10년 6개월 변화 (부호 반대)", "자금", "선행", "금융시장", "금융기관", "금융", "", ""),
+    "자금_가계신용증가": ("가계신용/GDP 4분기 변화 (BIS, 6개월 발표시차 반영)", "자금", "후행", "거시정책", "금융기관", "금융", "", ""),
+    # 가격 부담 (밸류에이션)
+    "부담_PIR": ("서울 PIR (중위주택/중위소득)", "가격부담", "후행", "가격실측", "시장전체", "매매", "", ""),
+    "부담_구매력역수": ("KB 주택구매력지수 서울 아파트 (부호 반대)", "가격부담", "후행", "가격실측", "시장전체", "매매", "", ""),
+    "부담_전세가율역수": ("서울 아파트 전세가율 (부호 반대: 낮을수록 매매 과열)", "가격부담", "후행", "가격실측", "시장전체", "전세", "", ""),
+    # 관심 (구글 트렌드)
+    "관심_아파트": ("구글 검색 '아파트' 단기 급증", "관심", "선행", "검색", "매수자", "매매", "", "언급수"),
+    "관심_부동산": ("구글 검색 '부동산' 단기 급증", "관심", "선행", "검색", "매수자", "매매", "", "언급수"),
+    "관심_집값": ("구글 검색 '집값' 단기 급증", "관심", "선행", "검색", "매수자", "매매", "", "언급수"),
+    "관심_청약": ("구글 검색 '청약' 단기 급증", "관심", "선행", "검색", "매수자", "분양", "", "언급수"),
+    "관심_갭투자": ("구글 검색 '갭투자' 단기 급증", "관심", "선행", "검색", "매수자", "매매", "", "언급수"),
+    "관심_공포어역수": ("구글 검색 '급매'+'미분양' 단기 급증 (부호 반대)", "관심", "선행", "검색", "매도자", "매매", "", "언급수"),
+    # 공급
+    "공급_분양물량": ("서울 아파트 분양 세대수 12개월 합 (건설사 자신감)", "공급", "후행", "공급통계", "공급자", "분양", "", "공급량"),
+    "공급_향후입주역수": ("향후 12개월 입주 예정 세대수 (부호 반대)", "공급", "선행", "공급통계", "공급자", "전세", "", "공급량"),
+    # 금융시장
+    "시장_건설주모멘텀": ("건설주 바스켓 6개월 수익률", "금융시장", "선행", "금융시장", "공급자", "금융", "", ""),
+    "시장_건설주상대강도": ("건설주 바스켓 - KOSPI 6개월 수익률 (정크본드 대응)", "금융시장", "선행", "금융시장", "공급자", "금융", "정크본드", ""),
+    "시장_KOSPI모멘텀": ("KOSPI 6개월 수익률 (자산효과)", "금융시장", "선행", "금융시장", "시장전체", "금융", "", ""),
+}
+META_COLS = ["설명", "주제", "속도", "출처성격", "행위자", "시장", "CNN대응", "사용자원안"]
+
+
+def build():
+    ind = {}
+    p = kb_aligned("아파트매매지수_월간")
+    ind["가격_3개월모멘텀"] = chg(p, 3)
+    ind["가격_12개월이평괴리"] = p / p.rolling(12).mean() - 1
+    ind["가격_선도50모멘텀"] = chg(kb_lead50(), 3)
+    gu = kb_gu_panel()
+    up = (gu.diff() > 0).where(gu.diff().notna())
+    ind["가격_상승구비율"] = up.mean(axis=1).where(up.notna().sum(axis=1) >= 20).rolling(3).mean()
+
+    buy = kb_survey("매수우위_월간", "매수우위지수")
+    ind["설문_매수우위"] = buy
+    ind["설문_매수우위변화"] = buy.diff(3)
+    ind["설문_거래활발"] = kb_survey("매매거래활발_월간", "매매거래지수")
+    ind["설문_가격전망"] = kb_survey("매매가격전망_월간", "매매상승하락전망지수")
+
+    js = kb_survey("전세수급_월간", "전세수급지수")
+    ind["전세_수급"] = js
+    ind["전세_가격전망"] = kb_survey("전세가격전망_월간", "전세상승하락전망지수")
+    ind["전세_3개월모멘텀"] = chg(kb_aligned("아파트전세지수_월간"), 3)
+    ind["전세_매매선호"] = buy / js
+
+    call = fred("IRSTCI01KRM156N")
+    call.index = call.index.to_period("M").to_timestamp()
+    ind["자금_기준금리수준"] = -call
+    ind["자금_기준금리변화"] = -call.diff(6)
+    rate, hai = kb_hai()
+    ind["자금_주담대금리변화"] = -rate.diff(6).shift(1)  # 한은 발표 시차 1개월
+    b10 = fred("IRLTLT01KRM156N")
+    ind["자금_국고채10년변화"] = -b10.diff(6)
+    hh = fred("QKRHAM770A")  # 분기 시작일 기준, % of GDP
+    hh_m = hh.diff(4).resample("MS").ffill()
+    hh_m.index = hh_m.index + pd.DateOffset(months=6)  # 분기말 + 발표시차 ≈ 6개월 뒤에 사용 가능
+    ind["자금_가계신용증가"] = hh_m
+
+    ind["부담_PIR"] = kb_pir().shift(3)  # 소득 통계 발표 시차
+    ind["부담_구매력역수"] = -hai.shift(3)
+    ind["부담_전세가율역수"] = -kb_aligned("전세가율_아파트")
+
+    for k, kw in [("관심_아파트", "아파트"), ("관심_부동산", "부동산"), ("관심_집값", "집값"),
+                  ("관심_청약", "청약"), ("관심_갭투자", "갭투자")]:
+        ind[k] = attention(trend(kw))
+    ind["관심_공포어역수"] = -attention(trend("급매") + trend("미분양"))
+
+    if (RAW / "kb" / "분양물량.csv").exists() and (RAW / "kb" / "입주물량.csv").exists():  # v3.1에서는 쓰지 않음 (실시간 계산 불가)
+        sale = kb_supply("분양물량")
+        ind["공급_분양물량"] = np.log1p(sale.rolling(12).sum())
+        movein = kb_supply("입주물량")
+        ind["공급_향후입주역수"] = -np.log1p(movein[::-1].rolling(12).sum()[::-1].shift(-1))
+
+    st = pd.read_csv(RAW / "market" / "stocks_monthly.csv", index_col=0, parse_dates=True)
+    names = [c for c in st.columns if c != "KOSPI"]
+    basket = np.log(st[names]).diff().mean(axis=1, skipna=True)  # 동일가중 월수익률
+    ind["시장_건설주모멘텀"] = basket.rolling(6).sum()
+    kospi6 = np.log(st["KOSPI"]).diff(6)
+    ind["시장_건설주상대강도"] = basket.rolling(6).sum() - kospi6
+    ind["시장_KOSPI모멘텀"] = kospi6
+
+    # 발표가 늦는 지표는 최근 값으로 최대 3개월 이어 붙임 (실시간 운영과 동일)
+    df = pd.DataFrame(ind).sort_index().ffill(limit=3)
+    df = df[df.index >= "2000-01-01"]
+    df.index.name = "date"
+    extra = ROOT / "data" / "indicators_extra.csv"
+    if extra.exists():  # API 키로 받은 지표 (extra_indicators.py)
+        ex = pd.read_csv(extra, index_col=0, parse_dates=True).ffill(limit=3)
+        df = df.join(ex.reindex(df.index))
+    import timing
+    df = timing.apply(df)  # 20일 갱신 시점에 아직 공개 전인 지표는 1개월 늦춤
+    df = timing.fill_slow(df)  # 분기 자료는 다음 발표까지 이어 씀
+    df["__price"] = p.reindex(df.index)  # 타깃용 서울 아파트 매매지수
+    return df
+
+
+if __name__ == "__main__":
+    df = build()
+    df.to_csv(ROOT / "data" / "indicators.csv")
+    from extra_indicators import META_EXTRA
+    allmeta = {**META, **{k: v for k, v in META_EXTRA.items() if k in df.columns}}
+    meta = pd.DataFrame.from_dict(allmeta, orient="index", columns=META_COLS)
+    meta.index.name = "지표"
+    meta.to_csv(ROOT / "data" / "indicator_meta.csv")
+    cov = pd.DataFrame({"start": df.apply(lambda s: s.first_valid_index()),
+                        "end": df.apply(lambda s: s.last_valid_index()),
+                        "n": df.notna().sum()})
+    print(cov.to_string())

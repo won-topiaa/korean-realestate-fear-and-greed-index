@@ -1,0 +1,983 @@
+<title>서울 공포탐욕지수 백테스트</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: one reading column — verdict and today's reading first, then the evidence in the order of the argument, data caveats and method last. */
+:root {
+  --bg: #f3f4f6;
+  --surface: #fcfcfb;
+  --ink: #111316;
+  --ink-2: #4a4e55;
+  --muted: #7d8189;
+  --grid: #e3e5e8;
+  --axis: #c2c5cb;
+  --hair: rgba(17, 19, 22, 0.1);
+  --hl: #eaeef4;
+  --fear: #2a78d6;
+  --greed: #e34948;
+  --neutral: #9a9ca1;
+  --s1: #2a78d6;
+  --s2: #eb6834;
+  --s3: #1baf7a;
+  --band-fear-strong: rgba(42, 120, 214, 0.17);
+  --band-fear-soft: rgba(42, 120, 214, 0.07);
+  --band-neutral: rgba(125, 129, 137, 0.05);
+  --band-greed-soft: rgba(227, 73, 72, 0.07);
+  --band-greed-strong: rgba(227, 73, 72, 0.17);
+  --font: "IBM Plex Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f1012; --surface: #18191b; --ink: #eef0f2; --ink-2: #c1c5cb; --muted: #8b8f96;
+    --grid: #2a2c30; --axis: #3d4046; --hair: rgba(255, 255, 255, 0.1); --hl: #22262d;
+    --fear: #3987e5; --greed: #e66767; --neutral: #74777d; --s1: #3987e5; --s2: #d95926; --s3: #199e70;
+    --band-fear-strong: rgba(57, 135, 229, 0.22); --band-fear-soft: rgba(57, 135, 229, 0.09);
+    --band-neutral: rgba(255, 255, 255, 0.03); --band-greed-soft: rgba(230, 103, 103, 0.09);
+    --band-greed-strong: rgba(230, 103, 103, 0.22);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f1012; --surface: #18191b; --ink: #eef0f2; --ink-2: #c1c5cb; --muted: #8b8f96;
+  --grid: #2a2c30; --axis: #3d4046; --hair: rgba(255, 255, 255, 0.1); --hl: #22262d;
+  --fear: #3987e5; --greed: #e66767; --neutral: #74777d; --s1: #3987e5; --s2: #d95926; --s3: #199e70;
+  --band-fear-strong: rgba(57, 135, 229, 0.22); --band-fear-soft: rgba(57, 135, 229, 0.09);
+  --band-neutral: rgba(255, 255, 255, 0.03); --band-greed-soft: rgba(230, 103, 103, 0.09);
+  --band-greed-strong: rgba(230, 103, 103, 0.22);
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--ink); font-family: var(--font); font-size: 15px; line-height: 1.65;
+  padding-inline: 16px; padding-block: 40px 72px; -webkit-font-smoothing: antialiased;
+}
+.wrap { max-width: 1040px; margin: 0 auto; display: grid; gap: 56px; }
+h1, h2, h3 { text-wrap: balance; margin: 0; line-height: 1.3; }
+h1 { font-size: clamp(28px, 4.2vw, 40px); font-weight: 700; letter-spacing: -0.02em; }
+h2 { font-size: 21px; font-weight: 600; letter-spacing: -0.01em; }
+h3 { font-size: 15px; font-weight: 600; }
+p { margin: 0; max-width: 68ch; }
+.eyebrow { font-family: var(--mono); font-size: 12px; letter-spacing: 0.06em; color: var(--muted); text-transform: uppercase; }
+.lede { color: var(--ink-2); font-size: 16px; }
+.mono { font-family: var(--mono); }
+.section { display: grid; gap: 18px; min-width: 0; }
+.section > header { display: grid; gap: 6px; }
+.section > header p { color: var(--ink-2); }
+.panel { background: var(--surface); border: 1px solid var(--hair); border-radius: 10px; padding: 20px; min-width: 0; }
+.top { display: grid; gap: 14px; }
+.verdict { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+@media (max-width: 820px) { .verdict { grid-template-columns: 1fr; } }
+.findings { display: grid; padding: 0; margin: 0; list-style: none; }
+.findings li { display: grid; grid-template-columns: 26px minmax(0, 1fr); gap: 10px; padding-block: 14px; border-top: 1px solid var(--hair); }
+.findings li:first-child { border-top: 0; padding-top: 0; }
+.findings .k { font-family: var(--mono); font-size: 12px; color: var(--muted); padding-top: 3px; }
+.findings b { font-weight: 600; }
+.findings p { color: var(--ink-2); font-size: 14.5px; }
+.now { display: grid; gap: 14px; }
+.now .row { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.hero-num { font-size: 64px; font-weight: 600; line-height: 1; letter-spacing: -0.03em; }
+.zone-chip { font-size: 13px; font-weight: 600; padding: 3px 10px; border-radius: 999px; border: 1px solid var(--hair); background: var(--hl); }
+.gauge { position: relative; padding-top: 14px; }
+.gauge-track { display: flex; gap: 2px; height: 10px; }
+.gauge-track span { display: block; height: 100%; }
+.gauge-track span:first-child { border-radius: 4px 0 0 4px; }
+.gauge-track span:last-child { border-radius: 0 4px 4px 0; }
+.gauge-marker { position: absolute; top: 0; width: 2px; height: 28px; background: var(--ink); transform: translateX(-1px); border-radius: 1px; }
+.gauge-scale { display: flex; justify-content: space-between; font-family: var(--mono); font-size: 11px; color: var(--muted); margin-top: 6px; }
+.kv { display: grid; grid-template-columns: auto 1fr; gap: 4px 14px; font-size: 13.5px; margin: 0; }
+.kv dt { color: var(--muted); }
+.kv dd { margin: 0; font-variant-numeric: tabular-nums; }
+.chart { position: relative; min-width: 0; }
+.chart svg { display: block; overflow: visible; }
+.chart:focus-visible { outline: 2px solid var(--s1); outline-offset: 4px; border-radius: 6px; }
+.chart-title { font-size: 13px; font-weight: 600; color: var(--ink-2); margin-bottom: 4px; }
+.legend { display: flex; flex-wrap: wrap; gap: 8px 18px; font-size: 12.5px; color: var(--ink-2); align-items: center; }
+.legend i { display: inline-block; vertical-align: -1px; margin-right: 6px; }
+.sw { width: 12px; height: 12px; border-radius: 3px; }
+.dot { width: 10px; height: 10px; border-radius: 50%; }
+.tick { font-family: var(--mono); font-size: 11px; fill: var(--muted); }
+.axis-line { stroke: var(--axis); stroke-width: 1; }
+.grid-line { stroke: var(--grid); stroke-width: 1; }
+.band-fear-strong { fill: var(--band-fear-strong); }
+.band-fear-soft { fill: var(--band-fear-soft); }
+.band-neutral { fill: var(--band-neutral); }
+.band-greed-soft { fill: var(--band-greed-soft); }
+.band-greed-strong { fill: var(--band-greed-strong); }
+.band-label { font-size: 11px; fill: var(--muted); }
+.line-main { fill: none; stroke: var(--ink); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.line-price { fill: none; stroke: var(--ink-2); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.tp-line { stroke: var(--axis); stroke-width: 1; }
+.tp-label { font-size: 11px; fill: var(--ink-2); }
+.xh { stroke: var(--ink-2); stroke-width: 1; }
+.xh-dot { stroke: var(--surface); stroke-width: 2; }
+.hit { fill: transparent; cursor: crosshair; }
+.tip {
+  position: absolute; pointer-events: none; z-index: 5; background: var(--surface); color: var(--ink);
+  border: 1px solid var(--hair); border-radius: 8px; box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
+  padding: 9px 12px; font-size: 12.5px; line-height: 1.5; min-width: 150px;
+}
+.tip .t-date { color: var(--muted); font-family: var(--mono); font-size: 11px; }
+.tip .t-row { display: flex; align-items: baseline; gap: 8px; }
+.tip .t-row strong { font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.tip .t-row span { color: var(--ink-2); }
+.tip i { display: inline-block; width: 12px; height: 2px; border-radius: 1px; vertical-align: 4px; }
+.table-wrap { overflow-x: auto; min-width: 0; }
+table { border-collapse: collapse; width: 100%; font-size: 13.5px; }
+th, td { text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--hair); vertical-align: middle; }
+th { font-weight: 500; color: var(--muted); font-size: 12px; white-space: nowrap; }
+td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+td small { display: block; color: var(--muted); font-size: 11.5px; line-height: 1.4; }
+tr.win td { background: var(--hl); }
+tr.win td:nth-child(2) { font-weight: 600; }
+.rank { font-family: var(--mono); color: var(--muted); font-size: 12px; width: 28px; }
+.neg { color: var(--fear); }
+.stab { display: flex; align-items: center; gap: 8px; min-width: 150px; }
+.stab-track { position: relative; flex: 1; height: 8px; }
+.stab-zero { position: absolute; top: -3px; bottom: -3px; width: 1px; background: var(--axis); }
+.stab-bar { position: absolute; top: 0; height: 8px; }
+.stab-ci { position: absolute; top: 3px; height: 2px; background: var(--muted); opacity: 0.6; }
+.tag { font-size: 11px; font-family: var(--mono); color: var(--muted); border: 1px solid var(--hair); border-radius: 4px; padding: 1px 6px; margin-left: 6px; white-space: nowrap; }
+.bars { display: grid; gap: 10px; }
+.bar-row { display: grid; grid-template-columns: minmax(0, 11rem) minmax(0, 1fr) 2.6rem; gap: 12px; align-items: center; font-size: 13.5px; }
+.bar-row .lab { min-width: 0; }
+.bar-row .lab small { display: block; color: var(--muted); font-size: 11.5px; line-height: 1.35; }
+.bar-track { position: relative; height: 12px; }
+.bar-track::before { content: ""; position: absolute; left: 0; right: 0; top: 5px; height: 2px; background: var(--grid); border-radius: 1px; }
+.bar-mid { position: absolute; left: 50%; top: -3px; bottom: -3px; width: 1px; background: var(--axis); }
+.bar-fill { position: absolute; top: 0; height: 12px; }
+.bar-row .val { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
+.bars-sep { font-size: 12px; color: var(--muted); padding-top: 10px; border-top: 1px solid var(--hair); margin-top: 4px; }
+@media (max-width: 520px) { .bar-row { grid-template-columns: minmax(0, 7.5rem) minmax(0, 1fr) 2.2rem; } }
+.cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 20px; }
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr)); }
+.tile { padding: 14px 16px; border-left: 1px solid var(--hair); display: grid; gap: 2px; align-content: start; }
+.tile:first-child { border-left: 0; padding-left: 0; }
+@media (max-width: 640px) { .tile { border-left: 0; padding-left: 0; border-top: 1px solid var(--hair); } .tile:first-child { border-top: 0; } }
+.tile .lab { font-size: 12.5px; color: var(--muted); }
+.tile .v { font-size: 28px; font-weight: 600; letter-spacing: -0.02em; }
+.tile .s { font-size: 12.5px; color: var(--ink-2); }
+ul.plain { margin: 0; padding-left: 1.1em; display: grid; gap: 6px; color: var(--ink-2); font-size: 14.5px; max-width: 74ch; }
+ul.plain b { color: var(--ink); font-weight: 600; }
+details summary { cursor: pointer; color: var(--ink-2); font-size: 13px; }
+details[open] summary { margin-bottom: 10px; }
+.foot { font-size: 12.5px; color: var(--muted); }
+code { font-family: var(--mono); font-size: 12.5px; }
+.change { border-left: 3px solid var(--s2); padding: 4px 0 4px 14px; color: var(--ink-2); font-size: 14px; max-width: 80ch; }
+.change b { color: var(--ink); }
+</style>
+
+<div class="wrap">
+  <section class="top">
+    <div class="eyebrow" id="eyebrow">백테스트 보고서 v3 · 서울 아파트</div>
+    <h1>서울 공포탐욕지수 백테스트</h1>
+    <p class="lede" id="lede"></p>
+    <p class="change" id="change"></p>
+  </section>
+
+  <section class="verdict">
+    <div class="panel"><ol class="findings" id="findings"></ol></div>
+    <div class="panel now" id="now"></div>
+  </section>
+
+  <section class="section">
+    <header>
+      <h2>지수와 실제 거래 가격</h2>
+      <p id="main-cap"></p>
+    </header>
+    <div class="panel">
+      <div class="chart" id="main-chart" tabindex="0" aria-label="공포탐욕지수와 서울 아파트 실거래 반복매매지수 시계열. 좌우 화살표로 월을 이동합니다."></div>
+      <div class="legend" id="band-legend" style="margin-top:14px"></div>
+      <details style="margin-top:14px">
+        <summary>연도별 값 표로 보기</summary>
+        <div class="table-wrap"><table id="year-table" style="min-width:460px"></table></div>
+      </details>
+    </div>
+  </section>
+
+
+
+  <section class="section">
+    <header>
+      <h2>엔진 점검과 수정 (v3.1)</h2>
+      <p>v3를 자동 갱신에 올리기 전에 구조를 다시 점검했어요. 고쳐야 할 오류 3개, 설계상 약점 5개, 경미한 문제 4개를 찾아 모두 반영했어요. 그 결과 성적은 실제 수준으로 내려왔고, 이 보고서의 숫자는 모두 고친 뒤의 값이에요.</p>
+    </header>
+    <div class="panel"><div class="table-wrap"><table id="fix-table" style="min-width:720px"></table></div></div>
+  </section>
+
+  <section class="section">
+    <header>
+      <h2>5년 구간별 성적</h2>
+      <p>세 구간만으로는 구간을 어떻게 자르느냐에 따라 결과가 크게 달라져서, 5년 창을 1년씩 옮겨가며 13번 평가했어요. 숫자는 지수와 이후 12개월 실거래 가격의 순위상관이에요. 단순한 기준 세 가지와 나란히 놓았어요.</p>
+    </header>
+    <div class="panel">
+      <div class="table-wrap"><table id="rolling-table" style="min-width:860px"></table></div>
+      <p class="foot" style="margin-top:12px" id="rolling-cap"></p>
+    </div>
+  </section>
+
+  <section class="section">
+    <header>
+      <h2>실제 가중치</h2>
+      <p>표를 선행·동행·후행 세 그룹으로 나눠 같은 비중으로 평균 내기 때문에, 그룹마다 표 수가 다르면 한 표의 무게도 달라져요. 최신 달 기준 주제별 실제 비중이에요. 비중을 억지로 맞추는 두 방식(그룹 안 주제 균등, 소득연계 통계 합치기)은 최악 구간 성적을 나쁘게 만들어서 채택하지 않고, 대신 숫자를 공개해요.</p>
+    </header>
+    <div class="cols">
+      <div class="panel"><h3 style="margin-bottom:14px">주제별 비중</h3><div class="bars" id="weight-bars"></div></div>
+      <div class="panel"><h3 style="margin-bottom:10px">표 구성</h3><div class="table-wrap"><table id="vote-table" style="min-width:420px"></table></div></div>
+    </div>
+  </section>
+
+  <section class="section">
+    <header>
+      <h2>실시간 검증</h2>
+      <p id="live-cap"></p>
+    </header>
+  </section>
+
+  <section class="section">
+    <header>
+      <h2>시점 의존성 점검 (v3를 정할 때 · 공개 시차 반영 전)</h2>
+      <p>2006년과 지금은 데이터가 만들어지는 방식, 정책, 시장 구조가 많이 달라요. 지표마다 추세와 단절이 있는지, 점수가 0이나 100에 오래 붙어 있는지 진단하고, 해결책 후보를 실거래 정답으로 시험했어요.</p>
+    </header>
+    <div class="cols">
+      <div class="panel">
+        <h3 style="margin-bottom:10px">확인한 위험 요소</h3>
+        <ul class="plain" id="risk-list"></ul>
+      </div>
+      <div class="panel">
+        <h3 style="margin-bottom:4px">추세가 크거나 점수가 오래 고착된 지표</h3>
+        <p style="color:var(--ink-2);font-size:13px;margin-bottom:10px">추세: 시간과의 순위상관. 평균 이동: 2016년 전후 평균 차이(표준편차 단위). 고착: 점수가 10 이하나 90 이상에 연속으로 머문 최장 개월.</p>
+        <div class="table-wrap"><table id="diag-table" style="min-width:380px"></table></div>
+      </div>
+    </div>
+    <div class="panel">
+      <h3 style="margin-bottom:10px">해결책 비교 (실거래 정답, 세 구간 순위상관)</h3>
+      <div class="table-wrap"><table id="remedy-table" style="min-width:680px"></table></div>
+      <p class="foot" style="margin-top:12px">지표마다 최근 10년 안에서 순위를 매기는 방식이 이미 대부분의 장기 변화를 흡수하고 있었어요. 추세를 지우면 과열 신호까지 같이 지워졌고, 과거 성적으로 가중치를 정하는 방법은 사이클이 두 번뿐인 데이터에서 잡음에 맞춰졌어요. 그래서 성능은 지키면서 시기마다 구성이 같아지는 고정 구성을 택했어요.</p>
+    </div>
+  </section>
+
+  <section class="section">
+    <header>
+      <h2>눈금 펴기</h2>
+      <p>여러 지표를 평균하면 점수가 가운데로 몰려요. v2는 20년 동안 26~84만 써서 극단적 공포가 한 번도 나오지 않았어요. 그래서 마지막에 50을 중심으로 눈금을 넓혔어요.</p>
+    </header>
+    <div class="cols">
+      <div class="panel">
+        <h3 style="margin-bottom:10px">두 가지 펴는 방법</h3>
+        <div class="table-wrap"><table id="spread-table" style="min-width:420px"></table></div>
+      </div>
+      <div class="panel">
+        <h3 style="margin-bottom:10px">결과</h3>
+        <ul class="plain" id="spread-notes"></ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <header>
+      <h2>묶는 방식 비교 (v2 분석, 45개 기준)</h2>
+      <p>같은 45개 지표를 서로 다른 기준으로 묶었어요. 숫자는 지수 점수와 이후 12개월 실거래 가격 변화의 순위상관이에요(1이면 완벽, 0이면 무관). 7년씩 세 구간으로 나눠 가장 나쁜 구간의 값으로 순위를 매겼어요. 오른쪽 끝 열은 정답을 KB 지수로 바꿨을 때의 최저값이에요.</p>
+    </header>
+    <div class="panel">
+      <div class="table-wrap"><table id="scheme-table" style="min-width:760px"></table></div>
+      <p class="foot" style="margin-top:12px">막대는 세 구간 중 최저값, 가는 선은 전체 기간의 90% 신뢰구간(12개월 블록 부트스트랩)이에요. 1·2위는 신뢰구간이 겹쳐서 사실상 같은 수준이에요.</p>
+    </div>
+  </section>
+
+  <section class="section">
+    <header>
+      <h2>가격부담을 빼면 2006–2019년에 안 맞아요 (v2 분석)</h2>
+      <p>v1은 KB 지수를 정답으로 두 구간만 비교해서 가격부담을 뺐어요. 실거래 정답과 세 구간으로 다시 보니, 빼는 쪽은 최근 구간에서만 좋고 앞의 14년 동안은 약했어요. 그래서 v2는 실시간으로 계산할 수 없는 KB 분양·입주 일정 두 개만 빼고 나머지를 모두 넣었어요.</p>
+    </header>
+    <div class="panel"><div class="table-wrap"><table id="variant-table" style="min-width:640px"></table></div></div>
+  </section>
+
+  <section class="section">
+    <header>
+      <h2>주제 그룹은 구간마다 크게 흔들려요 (v2 분석)</h2>
+      <p>그룹 하나만으로는 어느 구간에서든 꾸준한 게 없었어요. 관심(검색량)과 자금(금리)은 2020년 이후에만 맞았고, 가격부담은 그때만 반대로 움직였어요. 서로 다른 구간에 강한 그룹을 섞었기 때문에 종합지수가 꾸준해진 거예요.</p>
+    </header>
+    <div class="panel">
+      <div class="legend" id="theme-legend" style="margin-bottom:10px"></div>
+      <div class="chart" id="theme-chart"></div>
+    </div>
+  </section>
+
+  <section class="section">
+    <header>
+      <h2>새로 넣은 지표 (v2 분석)</h2>
+      <p>API 키로 받은 국토부 실거래, 한국부동산원, 청약홈 자료로 만든 지표예요. 청약 지표는 청약홈 자료가 2020년부터라 마지막 구간만 평가할 수 있어요.</p>
+    </header>
+    <div class="panel"><div class="table-wrap"><table id="single-table" style="min-width:720px"></table></div></div>
+  </section>
+
+  <section class="section">
+    <header>
+      <h2>데이터에서 찾은 함정 두 가지</h2>
+      <p>정답과 지표를 바꾸면서 기존 공개 지수의 문제가 드러났어요.</p>
+    </header>
+    <div class="cols">
+      <div class="panel">
+        <h3 style="margin-bottom:4px">KB 분양물량의 최근 값은 계획치예요</h3>
+        <p style="color:var(--ink-2);font-size:13.5px;margin-bottom:12px">서울 분양 세대수. KB 수치에는 조합원 몫이 포함돼 평소에도 청약홈보다 2~3배 크지만, 2025년부터 차이가 9~13배로 벌어졌어요. 아직 실행되지 않은 일정이 섞인 거예요.</p>
+        <div class="table-wrap"><table id="q-presale" style="min-width:300px"></table></div>
+      </div>
+      <div class="panel">
+        <h3 style="margin-bottom:4px">부동산원 지수는 2017–2021년 상승을 덜 잡았어요</h3>
+        <p style="color:var(--ink-2);font-size:13.5px;margin-bottom:12px">서울 아파트 연간 상승률(%). 실거래 반복매매지수와 비교하면 부동산원 지수가 크게 낮았어요. 그래서 이 지수는 정답으로 쓰지 않았어요.</p>
+        <div class="table-wrap"><table id="q-reb" style="min-width:300px"></table></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <header>
+      <h2>점수 구간별 이후 12개월 실거래 가격 (2011년 2월 이후)</h2>
+      <p id="bucket-cap"></p>
+    </header>
+    <div class="panel"><div class="chart" id="bucket-chart"></div></div>
+  </section>
+
+  <section class="section">
+    <header>
+      <h2>과거에 잘 맞은 조합을 고르면 생기는 일 (v2 분석)</h2>
+      <p>지표 2~4개 조합 19만여 개를 모두 시험했어요. 학습기간 성적이 좋은 조합을 골라도 검증기간에서는 아무 조합이나 고른 것과 차이가 없었어요. 의미 단위로 묶는 게 맞다는 v1의 결론은 그대로예요.</p>
+    </header>
+    <div class="panel"><div class="tiles" id="overfit"></div></div>
+  </section>
+
+  <section class="section">
+    <header>
+      <h2 id="now-h2">지금 서울은</h2>
+      <p>v3 지수를 구성하는 세 그룹과, 설명용으로 본 주제별 점수예요. 모두 같은 1.5배 눈금이고, 50보다 오른쪽이면 탐욕, 왼쪽이면 공포예요.</p>
+    </header>
+    <div class="cols">
+      <div class="panel"><h3 style="margin-bottom:14px">v3 지수 구성 (속도별)</h3><div class="bars" id="speed-bars"></div></div>
+      <div class="panel"><h3 style="margin-bottom:14px">주제별 (참고)</h3><div class="bars" id="theme-bars"></div></div>
+    </div>
+  </section>
+
+  <section class="section">
+    <header><h2>주요 국면에서 지수가 가리킨 값</h2></header>
+    <div class="panel"><div class="table-wrap"><table id="snap-table" style="min-width:520px"></table></div></div>
+  </section>
+
+  <section class="section">
+    <header><h2>방법과 한계</h2></header>
+    <div class="cols">
+      <div class="panel">
+        <h3 style="margin-bottom:10px">어떻게 했나</h3>
+        <ul class="plain">
+          <li><b>정답</b>: 국토부 실거래 141만 건으로 만든 서울 아파트 반복매매지수예요. 같은 단지·같은 면적이 연속으로 거래된 쌍을 썼고, 해제 신고 거래와 직거래는 뺐어요. KB 지수는 비교용으로만 썼어요.</li>
+          <li><b>지표</b>: 2009년 이전부터 자료가 있는 지표를 쓰되 같은 원자료에서 나온 것은 한 표로 묶어 25표로 계산해요(구글 검색어 6개도 한 표, 매수우위에서 파생된 지표는 제외). 이력이 짧은 10개(청약 경쟁률, 20·30대 매수 비중, 소비심리, 전망지수, 부동산원 수급)는 보조 지표로만 보여줘요. 출처는 KB부동산 데이터허브, FRED, 네이버 금융, 구글 트렌드, 한국부동산원 R-ONE(거래량, 매입자 거주지·연령·주체, 미분양, 매매·전세수급, 소비심리), 청약홈(1순위·무순위 경쟁률, 실제 공급), 국토부 실거래(신고가·급락거래 비중)에서 만들었어요.</li>
+          <li><b>점수화</b>: 과거 120개월 안에서의 백분위로 바꿨어요. 그 시점까지의 정보만 써요.</li>
+          <li><b>시점</b>: 매달 20일 갱신 기준으로, 그때 아직 공개되지 않은 그달 자료(부동산원 거래 통계·미분양, 월평균 금리, 월말 주가, 검색량)는 지난달 값을 써요. 실거래 지표는 신고 기한 때문에 2개월, PIR·구매력은 3개월, BIS 가계신용은 6개월 늦춰요. 과거 점수도 같은 규칙이라 한 번 발표한 점수가 나중에 바뀌지 않아요.</li>
+          <li><b>평가</b>: 5년 창을 1년씩 옮기며 13번 잰 순위상관의 중앙값과 최저값을 봐요. 구조를 바꿀 때는 이 기준을 결과를 보기 전에 정해두고 골랐어요.</li>
+          <li><b>눈금</b>: 점수 = 50 + 1.5 × (원점수 − 50), 0~100으로 잘라요. 모든 시점에 같은 배율이라 순서와 정확도가 그대로예요.</li>
+        </ul>
+      </div>
+      <div class="panel">
+        <h3 style="margin-bottom:10px">조심해서 읽을 점</h3>
+        <ul class="plain">
+          <li>엔진의 선택(지표 구성, 검색량 기준, 눈금 1.5배, 표 묶기)은 모두 2006–2026년 자료를 본 뒤에 정했어요. 그래서 이 보고서의 성적에는 낙관적 편향이 남아 있어요. 진짜 검증은 2026년 9월부터 쌓는 실시간 기록으로 해요.</li>
+          <li>권역 점수 차이가 5점 미만이면 의미 있는 차이로 보기 어려워요. 25표 중 14표만 권역 값이고, 서남권은 서울 지수가 더 잘 맞았어요.</li>
+          <li>뉴스 언급량(빅카인즈)은 넣지 않았어요. 백테스트에서 개선이 없었어요.</li>
+          <li>서울의 큰 하락은 표본에 두 번뿐이고, 2025년 10월 이후의 토지거래허가구역 국면은 거의 없어요.</li>
+          <li>청약홈의 청약 신청·당첨자 통계 API는 아직 승인 대기 중이에요.</li>
+        </ul>
+      </div>
+    </div>
+    <p class="foot">재현: <code>update_pipeline.py</code> (자료 갱신 → v3.1 계산 → 지도·보고서·사이트). 점검 코드는 <code>audit.py</code>, <code>audit2.py</code>, 구조 비교는 <code>eval_structure.py</code>, 실시간 기록은 <code>live_track.py</code>예요.</p>
+  </section>
+</div>
+
+<script>
+const D = __DATA__;
+const NS = "http://www.w3.org/2000/svg";
+const $ = (s) => document.querySelector(s);
+function S(tag, attrs, parent) {
+  const e = document.createElementNS(NS, tag);
+  for (const k in attrs || {}) e.setAttribute(k, attrs[k]);
+  if (parent) parent.appendChild(e);
+  return e;
+}
+function H(tag, attrs, parent, text) {
+  const e = document.createElement(tag);
+  for (const k in attrs || {}) { if (k === "style") e.style.cssText = attrs[k]; else e.setAttribute(k, attrs[k]); }
+  if (text != null) e.textContent = text;
+  if (parent) parent.appendChild(e);
+  return e;
+}
+const ZONES = [
+  [0, 25, "극단적 공포", "band-fear-strong", "var(--band-fear-strong)"],
+  [25, 45, "공포", "band-fear-soft", "var(--band-fear-soft)"],
+  [45, 55, "중립", "band-neutral", "var(--band-neutral)"],
+  [55, 75, "탐욕", "band-greed-soft", "var(--band-greed-soft)"],
+  [75, 100, "극단적 탐욕", "band-greed-strong", "var(--band-greed-strong)"],
+];
+const PER = ["2006–12", "2013–19", "2020–26"];
+const PCOL = ["var(--s1)", "var(--s2)", "var(--s3)"];
+const zone = (v) => (v < 25 ? "극단적 공포" : v < 45 ? "공포" : v < 55 ? "중립" : v < 75 ? "탐욕" : "극단적 탐욕");
+const sideColor = (v) => (v < 45 ? "var(--fear)" : v < 55 ? "var(--neutral)" : "var(--greed)");
+const f2 = (v) => (v == null ? "–" : v.toFixed(2));
+const pct = (v, d = 1) => (v == null ? "–" : (v >= 0 ? "+" : "−") + Math.abs(v * 100).toFixed(d) + "%");
+const ym = (s) => s.slice(0, 4) + "년 " + String(+s.slice(5, 7)) + "월";
+const nm = (n) => n.toLocaleString();
+
+function drawTop() {
+  $("#eyebrow").textContent = `백테스트 보고서 ${D.version} · 실거래 ${Math.round(D.n_trades / 10000)}만 건으로 검증 · 서울 아파트 2006–${D.series.dates[D.series.dates.length - 1].slice(0, 4)} · ${ym(D.series.dates[D.series.dates.length - 1])} 기준`;
+  const sc = D.schemes, v = D.variants, now = D.now;
+  const sp = sc.find((r) => r.name.startsWith("속도")), th = sc.find((r) => r.name.startsWith("주제"));
+  const flat = sc.find((r) => r.name.startsWith("구분")), cnn = sc.find((r) => r.name.startsWith("CNN")), orig = sc.find((r) => r.name.startsWith("처음"));
+  $("#lede").textContent = `공공데이터포털·한국부동산원 API 키로 서울 아파트 실거래 ${nm(D.n_trades)}건과 부동산원·청약홈 통계를 받아 후보 지표 ${D.n_all}개를 만들고, 그중 ${D.n_v3}개를 ${D.n_votes}표로 묶어 지수를 계산해요. 정답은 실거래로 직접 만든 가격지수예요.`;
+  $("#change").innerHTML = "";
+  const c = $("#change");
+  H("b", {}, c, `${D.version}에서 바뀐 점: `);
+  c.append(`엔진 점검에서 찾은 12가지를 고쳤어요. 갱신일에 아직 공개되지 않은 자료를 쓰던 문제를 바로잡고, 같은 원자료에서 나온 지표를 한 표로 묶었어요(${D.n_v3}개 지표 → ${D.n_votes}표). 지표 구성이 다 갖춰진 ${ym(D.official_start)}부터를 공식 기록으로 봐요. v3는 지표 구성을 고정하고 눈금을 ${D.spread.k}배 넓혔고, v2는 정답을 실거래 반복매매지수로 바꿨어요.`);
+  const rv = D.rolling.rows[0], rb = D.rolling.rows[1], rk = D.rolling.rows[2];
+  const below = rv.w.filter((x) => x != null && x < 0.3).length;
+  const B = D.buckets, ef = B[0], g2 = B[3], g3 = B[4];
+  const items = [
+    [`${D.version}은 점검에서 찾은 문제 12가지를 고친 버전이에요.`,
+      `갱신일에 아직 공개되지 않은 자료를 쓰던 문제를 고치자 성적이 실제 수준으로 내려왔어요. 같은 원자료에서 나온 지표를 한 표로 묶어 ${D.n_v3}개 지표를 ${D.n_votes}표로 계산해요. ${ym(D.official_start)} 이후 기간에서 지수와 이후 12개월 실거래 가격의 순위상관은 ${f2(D.ic_official)}예요.`],
+    ["단순한 기준보다는 낫지만, 차이가 크지는 않아요.",
+      `5년 구간 13개의 중앙값은 ${f2(rv.median)}로 KB 매수우위지수 하나(${f2(rb.median)})나 KB 3개월 가격 변화(${f2(rk.median)})보다 높아요. 하지만 최저는 ${f2(rv.min)}이고 13개 중 ${below}개 구간이 0.3 미만이었어요. 주로 나쁜 구간을 덜 나쁘게 만드는 정도예요.`],
+    ["추세 온도계로 읽어야 해요.",
+      `탐욕 구간 뒤 1년은 ${Math.round(g2.up * 100)}%, 극단적 탐욕 뒤는 ${Math.round(g3.up * 100)}%가 올랐어요. 극단적 공포 구간 뒤에도 ${Math.round(ef.up * 100)}%가 올랐는데, 대부분 바닥 근처였던 시기라서예요(${ef.n}개월, 표본 적음). 사고팔 시점을 알려주는 신호로 쓰면 안 돼요.`],
+    ["가장 잘 맞은 묶음은 선행·동행·후행 3그룹이에요 (v2 분석).",
+      `세 구간 최저 ${f2(sp.min)}로 1위, 주제별 10그룹이 ${f2(th.min)}로 2위였어요. 구분 없이 평균 내면 ${f2(flat.min)}, CNN 대응 지표만 쓰면 ${f2(cnn.min)}로 떨어졌어요.`],
+    ["공개 지수 두 개에서 문제를 찾았어요.",
+      "KB 분양물량의 최근 값은 실제 분양이 아닌 계획치였고, 부동산원 지수는 2017–2021년 서울 상승을 크게 덜 잡았어요."],
+  ];
+  const ol = $("#findings");
+  items.forEach(([h, p], i) => {
+    const li = H("li", {}, ol);
+    H("span", { class: "k" }, li, String(i + 1).padStart(2, "0"));
+    const d = H("div", {}, li);
+    H("b", { style: "display:block;margin-bottom:2px" }, d, h);
+    H("p", {}, d, p);
+  });
+  const box = $("#now");
+  H("div", { class: "eyebrow" }, box, `지금 서울 · ${ym(now.date)} 기준 · v3`);
+  const row = H("div", { class: "row" }, box);
+  H("span", { class: "hero-num" }, row, String(Math.round(now.v2)));
+  H("span", { class: "zone-chip" }, row, zone(now.v2));
+  const g = H("div", { class: "gauge", role: "img", "aria-label": `공포탐욕지수 ${Math.round(now.v2)}, ${zone(now.v2)}` }, box);
+  const tr = H("div", { class: "gauge-track" }, g);
+  const segFill = ["var(--fear)", "var(--fear)", "var(--neutral)", "var(--greed)", "var(--greed)"];
+  const segOp = [0.9, 0.4, 0.35, 0.4, 0.9];
+  ZONES.forEach(([a, b], i) => H("span", { style: `flex:${b - a};background:${segFill[i]};opacity:${segOp[i]}` }, tr));
+  H("div", { class: "gauge-marker", style: `left:${now.v2}%` }, g);
+  const scl = H("div", { class: "gauge-scale" }, g);
+  ["0 공포", "50", "탐욕 100"].forEach((t) => H("span", {}, scl, t));
+  const kv = H("dl", { class: "kv" }, box);
+  [["3개월 전", `${Math.round(now.prev3)} · ${zone(now.prev3)}`], ["1년 전", `${Math.round(now.prev12)} · ${zone(now.prev12)}`]]
+    .forEach(([k, val]) => { H("dt", {}, kv, k); H("dd", {}, kv, val); });
+  const t = now.themes;
+  H("p", { style: "font-size:13px;color:var(--ink-2)" }, box,
+    `탐욕 경계에 걸친 중립이에요. 전세(${Math.round(t["전세"])})와 가격부담(${Math.round(t["가격부담"])})은 높고, 자금(${Math.round(t["자금"])})과 공급(${Math.round(t["공급"])})은 공포 쪽이에요. 3개월 전보다 조금 식었어요.`);
+}
+
+function drawMain() {
+  const box = $("#main-chart");
+  box.innerHTML = "";
+  const s = D.series, n = s.dates.length;
+  const W = box.clientWidth, narrow = W < 560;
+  const ml = 34, mr = 10;
+  const x = (i) => ml + (i / (n - 1)) * (W - ml - mr);
+  const idx = Object.fromEntries(s.dates.map((d, i) => [d, i]));
+  H("div", { class: "chart-title" }, box, "공포탐욕지수 v3 (0–100)");
+  const tA = 20, hA = narrow ? 190 : 250, HA = tA + hA + 6;
+  const svgA = S("svg", { width: W, height: HA, viewBox: `0 0 ${W} ${HA}`, "aria-hidden": "true" }, box);
+  const yA = (v) => tA + (1 - v / 100) * hA;
+  ZONES.forEach(([a, b, lab, cls]) => {
+    S("rect", { x: ml, y: yA(b), width: W - ml - mr, height: yA(a) - yA(b), class: cls }, svgA);
+    if (!narrow) S("text", { x: W - mr - 6, y: yA(b) + 13, "text-anchor": "end", class: "band-label" }, svgA).textContent = lab;
+  });
+  [0, 25, 50, 75, 100].forEach((v) => { S("text", { x: ml - 6, y: yA(v) + 4, "text-anchor": "end", class: "tick" }, svgA).textContent = v; });
+  const io = idx[D.official_start];
+  if (io > 0) {
+    S("rect", { x: ml, y: tA, width: x(io) - ml, height: hA, style: "fill:var(--surface);opacity:0.55" }, svgA);
+    S("text", { x: ml + 6, y: tA + hA - 8, class: "band-label" }, svgA).textContent = narrow ? "참고용" : "참고용 (지표 구성 불완전)";
+  }
+  const tps = D.tps.filter(([d]) => idx[d] != null);
+  tps.forEach(([d, t]) => {
+    const xi = x(idx[d]);
+    S("line", { x1: xi, x2: xi, y1: tA, y2: tA + hA, class: "tp-line" }, svgA);
+    if (!narrow || t === "고점") S("text", { x: xi, y: tA - 6, "text-anchor": "middle", class: "tp-label" }, svgA).textContent = `${t} ’${d.slice(2, 4)}.${d.slice(5, 7)}`;
+  });
+  let dA = "";
+  s.idx.forEach((v, i) => { if (v != null) dA += (dA && s.idx[i - 1] != null ? "L" : "M") + x(i).toFixed(1) + "," + yA(v).toFixed(1); });
+  S("path", { d: dA, class: "line-main" }, svgA);
+  H("div", { class: "chart-title", style: "margin-top:14px" }, box, `서울 아파트 실거래 반복매매지수 (${ym(D.rs_base || s.dates[s.dates.length - 1])} = 100)`);
+  const pv = s.rs.filter((v) => v != null);
+  const lo = Math.floor(Math.min(...pv) / 20) * 20, hi = Math.ceil(Math.max(...pv) / 20) * 20;
+  const tB = 6, hB = narrow ? 100 : 130, HB = tB + hB + 24;
+  const svgB = S("svg", { width: W, height: HB, viewBox: `0 0 ${W} ${HB}`, "aria-hidden": "true" }, box);
+  const yB = (v) => tB + (1 - (v - lo) / (hi - lo)) * hB;
+  for (let v = lo; v <= hi; v += 20) {
+    S("line", { x1: ml, x2: W - mr, y1: yB(v), y2: yB(v), class: v === lo ? "axis-line" : "grid-line" }, svgB);
+    S("text", { x: ml - 6, y: yB(v) + 4, "text-anchor": "end", class: "tick" }, svgB).textContent = v;
+  }
+  tps.forEach(([d]) => S("line", { x1: x(idx[d]), x2: x(idx[d]), y1: tB, y2: tB + hB, class: "tp-line" }, svgB));
+  let dB = "";
+  s.rs.forEach((v, i) => { if (v != null) dB += (dB && s.rs[i - 1] != null ? "L" : "M") + x(i).toFixed(1) + "," + yB(v).toFixed(1); });
+  S("path", { d: dB, class: "line-price" }, svgB);
+  const step = W < 520 ? 4 : 2;
+  s.dates.forEach((d, i) => {
+    const y = +d.slice(0, 4);
+    if (d.endsWith("-01") && y % step === 0) {
+      S("line", { x1: x(i), x2: x(i), y1: tB + hB, y2: tB + hB + 4, class: "axis-line" }, svgB);
+      S("text", { x: x(i), y: tB + hB + 17, "text-anchor": "middle", class: "tick" }, svgB).textContent = y;
+    }
+  });
+  const xhA = S("line", { y1: tA, y2: tA + hA, class: "xh", visibility: "hidden" }, svgA);
+  const dotA = S("circle", { r: 4.5, class: "xh-dot", visibility: "hidden", fill: "var(--ink)" }, svgA);
+  const xhB = S("line", { y1: tB, y2: tB + hB, class: "xh", visibility: "hidden" }, svgB);
+  const dotB = S("circle", { r: 4.5, class: "xh-dot", visibility: "hidden", fill: "var(--ink-2)" }, svgB);
+  const tip = H("div", { class: "tip", hidden: "" }, box);
+  let cur = n - 1;
+  function show(i) {
+    cur = Math.max(0, Math.min(n - 1, i));
+    const xi = x(cur), v = s.idx[cur], p = s.rs[cur], f = s.fwd12[cur];
+    [xhA, xhB].forEach((l) => { l.setAttribute("x1", xi); l.setAttribute("x2", xi); l.setAttribute("visibility", "visible"); });
+    if (v != null) { dotA.setAttribute("cx", xi); dotA.setAttribute("cy", yA(v)); dotA.setAttribute("visibility", "visible"); } else dotA.setAttribute("visibility", "hidden");
+    if (p != null) { dotB.setAttribute("cx", xi); dotB.setAttribute("cy", yB(p)); dotB.setAttribute("visibility", "visible"); } else dotB.setAttribute("visibility", "hidden");
+    tip.replaceChildren();
+    H("div", { class: "t-date" }, tip, ym(s.dates[cur]));
+    const r1 = H("div", { class: "t-row" }, tip);
+    H("strong", {}, r1, v == null ? "–" : String(Math.round(v)));
+    H("span", {}, r1, v == null ? "지수 없음" : zone(v));
+    const r2 = H("div", { class: "t-row" }, tip);
+    H("strong", { style: "font-size:13px" }, r2, p == null ? "집계 중" : p.toFixed(1));
+    H("span", {}, r2, "실거래 지수");
+    const r3 = H("div", { class: "t-row" }, tip);
+    H("strong", { style: "font-size:13px" }, r3, f == null ? "아직 모름" : pct(Math.expm1(f)));
+    H("span", {}, r3, "이후 12개월");
+    tip.hidden = false;
+    const tw = tip.offsetWidth;
+    let left = xi + 14;
+    if (left + tw > W) left = xi - tw - 14;
+    tip.style.left = Math.max(0, left) + "px";
+    tip.style.top = "26px";
+  }
+  function hide() { [xhA, xhB, dotA, dotB].forEach((e) => e.setAttribute("visibility", "hidden")); tip.hidden = true; }
+  [[svgA, HA], [svgB, HB]].forEach(([svg, h]) => {
+    const r = S("rect", { x: ml, y: 0, width: W - ml - mr, height: h, class: "hit" }, svg);
+    r.addEventListener("pointermove", (e) => {
+      const bx = svg.getBoundingClientRect();
+      show(Math.round(((e.clientX - bx.left - ml) / (W - ml - mr)) * (n - 1)));
+    });
+    r.addEventListener("pointerleave", hide);
+  });
+  box.onkeydown = (e) => {
+    if (e.key === "ArrowLeft" || e.key === "ArrowRight") { e.preventDefault(); show(cur + (e.key === "ArrowRight" ? 1 : -1) * (e.shiftKey ? 12 : 1)); }
+  };
+  box.onfocus = () => show(cur);
+  box.onblur = hide;
+}
+
+function drawBandLegend() {
+  const lg = $("#band-legend");
+  ZONES.forEach(([a, b, lab, , fill]) => {
+    const it = H("span", {}, lg);
+    H("i", { class: "sw", style: `background:${fill};border:1px solid var(--hair)` }, it);
+    it.append(`${lab} ${a}–${b}`);
+  });
+  const it = H("span", {}, lg);
+  H("i", { style: "background:var(--axis);width:1px;height:12px" }, it);
+  it.append("실거래 가격 고점·저점");
+}
+
+function drawYearTable() {
+  const t = $("#year-table"), s = D.series;
+  const hr = H("tr", {}, H("thead", {}, t));
+  ["연말", "지수", "구간", "실거래 지수", "이후 12개월(실거래)"].forEach((h, i) => H("th", { class: i ? "n" : "" }, hr, h));
+  const tb = H("tbody", {}, t);
+  s.dates.forEach((d, i) => {
+    if (!d.endsWith("-12") && i !== s.dates.length - 1) return;
+    const r = H("tr", {}, tb);
+    H("td", {}, r, (d.endsWith("-12") ? d.slice(0, 4) : ym(d)) + (d < D.official_start ? " (참고)" : ""));
+    H("td", { class: "n" }, r, s.idx[i] == null ? "–" : String(Math.round(s.idx[i])));
+    H("td", { class: "n" }, r, s.idx[i] == null ? "–" : zone(s.idx[i]));
+    H("td", { class: "n" }, r, s.rs[i] == null ? "–" : s.rs[i].toFixed(1));
+    H("td", { class: "n" }, r, s.fwd12[i] == null ? "–" : pct(Math.expm1(s.fwd12[i])));
+  });
+}
+
+function stabCell(td, v, ci, strong) {
+  const lo = -0.7, hi = 0.8, X = (q) => ((Math.max(lo, Math.min(hi, q)) - lo) / (hi - lo)) * 100;
+  const wrap = H("div", { class: "stab" }, td);
+  const track = H("div", { class: "stab-track" }, wrap);
+  if (ci) H("div", { class: "stab-ci", style: `left:${X(ci[0])}%;width:${X(ci[1]) - X(ci[0])}%` }, track);
+  const z = X(0), a = X(v);
+  H("div", { class: "stab-bar", style: `left:${Math.min(z, a)}%;width:${Math.abs(a - z)}%;border-radius:${v >= 0 ? "0 3px 3px 0" : "3px 0 0 3px"};background:${v < 0 ? "var(--fear)" : strong ? "var(--ink)" : "var(--ink-2)"}` }, track);
+  H("div", { class: "stab-zero", style: `left:${z}%` }, track);
+  H("span", { style: "width:2.8em;text-align:right;font-variant-numeric:tabular-nums" }, wrap, f2(v));
+}
+function periodCells(tr, p) { p.forEach((v) => H("td", { class: "n" + (v != null && v < 0 ? " neg" : "") }, tr, f2(v))); }
+
+function drawSchemes() {
+  const t = $("#scheme-table");
+  const hr = H("tr", {}, H("thead", {}, t));
+  [["", ""], ["묶는 방식", ""], ...PER.map((p) => [p, "n"]), ["세 구간 최저", ""], ["KB 정답 최저", "n"]].forEach(([h, c]) => H("th", { class: c }, hr, h));
+  const tb = H("tbody", {}, t);
+  D.schemes.forEach((r, i) => {
+    const tr = H("tr", { class: i === 0 ? "win" : "" }, tb);
+    H("td", { class: "rank" }, tr, String(i + 1));
+    const td = H("td", {}, tr, r.name);
+    if (i === 0) H("span", { class: "tag" }, td, "v2 채택");
+    periodCells(tr, r.p);
+    stabCell(H("td", {}, tr), r.min, r.ci, i === 0);
+    H("td", { class: "n" + (r.kb_min < 0 ? " neg" : "") }, tr, f2(r.kb_min));
+  });
+}
+
+function drawVariants() {
+  const t = $("#variant-table");
+  const hr = H("tr", {}, H("thead", {}, t));
+  [["구성 (속도별 3그룹으로 묶음)", ""], ["지표 수", "n"], ...PER.map((p) => [p, "n"]), ["세 구간 최저", ""]].forEach(([h, c]) => H("th", { class: c }, hr, h));
+  const tb = H("tbody", {}, t);
+  D.variants.forEach((r) => {
+    const v2 = r.name.startsWith("v2");
+    const tr = H("tr", { class: v2 ? "win" : "" }, tb);
+    const td = H("td", { style: v2 ? "font-weight:600" : "" }, tr, r.name);
+    if (v2) H("span", { class: "tag" }, td, "채택");
+    H("td", { class: "n" }, tr, String(r.n));
+    periodCells(tr, r.p);
+    stabCell(H("td", {}, tr), r.min, null, v2);
+  });
+}
+
+function drawThemeLegend() {
+  const lg = $("#theme-legend");
+  PER.forEach((p, i) => { const it = H("span", {}, lg); H("i", { class: "dot", style: `background:${PCOL[i]}` }, it); it.append(p); });
+}
+function drawThemes() {
+  const box = $("#theme-chart");
+  box.innerHTML = "";
+  const rows = D.themes, W = box.clientWidth, narrow = W < 600;
+  const lw = narrow ? 0 : 168, rw = narrow ? 0 : 128;
+  const rowH = narrow ? 64 : 44, top = 6, Hh = top + rows.length * rowH + 26;
+  const svg = S("svg", { width: W, height: Hh, viewBox: `0 0 ${W} ${Hh}`, role: "img", "aria-label": "주제 그룹별 세 구간 순위상관" }, box);
+  const lo = -0.8, hi = 0.8, x0 = lw + 8, x1 = W - rw - 8;
+  const X = (v) => x0 + ((v - lo) / (hi - lo)) * (x1 - x0);
+  [-0.8, -0.4, 0, 0.4, 0.8].forEach((v) => {
+    S("line", { x1: X(v), x2: X(v), y1: top, y2: top + rows.length * rowH, class: v === 0 ? "axis-line" : "grid-line" }, svg);
+    S("text", { x: X(v), y: Hh - 6, "text-anchor": "middle", class: "tick" }, svg).textContent = v === 0 ? "0" : v.toFixed(1);
+  });
+  const tip = H("div", { class: "tip", hidden: "" }, box);
+  rows.forEach((r, i) => {
+    const cy = top + i * rowH + (narrow ? 48 : rowH / 2);
+    const lx = narrow ? x0 : 0, ly = narrow ? top + i * rowH + 16 : cy - 2;
+    S("text", { x: lx, y: ly, style: "font-size:13.5px;font-weight:600;fill:var(--ink)" }, svg).textContent = r.name;
+    S("text", { x: lx, y: ly + 15, style: "font-size:11px;fill:var(--muted)" }, svg).textContent =
+      narrow ? r.p.map(f2).join(" · ") : `${r.n}개 · ` + r.members.slice(0, 3).join("·") + (r.members.length > 3 ? " 외" : "");
+    const vals = r.p.map((v, k) => [v, k]).filter(([v]) => v != null);
+    if (vals.length > 1) {
+      const xs = vals.map(([v]) => X(v));
+      S("line", { x1: Math.min(...xs), x2: Math.max(...xs), y1: cy, y2: cy, style: "stroke:var(--axis);stroke-width:2;stroke-linecap:round" }, svg);
+    }
+    vals.forEach(([v, k]) => {
+      S("circle", { cx: X(v), cy, r: 5.5, fill: PCOL[k], class: "xh-dot" }, svg);
+      const hit = S("circle", { cx: X(v), cy, r: 12, class: "hit", tabindex: 0, "aria-label": `${r.name} ${PER[k]} ${f2(v)}` }, svg);
+      const on = () => {
+        tip.replaceChildren();
+        H("div", { class: "t-date" }, tip, r.name);
+        const rr = H("div", { class: "t-row" }, tip);
+        H("i", { style: `background:${PCOL[k]}` }, rr);
+        H("strong", {}, rr, f2(v));
+        H("span", {}, rr, PER[k]);
+        tip.hidden = false;
+        const tw = tip.offsetWidth;
+        let left = X(v) + 14;
+        if (left + tw > W) left = X(v) - tw - 14;
+        tip.style.left = Math.max(0, left) + "px";
+        tip.style.top = Math.max(0, cy - 30) + "px";
+      };
+      hit.addEventListener("pointerenter", on);
+      hit.addEventListener("focus", on);
+      hit.addEventListener("pointerleave", () => (tip.hidden = true));
+      hit.addEventListener("blur", () => (tip.hidden = true));
+    });
+    if (!narrow) S("text", { x: W, y: cy + 4, "text-anchor": "end", class: "tick", style: "fill:var(--ink-2)" }, svg).textContent = r.p.map(f2).join(" · ");
+  });
+}
+
+function drawSingles() {
+  const t = $("#single-table");
+  const hr = H("tr", {}, H("thead", {}, t));
+  [["지표", ""], ["주제", ""], ["점수 시작", "n"], ...PER.map((p) => [p, "n"]), ["최저", "n"]].forEach(([h, c]) => H("th", { class: c }, hr, h));
+  const tb = H("tbody", {}, t);
+  [...D.singles].sort((a, b) => (b.min ?? -9) - (a.min ?? -9)).forEach((r) => {
+    const tr = H("tr", {}, tb);
+    const td = H("td", {}, tr, r.name);
+    H("small", {}, td, r.desc);
+    H("td", {}, tr, r.theme);
+    H("td", { class: "n mono", style: "font-size:12px" }, tr, r.start.replace("-", "."));
+    periodCells(tr, r.p);
+    H("td", { class: "n" + (r.min < 0 ? " neg" : ""), style: "font-weight:600" }, tr, f2(r.min));
+  });
+}
+
+function drawQuality() {
+  const a = $("#q-presale");
+  let hr = H("tr", {}, H("thead", {}, a));
+  [["연도", ""], ["KB", "n"], ["청약홈 실제", "n"], ["배수", "n"]].forEach(([h, c]) => H("th", { class: c }, hr, h));
+  let tb = H("tbody", {}, a);
+  D.quality.presale.forEach((r) => {
+    const tr = H("tr", {}, tb);
+    H("td", {}, tr, String(r.y) + (r.y === 2026 ? " (9월까지)" : ""));
+    H("td", { class: "n" }, tr, nm(r.kb));
+    H("td", { class: "n" }, tr, nm(r.ah));
+    H("td", { class: "n", style: r.kb / r.ah > 5 ? "font-weight:600" : "" }, tr, (r.kb / r.ah).toFixed(1) + "배");
+  });
+  const b = $("#q-reb");
+  hr = H("tr", {}, H("thead", {}, b));
+  [["연도", ""], ["실거래", "n"], ["KB", "n"], ["부동산원", "n"]].forEach(([h, c]) => H("th", { class: c }, hr, h));
+  tb = H("tbody", {}, b);
+  D.quality.reb.forEach((r) => {
+    const tr = H("tr", {}, tb);
+    H("td", {}, tr, String(r.y));
+    [r.rs, r.kb, r.reb].forEach((v, i) => H("td", { class: "n", style: i === 2 ? "font-weight:600" : "" }, tr, (v >= 0 ? "+" : "−") + Math.abs(v).toFixed(1)));
+  });
+}
+
+function drawBuckets() {
+  const box = $("#bucket-chart");
+  box.innerHTML = "";
+  const B = D.buckets, W = Math.min(box.clientWidth, 760), narrow = W < 520;
+  const ml = 40, mr = 8, top = 22, h = narrow ? 170 : 200, foot = 60, Hh = top + h + foot;
+  const svg = S("svg", { width: W, height: Hh, viewBox: `0 0 ${W} ${Hh}`, role: "img", "aria-label": "점수 구간별 이후 12개월 실거래 가격 평균 변화" }, box);
+  const lo = 0, hi = 0.16;
+  const Y = (v) => top + (1 - (v - lo) / (hi - lo)) * h;
+  [0, 0.04, 0.08, 0.12, 0.16].forEach((v) => {
+    S("line", { x1: ml, x2: W - mr, y1: Y(v), y2: Y(v), class: v === 0 ? "axis-line" : "grid-line" }, svg);
+    S("text", { x: ml - 6, y: Y(v) + 4, "text-anchor": "end", class: "tick" }, svg).textContent = (v > 0 ? "+" : "") + Math.round(v * 100) + "%";
+  });
+  const slot = (W - ml - mr) / B.length, bw = Math.min(24, slot * 0.4);
+  const colors = ["var(--fear)", "var(--fear)", "var(--neutral)", "var(--greed)", "var(--greed)"];
+  const tip = H("div", { class: "tip", hidden: "" }, box);
+  B.forEach((b, i) => {
+    const cx = ml + slot * (i + 0.5), y0 = Y(0);
+    S("text", { x: cx, y: top + h + 20, "text-anchor": "middle", style: `font-size:${narrow ? 11.5 : 12.5}px;fill:var(--ink);font-weight:500` }, svg).textContent = b.label;
+    S("text", { x: cx, y: top + h + 36, "text-anchor": "middle", class: "tick" }, svg).textContent = b.range;
+    S("text", { x: cx, y: top + h + 52, "text-anchor": "middle", style: "font-size:11.5px;fill:var(--ink-2)" }, svg).textContent =
+      b.n < 5 ? `${b.n}개월 (표본 부족)` : narrow ? `상승 ${Math.round(b.up * 100)}%` : `상승 확률 ${Math.round(b.up * 100)}% · ${b.n}개월`;
+    if (b.mean == null) return;
+    const y1 = Y(Math.max(0, b.mean)), hh = Math.max(1, y0 - y1), r = Math.min(4, hh);
+    const xL = cx - bw / 2, xR = cx + bw / 2, tp = y1;
+    S("path", { d: `M${xL},${y0}V${tp + r}Q${xL},${tp} ${xL + r},${tp}H${xR - r}Q${xR},${tp} ${xR},${tp + r}V${y0}Z`, fill: colors[i], opacity: b.n < 5 ? 0.4 : 1 }, svg);
+    S("text", { x: cx, y: tp - 7, "text-anchor": "middle", style: "font-size:13px;font-weight:600;fill:var(--ink)" }, svg).textContent = pct(b.mean);
+    const hit = S("rect", { x: cx - slot / 2 + 4, y: top, width: slot - 8, height: h, class: "hit", tabindex: 0, "aria-label": `${b.label} ${pct(b.mean)}` }, svg);
+    const on = () => {
+      tip.replaceChildren();
+      H("div", { class: "t-date" }, tip, `${b.label} (${b.range})`);
+      const r1 = H("div", { class: "t-row" }, tip); H("strong", {}, r1, pct(b.mean)); H("span", {}, r1, "이후 12개월 평균");
+      const r2 = H("div", { class: "t-row" }, tip); H("strong", { style: "font-size:13px" }, r2, Math.round(b.up * 100) + "%"); H("span", {}, r2, `상승 확률 · ${b.n}개월`);
+      tip.hidden = false;
+      const tw = tip.offsetWidth;
+      let left = cx + bw / 2 + 10;
+      if (left + tw > W) left = cx - bw / 2 - tw - 10;
+      tip.style.left = Math.max(0, left) + "px";
+      tip.style.top = top + "px";
+    };
+    hit.addEventListener("pointerenter", on); hit.addEventListener("focus", on);
+    hit.addEventListener("pointerleave", () => (tip.hidden = true)); hit.addEventListener("blur", () => (tip.hidden = true));
+  });
+}
+
+function drawOverfit() {
+  const o = D.overfit, box = $("#overfit");
+  [["시험한 지표 조합", nm(o.n) + "개", "지표 2~4개씩 모든 경우"],
+   ["학습 1위 조합", `${f2(o.best_train)} → ${f2(o.best_test)}`, "학습 → 검증 순위상관"],
+   ["학습 상위 1,000개 평균", f2(o.top1000_test), "검증 성적"],
+   ["전체 조합 평균", f2(o.all_test), "아무거나 골랐을 때"]].forEach(([l, v, s]) => {
+    const t = H("div", { class: "tile" }, box);
+    H("div", { class: "lab" }, t, l); H("div", { class: "v" }, t, v); H("div", { class: "s" }, t, s);
+  });
+}
+
+function barRows(el, rows) {
+  rows.forEach((r) => {
+    if (r.sep) { H("div", { class: "bars-sep" }, el, r.sep); return; }
+    const row = H("div", { class: "bar-row" }, el);
+    const lab = H("div", { class: "lab" }, row, r.name);
+    if (r.note) H("small", {}, lab, r.note);
+    const tr = H("div", { class: "bar-track", role: "img", "aria-label": `${r.name} ${r.v == null ? "없음" : Math.round(r.v)}` }, row);
+    if (r.v != null) {
+      const a = Math.min(50, r.v), w = Math.abs(r.v - 50);
+      H("div", { class: "bar-fill", style: `left:${a}%;width:${w}%;background:${sideColor(r.v)};border-radius:${r.v >= 50 ? "0 4px 4px 0" : "4px 0 0 4px"}` }, tr);
+    }
+    H("div", { class: "bar-mid" }, tr);
+    H("div", { class: "val" }, row, r.v == null ? "–" : String(Math.round(r.v)));
+  });
+}
+function drawNow() {
+  const now = D.now, n = now.speed_n;
+  $("#now-h2").textContent = `지금 서울은 (${ym(now.date)})`;
+  barRows($("#speed-bars"), [
+    { name: "선행", note: `${n["선행"]}개 · 금리 변화, 검색량, 건설주, 전세`, v: now.speed["선행"] },
+    { name: "동행", note: `${n["동행"]}개 · 가격, 매수우위, 거래량, 신고가`, v: now.speed["동행"] },
+    { name: "후행", note: `${n["후행"]}개 · 가격부담, 금리 수준, 가계신용, 미분양`, v: now.speed["후행"] },
+    { sep: "세 그룹 원점수를 같은 비중으로 평균한 뒤 눈금 1.5배 = v3 지수" },
+    { name: "v3 지수", note: zone(now.v2), v: now.v2 },
+  ]);
+  const notes = { 수급심리: "중개사·소비자 설문", 가격: "모멘텀·신고가", 거래: "거래량·매수자 구성", 금융시장: "건설주·KOSPI", 전세: "전세 수급·가격", 관심: "구글 검색량", 자금: "금리·가계신용", 가격부담: "PIR·구매력·전세가율", 공급: "미분양·실제 공급", 청약: "경쟁률·미달" };
+  const order = Object.keys(now.themes).sort((a, b) => now.themes[b] - now.themes[a]);
+  barRows($("#theme-bars"), order.map((t) => ({ name: t, note: notes[t], v: now.themes[t] })));
+}
+
+function drawSnaps() {
+  const ev = { "2006-11": "급등기 (11·15 대책)", "2008-12": "글로벌 금융위기", "2012-12": "장기 침체", "2015-06": "저금리·전세난 회복기",
+    "2018-09": "9·13 대책 직전 급등", "2020-07": "영끌 매수", "2021-09": "상승장 막바지", "2022-11": "금리 급등 후 급락",
+    "2024-05": "하락 후 회복 초입", "2025-06": "상급지 급등 (6·27 대책 직전)" };
+  const t = $("#snap-table");
+  const hr = H("tr", {}, H("thead", {}, t));
+  [["시점", ""], ["국면", ""], ["지수", "n"], ["구간", ""], ["이후 12개월 실거래 가격", "n"]].forEach(([h, c]) => H("th", { class: c }, hr, h));
+  const tb = H("tbody", {}, t);
+  D.snaps.forEach((s) => {
+    const r = H("tr", {}, tb);
+    H("td", { class: "mono", style: "font-size:12.5px;white-space:nowrap" }, r, s.date.replace("-", "."));
+    H("td", {}, r, ev[s.date] || "");
+    H("td", { class: "n", style: "font-weight:600" }, r, String(Math.round(s.idx)));
+    const zc = H("td", {}, r);
+    H("i", { style: `display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;background:${sideColor(s.idx)}` }, zc);
+    zc.append(zone(s.idx));
+    H("td", { class: "n" + (s.fwd12 < 0 ? " neg" : "") }, r, pct(s.fwd12));
+  });
+}
+
+$("#main-cap").textContent = `${D.version} 지수(위)와 국토부 실거래로 만든 반복매매지수(아래)예요. 세로선은 실거래 가격의 고점과 저점이에요. 지수는 실거래 가격 흐름을 약 ${D.lag}개월 앞섰어요. KB 지수 기준으로는 3개월이었는데, KB 지수 자체가 실거래보다 2개월쯤 늦게 반영되기 때문이에요.`;
+
+function drawRisk() {
+  const ul = $("#risk-list");
+  [["추세가 있는 지표", "외지인·원정매수 비중이 20년간 올랐고 서울 미분양은 구조적으로 줄었어요."],
+   ["점수 고착", "전세가율 52개월, PIR 35개월, 기준금리 수준 34개월 동안 극단에 붙어 있었어요."],
+   ["구성 변화", "쓸 수 있는 지표가 2006년 17개에서 2023년 45개로 늘었어요. v3에서 35개로 고정했어요."],
+   ["검색량", "구글 집계 방식 변경(2016, 2022)의 끊김은 없었어요. 대신 2009년 이전에는 '갭투자' 검색량이 0, '급매'는 97%가 1 이하라 이 구간을 뺐어요."],
+   ["신고 규정 변경", "2020년(신고 기한 단축, 해제 신고)과 2021년(직거래 표기) 변경 전후로 기준을 맞춰도 정답 지수의 상관이 0.999였어요."],
+   ["토지거래허가구역", "거래 관련 지표를 빼도 현재 점수가 ±1만 바뀌었어요."],
+   ["시대별 평균 차이", "2013–19년 평균 점수 58은 실제로 가장 좋았던 시기(이후 1년 +7.5%, 상승 100%)와 일치했어요. 편향이 아니에요."]]
+    .forEach(([h, p]) => { const li = H("li", {}, ul); H("b", {}, li, h + ": "); li.append(p); });
+  const t = $("#diag-table");
+  const hr = H("tr", {}, H("thead", {}, t));
+  [["지표", ""], ["주제", ""], ["추세", "n"], ["평균 이동", "n"], ["고착", "n"]].forEach(([h, c]) => H("th", { class: c }, hr, h));
+  const tb = H("tbody", {}, t);
+  D.diag.forEach((r) => {
+    const tr = H("tr", {}, tb);
+    H("td", {}, tr, r.name); H("td", {}, tr, r.theme);
+    H("td", { class: "n" }, tr, f2(r.trend)); H("td", { class: "n" }, tr, (r.shift >= 0 ? "+" : "−") + Math.abs(r.shift).toFixed(1) + "σ");
+    H("td", { class: "n", style: r.pin >= 24 ? "font-weight:600" : "" }, tr, r.pin + "개월");
+  });
+  const rt = $("#remedy-table");
+  const h2 = H("tr", {}, H("thead", {}, rt));
+  [["방식", ""], ...PER.map((p) => [p, "n"]), ["세 구간 최저", ""], ["KB 정답 최저", "n"]].forEach(([h, c]) => H("th", { class: c }, h2, h));
+  const b2 = H("tbody", {}, rt);
+  D.remedies.forEach((r) => {
+    const tr = H("tr", { class: r.v3 ? "win" : "" }, b2);
+    const td = H("td", { style: r.v3 ? "font-weight:600" : "" }, tr, r.name);
+    if (r.v3) H("span", { class: "tag" }, td, "채택");
+    periodCells(tr, r.p);
+    stabCell(H("td", {}, tr), r.min, null, r.v3);
+    H("td", { class: "n" }, tr, f2(r.kb));
+  });
+}
+function drawSpread() {
+  const S_ = D.spread, t = $("#spread-table");
+  const hr = H("tr", {}, H("thead", {}, t));
+  [["시점", ""], ["원점수", "n"], ["매번 다시 잰 평균·표준편차로", "n"], [`고정 ${S_.k}배 (채택)`, "n"]].forEach(([h, c]) => H("th", { class: c }, hr, h));
+  const tb = H("tbody", {}, t);
+  S_.rows.forEach((r) => {
+    const tr = H("tr", {}, tb);
+    H("td", { class: "mono", style: "font-size:12.5px" }, tr, r.date.replace("-", "."));
+    [r.core, r.exp, r.fixed].forEach((v, i) => H("td", { class: "n", style: i === 2 ? "font-weight:600" : "" }, tr, v == null ? "–" : `${Math.round(v)} ${zone(v)}`));
+  });
+  const ul = $("#spread-notes");
+  [["정확도", `매번 다시 잰 평균·표준편차로 펴면 시기마다 눈금이 달라져서 세 구간 순위상관이 ${S_.ic_exp.map(f2).join(" / ")}로 떨어졌어요. 고정 배율은 ${S_.ic_fixed.map(f2).join(" / ")}로 원점수와 똑같아요.`],
+   ["구간 분포", `원점수는 극단적 공포 ${S_.dist_core[0]}% · 극단적 탐욕 ${S_.dist_core[4]}%였는데, 펴고 나면 ${S_.dist_fixed[0]}% · ${S_.dist_fixed[4]}%예요. 서울은 대부분의 기간에 올라서 탐욕 쪽이 더 자주 나와요.`],
+   ["배율 1.5를 고른 이유", "1.6 이상이면 2020년 7월 영끌 시기가 100에 붙어서 그 위의 차이가 사라져요. 1.5에서는 99로 끝이 살아 있어요."]]
+    .forEach(([h, p]) => { const li = H("li", {}, ul); H("b", {}, li, h + ": "); li.append(p); });
+}
+
+function bucketCap() {
+  const B = D.buckets, g = B[4], f = B[0], f2_ = B[1];
+  $("#bucket-cap").textContent = `점수가 높을수록 이후 1년 상승 폭이 커졌어요. 극단적 탐욕 구간 ${g.n}개월 중 ${Math.round(g.up * 100)}%가 이후 1년간 올랐고, 평균 ${pct(g.mean)}였어요. 반면 극단적 공포(${f.n}개월)와 공포(${f2_.n}개월) 구간 뒤에도 평균 ${pct(f.mean)}, ${pct(f2_.mean)}로 올랐어요. 탐욕 신호는 믿을 만하지만, 공포 신호만으로 하락을 예상하기는 어려워요.`;
+}
+
+function drawFixes() {
+  const rows = [
+    ["오류", "1", "갱신일(20일)에 아직 공개되지 않은 그달 자료 18개를 백테스트에서 써 왔어요", "1개월 늦춰 정의 (timing.py)", "성적이 실제 수준으로 내려옴, 과거 점수가 나중에 안 바뀜"],
+    ["오류", "2", "‘고정 구성’이 실제로는 2011년부터만 고정이었어요", "2011년 2월부터 공식 기록, 이전은 참고용 표시", "차트·지도에 표시"],
+    ["오류", "3", "세 구간 결과가 구간을 자르는 방식에 좌우됐어요", "5년 이동 구간 13개로 평가, 단순 기준과 비교", "아래 ‘5년 구간별 성적’"],
+    ["약점", "4", "같은 설문·통계에서 나온 지표를 여러 번 셌어요", "같은 원자료는 한 표, 매수우위 파생 지표 제외", "지표 34개 → 25표"],
+    ["약점", "5", "그룹 크기가 달라 실제 비중이 쏠렸어요", "같은 출처 묶기·구글 한 표로 완화, 남은 비중은 공개", "가격부담 16.7% → 14.3%"],
+    ["약점", "6", "추세를 따라가서 전환점에서 틀려요", "‘추세 온도계’ 안내, 극단 구간 뒤 성적 공개", "지도·보고서에 읽는 법"],
+    ["약점", "7", "손대지 않은 검증 구간이 없어요", "발표 점수를 그대로 쌓는 실시간 기록 시작", "아래 ‘실시간 검증’"],
+    ["약점", "8", "권역 간 차이를 과하게 읽을 수 있어요", "권역별로 권역 값 표 수, 서울 대비 정확도, 5점 미만 차이 안내", "지도 권역 화면"],
+    ["경미", "9", "신고가를 2006년 이후 최고가로 봐서 회복기를 적게 잡았어요", "최근 3년 최고가 기준", "2015년 9% → 20%"],
+    ["경미", "10", "급락거래에 오래된 거래와의 비교가 섞였어요", "직전 거래가 24개월 안일 때만", "영향 미미"],
+    ["경미", "11", "실거래 압축 파일을 매달 통째로 다시 써서 저장소가 커졌어요", "연도별 파일로 분할, 같은 날 거래 순서 고정", "매달 최근 연도 파일만 바뀜"],
+    ["경미", "12", "기록 파일의 로컬 경로, 쓰지 않는 v2 계산", "정리", "-"],
+    ["추가", "+", "분기 자료(BIS 가계신용)가 최신 달에서 끊겨 표가 빠졌어요", "다음 발표까지 이어 쓰기, 빠진 표 점검 경고", "최신 달 25표 모두 계산"],
+  ];
+  const t = $("#fix-table");
+  const hr = H("tr", {}, H("thead", {}, t));
+  ["구분", "", "문제", "수정", "효과"].forEach((h) => H("th", {}, hr, h));
+  const tb = H("tbody", {}, t);
+  rows.forEach(([k, n, a, b, c]) => {
+    const tr = H("tr", {}, tb);
+    H("td", { class: "mono", style: "font-size:12px;white-space:nowrap" }, tr, k);
+    H("td", { class: "rank" }, tr, n);
+    H("td", {}, tr, a); H("td", {}, tr, b); H("td", { style: "color:var(--ink-2)" }, tr, c);
+  });
+}
+function drawRolling() {
+  const R = D.rolling, t = $("#rolling-table");
+  const hr = H("tr", {}, H("thead", {}, t));
+  [["기준", ""], ["중앙값", "n"], ["최저", "n"], [`${ym(D.official_start)}~ 전체`, "n"], ...R.starts.map((s) => [`${String(s).slice(2)}–${String(s + 4).slice(2)}`, "n"])].forEach(([h, c]) => H("th", { class: c }, hr, h));
+  const tb = H("tbody", {}, t);
+  R.rows.forEach((r, i) => {
+    const tr = H("tr", { class: i === 0 ? "win" : "" }, tb);
+    H("td", { style: i === 0 ? "font-weight:600" : "" }, tr, r.name);
+    H("td", { class: "n", style: "font-weight:600" }, tr, f2(r.median));
+    H("td", { class: "n" + (r.min < 0 ? " neg" : "") }, tr, f2(r.min));
+    H("td", { class: "n" }, tr, f2(r.full));
+    r.w.forEach((v) => H("td", { class: "n" + (v != null && v < 0 ? " neg" : ""), style: v != null && v < 0.3 ? "color:var(--muted)" : "" }, tr, f2(v)));
+  });
+  $("#rolling-cap").textContent = "열 이름은 5년 창의 시작–끝 연도예요. 0.3 미만은 흐리게, 음수는 파랗게 표시했어요. 2008–09년이 들어간 창은 금융위기 뒤 반등을, 2015년 시작 창은 꾸준한 상승기를 잘 구분하지 못했어요.";
+}
+function drawWeights() {
+  const W = D.weights, el = $("#weight-bars");
+  Object.entries(W.themes).forEach(([k, v]) => {
+    const row = H("div", { class: "bar-row" }, el);
+    H("div", { class: "lab" }, row, k);
+    const tr = H("div", { class: "bar-track" }, row);
+    H("div", { class: "bar-fill", style: `left:0;width:${(v / 0.25) * 100}%;background:var(--ink-2);border-radius:0 4px 4px 0` }, tr);
+    H("div", { class: "val" }, row, Math.round(v * 1000) / 10 + "%");
+  });
+  const t = $("#vote-table");
+  const hr = H("tr", {}, H("thead", {}, t));
+  [["표", ""], ["그룹", ""], ["비중", "n"]].forEach(([h, c]) => H("th", { class: c }, hr, h));
+  const tb = H("tbody", {}, t);
+  W.votes.forEach((v) => {
+    const tr = H("tr", {}, tb);
+    const td = H("td", {}, tr, v.name.split("_").slice(1).join("_") || v.name);
+    if (v.members.includes(",")) H("small", {}, td, v.members.split(", ").map((m) => m.split("_").slice(1).join("_")).join(" · "));
+    H("td", { style: "white-space:nowrap" }, tr, `${v.speed} · ${v.theme}`);
+    H("td", { class: "n" }, tr, (Math.round(v.w * 1000) / 10).toFixed(1) + "%");
+  });
+}
+function drawLive() {
+  const L = D.live;
+  $("#live-cap").textContent = `지금까지의 성적은 엔진을 정할 때 이미 본 자료로 낸 것이에요. 그래서 ${ym(L.first_month || D.now.date)}부터 매달 발표한 점수를 그때 값 그대로 쌓고, 나중에 자료나 엔진이 바뀌어도 고치지 않아요. 12개월 뒤 실거래 가격이 나오면 그 기록만으로 성적을 매겨요. 지금 기록 ${L.logged_months}개월, 채점 가능 ${L.evaluable}개월이에요. 기록이 12개월 쌓이고 다시 12개월이 지나야 첫 성적이 나와요(2028년 하반기 예상).`;
+}
+
+function drawAll() { drawMain(); drawThemes(); drawBuckets(); }
+drawTop(); bucketCap(); drawFixes(); drawRolling(); drawWeights(); drawLive(); drawRisk(); drawSpread(); drawBandLegend(); drawYearTable(); drawSchemes(); drawVariants(); drawThemeLegend(); drawSingles(); drawQuality(); drawOverfit(); drawNow(); drawSnaps(); drawAll();
+let rt;
+new ResizeObserver(() => { clearTimeout(rt); rt = setTimeout(drawAll, 120); }).observe(document.querySelector(".wrap"));
+</script>

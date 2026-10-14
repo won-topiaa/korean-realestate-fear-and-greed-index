@@ -1,0 +1,5 @@
+pandas==3.0.6
+numpy==2.5.4
+scipy==1.18.1
+requests==2.32.3
+pytrends==4.9.2

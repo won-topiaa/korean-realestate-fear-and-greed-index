@@ -1,0 +1,24 @@
+# 비밀·환경
+.env
+.venv/
+__pycache__/
+*.bak
+.DS_Store
+# 실행 산출물 (매번 다시 만듦)
+logs/
+site/
+results_v2/*.pkl
+results_zone/*.pkl
+# 대용량·재배포 불가 원자료 (Actions가 매달 새로 받아 캐시에 보관)
+data/raw/kb/
+data/raw/market/
+data/indicators.csv
+data/raw/molit/
+data/raw/bigkinds/
+data/raw/geo/ne_rivers.geojson
+data/news_indicators.csv
+# 연구용 대용량 결과 (v1·v2 탐색)
+results/
+results_v2/*/
+report/index_v1.html
+report/template_v1.html

@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- 서울 공포탐욕지수 월간 자동 갱신: 매달 20일 09:17 (맥이 꺼져 있었으면 다음에 켜질 때 실행) -->
+<plist version="1.0"><dict>
+  <key>Label</key><string>com.wontopia.seoulfgi.monthly</string>
+  <key>ProgramArguments</key><array>
+    <string>/bin/zsh</string>
+    <string>__PROJECT__/update.sh</string>
+  </array>
+  <key>StartCalendarInterval</key><dict>
+    <key>Day</key><integer>20</integer>
+    <key>Hour</key><integer>9</integer>
+    <key>Minute</key><integer>17</integer>
+  </dict>
+  <key>StandardOutPath</key><string>__PROJECT__/logs/launchd.out.log</string>
+  <key>StandardErrorPath</key><string>__PROJECT__/logs/launchd.err.log</string>
+  <key>RunAtLoad</key><false/>
+</dict></plist>

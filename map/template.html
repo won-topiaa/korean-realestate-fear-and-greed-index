@@ -1,0 +1,540 @@
+<title>서울 공포탐욕 지도</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: map-first tool — month control on top, Seoul map (left) drives the reading panel (right); stacks on phones. */
+:root {
+  --bg: #f3f4f6;
+  --surface: #fcfcfb;
+  --ink: #111316;
+  --ink-2: #4a4e55;
+  --muted: #7d8189;
+  --grid: #e3e5e8;
+  --axis: #c2c5cb;
+  --hair: rgba(17, 19, 22, 0.1);
+  --hl: #eaeef4;
+  --fear: #2a78d6;
+  --greed: #e34948;
+  --neutral: #9a9ca1;
+  --map-neutral: #e9e8e4;
+  --map-na: #f1f1ef;
+  --river: #9cc3ec;
+  --band-fear-strong: rgba(42, 120, 214, 0.17);
+  --band-fear-soft: rgba(42, 120, 214, 0.07);
+  --band-neutral: rgba(125, 129, 137, 0.05);
+  --band-greed-soft: rgba(227, 73, 72, 0.07);
+  --band-greed-strong: rgba(227, 73, 72, 0.17);
+  --font: "IBM Plex Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f1012; --surface: #18191b; --ink: #eef0f2; --ink-2: #c1c5cb; --muted: #8b8f96;
+    --grid: #2a2c30; --axis: #3d4046; --hair: rgba(255, 255, 255, 0.1); --hl: #22262d;
+    --fear: #3987e5; --greed: #e66767; --neutral: #74777d; --map-neutral: #2b2c2f; --map-na: #222326; --river: #2c5a8a;
+    --band-fear-strong: rgba(57, 135, 229, 0.22); --band-fear-soft: rgba(57, 135, 229, 0.09);
+    --band-neutral: rgba(255, 255, 255, 0.03); --band-greed-soft: rgba(230, 103, 103, 0.09); --band-greed-strong: rgba(230, 103, 103, 0.22);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f1012; --surface: #18191b; --ink: #eef0f2; --ink-2: #c1c5cb; --muted: #8b8f96;
+  --grid: #2a2c30; --axis: #3d4046; --hair: rgba(255, 255, 255, 0.1); --hl: #22262d;
+  --fear: #3987e5; --greed: #e66767; --neutral: #74777d; --map-neutral: #2b2c2f; --map-na: #222326; --river: #2c5a8a;
+  --band-fear-strong: rgba(57, 135, 229, 0.22); --band-fear-soft: rgba(57, 135, 229, 0.09);
+  --band-neutral: rgba(255, 255, 255, 0.03); --band-greed-soft: rgba(230, 103, 103, 0.09); --band-greed-strong: rgba(230, 103, 103, 0.22);
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font); font-size: 15px; line-height: 1.6; padding-inline: 16px; padding-block: 28px 56px; -webkit-font-smoothing: antialiased; }
+.wrap { max-width: 1180px; margin: 0 auto; display: grid; gap: 20px; }
+h1, h2, h3 { margin: 0; line-height: 1.3; text-wrap: balance; }
+h1 { font-size: clamp(26px, 3.6vw, 34px); font-weight: 700; letter-spacing: -0.02em; }
+h3 { font-size: 14px; font-weight: 600; }
+p { margin: 0; }
+.eyebrow { font-family: var(--mono); font-size: 12px; letter-spacing: 0.06em; color: var(--muted); text-transform: uppercase; }
+.sub { color: var(--ink-2); max-width: 70ch; }
+.panel { background: var(--surface); border: 1px solid var(--hair); border-radius: 12px; min-width: 0; }
+
+/* month control */
+.timebar { display: grid; gap: 10px; padding: 14px 18px; }
+.time-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.time-now { font-size: 20px; font-weight: 600; font-variant-numeric: tabular-nums; min-width: 8.5em; }
+.time-row input[type="range"] { flex: 1 1 240px; min-width: 0; accent-color: var(--ink); }
+.btn { font: inherit; font-size: 13px; color: var(--ink); background: var(--surface); border: 1px solid var(--hair); border-radius: 999px; padding: 4px 12px; cursor: pointer; }
+.btn:hover { background: var(--hl); }
+.btn:focus-visible, .zone-path:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.btn[aria-pressed="true"] { background: var(--ink); color: var(--surface); border-color: var(--ink); }
+.btn.icon { padding: 4px 10px; font-family: var(--mono); }
+.presets { display: flex; gap: 6px; flex-wrap: wrap; }
+
+/* main grid */
+.main { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+@media (max-width: 880px) { .main { grid-template-columns: 1fr; } }
+.mapcard { padding: 14px 14px 12px; display: grid; gap: 10px; }
+.chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.mapbox { position: relative; width: 100%; }
+.mapbox svg { display: block; width: 100%; height: auto; }
+.zone-path { cursor: pointer; stroke: var(--surface); stroke-width: 3; stroke-linejoin: round; transition: fill 0.25s ease; }
+.zone-path:hover { stroke: var(--ink-2); stroke-width: 2; }
+.gu-line { fill: none; stroke: var(--surface); stroke-width: 0.8; opacity: 0.7; pointer-events: none; }
+.river { fill: none; stroke: var(--river); stroke-width: 9; stroke-linecap: round; stroke-linejoin: round; opacity: 0.85; pointer-events: none; }
+.sel-outline { fill: none; stroke: var(--ink); stroke-width: 2.5; stroke-linejoin: round; pointer-events: none; }
+.pin { position: absolute; transform: translate(-50%, -50%); pointer-events: none; display: grid; justify-items: center; gap: 0; background: var(--surface); border: 1px solid var(--hair); border-radius: 10px; padding: 3px 9px 4px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08); }
+.pin .n { font-size: 12px; color: var(--ink-2); font-weight: 500; white-space: nowrap; }
+.pin .v { font-size: 19px; font-weight: 700; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.pin .d { font-size: 10.5px; font-family: var(--mono); color: var(--muted); white-space: nowrap; }
+.pin.sel { border-color: var(--ink); box-shadow: 0 0 0 1px var(--ink), 0 2px 8px rgba(0, 0, 0, 0.12); }
+.gu-name { position: absolute; transform: translate(-50%, -50%); font-size: 10.5px; color: var(--ink-2); pointer-events: none; white-space: nowrap; text-shadow: 0 0 3px var(--surface), 0 0 3px var(--surface); }
+@media (max-width: 560px) { .pin { padding: 2px 6px 3px; } .pin .v { font-size: 15px; } .pin .n { font-size: 10.5px; } .pin .d, .gu-name { display: none; } }
+.scale { display: grid; gap: 4px; font-size: 11.5px; color: var(--muted); }
+.scale-bar { height: 8px; border-radius: 4px; }
+.scale-labels { display: flex; justify-content: space-between; font-family: var(--mono); }
+
+/* reading panel */
+.read { padding: 18px 20px; display: grid; gap: 16px; }
+.read .row { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.hero-num { font-size: 60px; font-weight: 600; line-height: 1; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
+.zone-chip { font-size: 13px; font-weight: 600; padding: 3px 10px; border-radius: 999px; border: 1px solid var(--hair); background: var(--hl); }
+.delta { font-size: 13px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.gauge { position: relative; padding-top: 12px; }
+.gauge-track { display: flex; gap: 2px; height: 10px; }
+.gauge-track span { display: block; height: 100%; }
+.gauge-track span:first-child { border-radius: 4px 0 0 4px; }
+.gauge-track span:last-child { border-radius: 0 4px 4px 0; }
+.gauge-marker { position: absolute; top: 0; width: 2px; height: 26px; background: var(--ink); transform: translateX(-1px); border-radius: 1px; transition: left 0.25s ease; }
+.kv { display: grid; grid-template-columns: auto 1fr; gap: 3px 14px; font-size: 13.5px; margin: 0; }
+.kv dt { color: var(--muted); }
+.kv dd { margin: 0; font-variant-numeric: tabular-nums; }
+.bars { display: grid; gap: 8px; }
+.bar-row { display: grid; grid-template-columns: minmax(0, 7.5rem) minmax(0, 1fr) 2.2rem; gap: 10px; align-items: center; font-size: 13px; }
+.bar-row .lab small { display: block; color: var(--muted); font-size: 11px; line-height: 1.3; }
+.bar-row.click { cursor: pointer; border-radius: 6px; }
+.bar-row.click:hover { background: var(--hl); }
+.bar-track { position: relative; height: 10px; }
+.bar-track::before { content: ""; position: absolute; left: 0; right: 0; top: 4px; height: 2px; background: var(--grid); border-radius: 1px; }
+.bar-mid { position: absolute; left: 50%; top: -3px; bottom: -3px; width: 1px; background: var(--axis); }
+.bar-fill { position: absolute; top: 0; height: 10px; transition: left 0.25s ease, width 0.25s ease; }
+.bar-row .val { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
+.sec-title { font-size: 12px; color: var(--muted); font-weight: 500; letter-spacing: 0.02em; }
+.hist svg { display: block; overflow: visible; }
+.tick { font-family: var(--mono); font-size: 10.5px; fill: var(--muted); }
+.note { font-size: 12.5px; color: var(--ink-2); background: var(--hl); border-radius: 8px; padding: 10px 12px; }
+.note b { color: var(--ink); font-weight: 600; }
+.foot { font-size: 12.5px; color: var(--muted); display: grid; gap: 6px; max-width: 90ch; }
+details summary { cursor: pointer; color: var(--ink-2); font-size: 13px; }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--hair); }
+th { color: var(--muted); font-weight: 500; font-size: 12px; }
+td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; }
+
+/* gauges (CNN 공포탐욕지수식 반원 계기판) */
+.gauges { padding: 18px 20px; display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); gap: 24px; align-items: center; }
+@media (max-width: 880px) { .gauges { grid-template-columns: 1fr; } }
+.g-main { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 18px; align-items: center; }
+@media (max-width: 560px) { .g-main { grid-template-columns: 1fr; } }
+.g-main svg, .g-mini svg { display: block; width: 100%; height: auto; overflow: visible; }
+.g-title { font-size: 13px; color: var(--ink-2); font-weight: 600; margin-bottom: 2px; }
+.g-arc { fill: none; stroke-linecap: butt; transition: opacity 0.3s ease; }
+.g-needle { transition: transform 0.6s cubic-bezier(.3,.9,.3,1); }
+.g-cmp { display: grid; gap: 0; }
+.g-cmp .row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: center; padding-block: 8px; border-top: 1px solid var(--hair); font-size: 13px; }
+.g-cmp .row:first-child { border-top: 0; }
+.g-cmp .k { color: var(--muted); }
+.g-cmp .k small { display: block; font-size: 11px; }
+.g-cmp .v { display: flex; align-items: center; gap: 8px; }
+.g-cmp .v b { font-size: 18px; font-variant-numeric: tabular-nums; min-width: 2ch; text-align: right; }
+.g-chip { font-size: 11.5px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--hair); white-space: nowrap; }
+.mini-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.g-mini { font: inherit; color: inherit; background: var(--surface); border: 1px solid var(--hair); border-radius: 10px; padding: 8px 8px 6px; cursor: pointer; display: grid; gap: 0; text-align: center; }
+.g-mini:hover { background: var(--hl); }
+.g-mini[aria-pressed="true"] { border-color: var(--ink); box-shadow: 0 0 0 1px var(--ink); }
+.g-mini:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.g-mini .nm { font-size: 12.5px; font-weight: 600; }
+.g-mini .zn { font-size: 11px; color: var(--muted); }
+@media (prefers-reduced-motion: reduce) { .zone-path, .gauge-marker, .bar-fill, .g-needle, .g-arc { transition: none; } }
+</style>
+
+<div class="wrap">
+  <header style="display:grid;gap:6px">
+    <div class="eyebrow" id="eyebrow">서울 아파트 · 공포탐욕지수 · 5대 권역</div>
+    <h1>서울 공포탐욕 지도</h1>
+    <p class="sub">권역을 누르면 그 권역의 지수를 보여주고, 아무 데도 누르지 않으면 서울 전체 지수를 보여줘요. 위의 슬라이더로 2006년부터 지금까지 달마다 볼 수 있어요.</p>
+    <p class="sub" style="font-size:13.5px"><b style="color:var(--ink)">읽는 법</b> · 이 지수는 추세를 재는 온도계예요. 탐욕 구간 뒤에는 상승이 이어진 경우가 많았고, 극단적 공포 구간 뒤에는 오히려 반등한 경우가 많았어요(바닥 근처였던 2008~09년, 2022~23년, 표본이 적어요). 사고팔 시점을 알려주는 신호로 쓰지 마세요.</p>
+  </header>
+
+  <section class="panel timebar" aria-label="기준 월">
+    <div class="time-row">
+      <span class="time-now" id="time-now"></span>
+      <button class="btn icon" id="prev" type="button" aria-label="이전 달">◀</button>
+      <input type="range" id="month" min="0" max="1" value="1" aria-label="기준 월 선택">
+      <button class="btn icon" id="next" type="button" aria-label="다음 달">▶</button>
+    </div>
+    <div class="presets" id="presets"></div>
+    <p id="early-note" class="note" style="margin:0" hidden></p>
+  </section>
+
+  <section class="panel gauges" aria-label="공포탐욕 게이지">
+    <div class="g-main">
+      <div>
+        <div class="g-title" id="g-title">서울 전체</div>
+        <div id="g-big"></div>
+      </div>
+      <div class="g-cmp" id="g-cmp"></div>
+    </div>
+    <div class="mini-grid" id="g-minis" role="group" aria-label="지역별 게이지"></div>
+  </section>
+
+  <section class="main">
+    <div class="panel mapcard">
+      <div class="chips" id="chips" role="group" aria-label="권역 선택"></div>
+      <div class="mapbox" id="mapbox"></div>
+      <div class="scale" aria-hidden="true">
+        <div class="scale-bar" id="scale-bar"></div>
+        <div class="scale-labels"><span>0 극단적 공포</span><span>50 중립</span><span>극단적 탐욕 100</span></div>
+      </div>
+    </div>
+    <div class="panel read" id="read" aria-live="polite"></div>
+  </section>
+
+  <details class="panel" style="padding:14px 18px">
+    <summary>선택한 달의 권역별 값 표로 보기</summary>
+    <div style="overflow-x:auto;margin-top:10px"><table id="tbl"></table></div>
+  </details>
+
+  <footer class="foot">
+    <p id="foot-method"></p>
+    <p><b style="color:var(--ink-2)">눈금</b> · 여러 지표를 평균하면 점수가 가운데로 몰려서, 마지막에 50을 중심으로 눈금을 1.5배 넓혔어요(점수 = 50 + 1.5 × (원점수 − 50)). 모든 시점에 같은 배율을 써서 순서와 정확도는 그대로예요. 이력이 짧은 청약 경쟁률, 20·30대 매수 비중, 소비심리, 전망지수 등 10개는 보조 지표로만 보여줘요.</p>
+    <p><b style="color:var(--ink-2)">시점</b> · 매달 20일에 갱신해요. 그때 아직 공개되지 않은 그달 자료(부동산원 거래 통계, 미분양, 월평균 금리, 월말 주가, 검색량)는 지난달 값을 써요. 과거 점수도 같은 규칙으로 계산해서, 한 번 발표한 점수가 나중에 바뀌지 않아요. 지표 구성이 다 갖춰진 건 2011년 2월부터라 그 이전은 참고용이에요.</p>
+    <p><b style="color:var(--ink-2)">정확도</b> · 권역 지수는 지금 어디가 더 뜨거운지를 보는 데 쓰세요. 권역 점수 차이가 5점 미만이면 의미 있는 차이로 보기 어렵고, 서남권처럼 서울 지수가 더 잘 맞은 권역도 있어요. 권역을 누르면 해당 수치가 나와요.</p>
+    <p><b style="color:var(--ink-2)">출처</b> · KB부동산, 한국부동산원 R-ONE, 국토교통부 실거래가, 청약홈, FRED, 네이버 금융, 구글 트렌드. 지도는 통계청 2013년 구 경계(southkorea/seoul-maps)와 Natural Earth 한강 중심선이에요.</p>
+  </footer>
+</div>
+
+<script>
+const D = __DATA__;
+const NS = "http://www.w3.org/2000/svg";
+const $ = (s) => document.querySelector(s);
+function S(tag, attrs, parent) { const e = document.createElementNS(NS, tag); for (const k in attrs || {}) e.setAttribute(k, attrs[k]); if (parent) parent.appendChild(e); return e; }
+function H(tag, attrs, parent, text) {
+  const e = document.createElement(tag);
+  for (const k in attrs || {}) { if (k === "style") e.style.cssText = attrs[k]; else e.setAttribute(k, attrs[k]); }
+  if (text != null) e.textContent = text;
+  if (parent) parent.appendChild(e);
+  return e;
+}
+const ZONES = Object.keys(D.geo.zones);
+const N = D.dates.length;
+const BANDS = [[0, 25, "극단적 공포", "var(--band-fear-strong)"], [25, 45, "공포", "var(--band-fear-soft)"], [45, 55, "중립", "var(--band-neutral)"], [55, 75, "탐욕", "var(--band-greed-soft)"], [75, 100, "극단적 탐욕", "var(--band-greed-strong)"]];
+const LABEL_POS = { 도심권: [450, 372], 서북권: [296, 258], 동북권: [560, 205], 서남권: [236, 470], 동남권: [612, 498] };
+const zoneName = (v) => (v < 25 ? "극단적 공포" : v < 45 ? "공포" : v < 55 ? "중립" : v < 75 ? "탐욕" : "극단적 탐욕");
+const side = (v) => (v < 45 ? "var(--fear)" : v < 55 ? "var(--neutral)" : "var(--greed)");
+const ym = (s) => s.slice(0, 4) + "년 " + String(+s.slice(5, 7)) + "월";
+const f2 = (v) => (v == null ? "–" : v.toFixed(2));
+const pct = (v) => (v == null ? "–" : (v >= 0 ? "+" : "−") + Math.abs(v * 100).toFixed(1) + "%");
+function fill(v) {
+  if (v == null) return "var(--map-na)";
+  const d = v - 50, p = Math.min(85, (Math.abs(d) / 40) * 85);
+  return `color-mix(in oklab, ${d >= 0 ? "var(--greed)" : "var(--fear)"} ${p.toFixed(0)}%, var(--map-neutral))`;
+}
+const val = (r, t) => D.regions[r].score[t];
+function lastValid(arr, t) { for (let i = t; i >= 0; i--) if (arr[i] != null) return [arr[i], i]; return [null, -1]; }
+
+const state = { region: "서울", t: N - 1 };
+try { const h = decodeURIComponent(location.hash.slice(1)); if (D.regions[h]) state.region = h; } catch (e) {}
+
+/* ---------- map ---------- */
+const g = D.geo;
+const box = $("#mapbox");
+const svg = S("svg", { viewBox: `0 0 ${g.w} ${g.h}`, role: "group", "aria-label": "서울 5대 권역 지도" }, box);
+const zonePaths = {};
+ZONES.forEach((z) => {
+  const p = S("path", { d: g.zones[z].d, class: "zone-path", tabindex: 0, role: "button", "aria-label": z }, svg);
+  p.addEventListener("click", () => select(state.region === z ? "서울" : z));
+  p.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); select(state.region === z ? "서울" : z); } });
+  zonePaths[z] = p;
+});
+Object.values(g.gu).forEach((v) => S("path", { d: v.d, class: "gu-line" }, svg));
+S("path", { d: g.river, class: "river" }, svg);
+const selOutline = S("path", { class: "sel-outline", d: "" }, svg);
+const pins = {}, guNames = [];
+ZONES.forEach((z) => {
+  const [x, y] = LABEL_POS[z] || g.zones[z].label;
+  const pin = H("div", { class: "pin", style: `left:${(x / g.w) * 100}%;top:${(y / g.h) * 100}%` }, box);
+  H("span", { class: "n" }, pin, z);
+  H("span", { class: "v" }, pin);
+  H("span", { class: "d" }, pin);
+  pins[z] = pin;
+});
+Object.entries(g.gu).forEach(([name, v]) => {
+  const el = H("div", { class: "gu-name", style: `left:${(v.label[0] / g.w) * 100}%;top:${(v.label[1] / g.h) * 100}%`, hidden: "" }, box, name);
+  guNames.push([v.zone, el]);
+});
+svg.addEventListener("click", (e) => { if (e.target === svg) select("서울"); });
+
+const chips = $("#chips");
+["서울", ...ZONES].forEach((r) => {
+  const b = H("button", { class: "btn", type: "button", "data-r": r, "aria-pressed": "false" }, chips, r === "서울" ? "서울 전체" : r);
+  b.addEventListener("click", () => select(r));
+});
+$("#scale-bar").style.background = `linear-gradient(90deg, ${fill(10)}, ${fill(30)}, ${fill(50)}, ${fill(70)}, ${fill(90)})`;
+
+/* ---------- time ---------- */
+const slider = $("#month");
+slider.max = String(N - 1);
+slider.value = String(state.t);
+slider.addEventListener("input", () => setT(+slider.value));
+$("#prev").addEventListener("click", () => setT(state.t - 1));
+$("#next").addEventListener("click", () => setT(state.t + 1));
+const PRESETS = [["2008-12", "금융위기"], ["2012-12", "장기 침체"], ["2020-07", "영끌 매수"], ["2022-11", "금리 급등 후 급락"], [D.dates[N - 1], "최신"]];
+const pre = $("#presets");
+PRESETS.forEach(([d, l]) => {
+  const i = D.dates.indexOf(d);
+  if (i < 0) return;
+  H("button", { class: "btn", type: "button" }, pre, `${d.replace("-", ".")} ${l}`).addEventListener("click", () => setT(i));
+});
+function setT(t) { state.t = Math.max(0, Math.min(N - 1, t)); slider.value = String(state.t); render(); }
+function select(r) { state.region = r; try { history.replaceState(null, "", r === "서울" ? location.pathname : "#" + encodeURIComponent(r)); } catch (e) {} render(); }
+
+/* ---------- reading panel ---------- */
+function bars(el, rows) {
+  rows.forEach((r) => {
+    const row = H("div", { class: "bar-row" + (r.onclick ? " click" : "") }, el);
+    if (r.onclick) { row.addEventListener("click", r.onclick); row.setAttribute("role", "button"); row.tabIndex = 0; row.addEventListener("keydown", (e) => { if (e.key === "Enter") r.onclick(); }); }
+    const lab = H("div", { class: "lab" }, row, r.name);
+    if (r.note) H("small", {}, lab, r.note);
+    const tr = H("div", { class: "bar-track", role: "img", "aria-label": `${r.name} ${r.v == null ? "없음" : Math.round(r.v)}` }, row);
+    if (r.v != null) {
+      const a = Math.min(50, r.v), w = Math.abs(r.v - 50);
+      H("div", { class: "bar-fill", style: `left:${a}%;width:${w}%;background:${side(r.v)};border-radius:${r.v >= 50 ? "0 4px 4px 0" : "4px 0 0 4px"}` }, tr);
+    }
+    H("div", { class: "bar-mid" }, tr);
+    H("div", { class: "val" }, row, r.v == null ? "–" : String(Math.round(r.v)));
+  });
+}
+
+function history_(el, R) {
+  const W = el.clientWidth || 360, h = 120, top = 6, ml = 26, mr = 6, Hh = top + h + 20;
+  const s = R.score;
+  const x = (i) => ml + (i / (N - 1)) * (W - ml - mr), y = (v) => top + (1 - v / 100) * h;
+  const sv = S("svg", { width: W, height: Hh, viewBox: `0 0 ${W} ${Hh}`, role: "img", "aria-label": "지수 추이. 누르면 그 달로 이동합니다." }, el);
+  BANDS.forEach(([a, b, , c]) => S("rect", { x: ml, y: y(b), width: W - ml - mr, height: y(a) - y(b), style: `fill:${c}` }, sv));
+  [0, 50, 100].forEach((v) => (S("text", { x: ml - 5, y: y(v) + 4, "text-anchor": "end", class: "tick" }, sv).textContent = v));
+  let d = "";
+  s.forEach((v, i) => { if (v != null) d += (d && s[i - 1] != null ? "L" : "M") + x(i).toFixed(1) + "," + y(v).toFixed(1); });
+  S("path", { d, style: "fill:none;stroke:var(--ink);stroke-width:1.6;stroke-linejoin:round" }, sv);
+  const step = W < 340 ? 8 : 4;
+  D.dates.forEach((dd, i) => { const yy = +dd.slice(0, 4); if (dd.endsWith("-01") && yy % step === 2) S("text", { x: x(i), y: top + h + 15, "text-anchor": "middle", class: "tick" }, sv).textContent = yy; });
+  const xi = x(state.t);
+  S("line", { x1: xi, x2: xi, y1: top, y2: top + h, style: "stroke:var(--ink-2);stroke-width:1" }, sv);
+  if (s[state.t] != null) S("circle", { cx: xi, cy: y(s[state.t]), r: 4.5, style: "fill:var(--ink);stroke:var(--surface);stroke-width:2" }, sv);
+  const hit = S("rect", { x: ml, y: 0, width: W - ml - mr, height: Hh, style: "fill:transparent;cursor:pointer" }, sv);
+  const go = (e) => { const b = sv.getBoundingClientRect(); setT(Math.round(((e.clientX - b.left - ml) / (W - ml - mr)) * (N - 1))); };
+  hit.addEventListener("click", go);
+}
+
+function renderRead() {
+  const R = D.regions[state.region], t = state.t, el = $("#read");
+  el.replaceChildren();
+  const [v, ti] = lastValid(R.score, t);
+  const isSeoul = state.region === "서울";
+  H("div", { class: "eyebrow" }, el, isSeoul ? `서울 전체 · ${ym(D.dates[t])}` : `${state.region} · ${ym(D.dates[t])}`);
+  if (!isSeoul) H("p", { style: "font-size:13px;color:var(--ink-2);margin-top:-10px" }, el, R.gus.join(" · "));
+  else H("p", { style: "font-size:13px;color:var(--ink-2);margin-top:-10px" }, el, `서울 전체 지표 ${D.n_ind}개(같은 출처끼리 묶어 ${D.n_votes}표)로 계산한 ${D.version} 지수`);
+  const row = H("div", { class: "row" }, el);
+  H("span", { class: "hero-num" }, row, v == null ? "–" : String(Math.round(v)));
+  if (v != null) H("span", { class: "zone-chip" }, row, zoneName(v));
+  const p3 = t >= 3 ? R.score[t - 3] : null;
+  if (v != null && p3 != null) { const dd = v - p3; H("span", { class: "delta" }, row, `3개월 전보다 ${dd >= 0 ? "▲" : "▼"} ${Math.abs(dd).toFixed(1)}`); }
+  const gg = H("div", { class: "gauge", role: "img", "aria-label": v == null ? "값 없음" : `${Math.round(v)}, ${zoneName(v)}` }, el);
+  const tr = H("div", { class: "gauge-track" }, gg);
+  const segFill = ["var(--fear)", "var(--fear)", "var(--neutral)", "var(--greed)", "var(--greed)"], segOp = [0.9, 0.4, 0.35, 0.4, 0.9];
+  BANDS.forEach(([a, b], i) => H("span", { style: `flex:${b - a};background:${segFill[i]};opacity:${segOp[i]}` }, tr));
+  if (v != null) H("div", { class: "gauge-marker", style: `left:${v}%` }, gg);
+
+  const kv = H("dl", { class: "kv" }, el);
+  const add = (k, x) => { H("dt", {}, kv, k); H("dd", {}, kv, x); };
+  if (t >= 12 && R.score[t - 12] != null) add("1년 전", `${Math.round(R.score[t - 12])} · ${zoneName(R.score[t - 12])}`);
+  const [rsNow, ri] = lastValid(R.rs, t);
+  if (rsNow != null && ri >= 12 && R.rs[ri - 12] != null) add("직전 1년 실거래 가격", `${pct(rsNow / R.rs[ri - 12] - 1)} (${ym(D.dates[ri])}까지)`);
+  add("이후 1년 실거래 가격", R.fwd12[t] == null ? "아직 모름" : pct(Math.expm1(R.fwd12[t])));
+  if (!isSeoul) add("서울 전체에서 거래 비중", `${Math.round(R.weight * 100)}%`);
+
+  H("div", { class: "sec-title" }, el, "구성 (속도별 3그룹을 같은 비중으로 평균)");
+  const b1 = H("div", { class: "bars" }, el);
+  bars(b1, [["선행", "기대·금리 변화·검색·주가"], ["동행", "가격·거래·수급"], ["후행", "가격부담·금리 수준·미분양"]].map(([k, note]) => ({ name: k, note, v: R.speed[k][t] })));
+
+  if (isSeoul) {
+    H("div", { class: "sec-title" }, el, "권역 순위 (누르면 이동)");
+    const b2 = H("div", { class: "bars" }, el);
+    bars(b2, ZONES.map((z) => ({ name: z, note: `거래 비중 ${Math.round(D.regions[z].weight * 100)}%`, v: val(z, t), onclick: () => select(z) })).sort((a, b) => (b.v ?? -1) - (a.v ?? -1)));
+  }
+
+  H("div", { class: "sec-title" }, el, "주제별 (참고)");
+  const b3 = H("div", { class: "bars" }, el);
+  bars(b3, D.theme_order.map((k) => ({ name: k, v: R.themes[k][t] })).sort((a, b) => (b.v ?? -1) - (a.v ?? -1)));
+
+  const auxKeys = Object.keys(R.aux || {});
+  if (auxKeys.length) {
+    H("div", { class: "sec-title" }, el, "보조 지표 (이력이 짧아 점수에는 넣지 않았어요)");
+    const b4 = H("div", { class: "bars" }, el);
+    bars(b4, auxKeys.map((k) => ({ name: D.aux_label[k].split(" (")[0], note: "(" + D.aux_label[k].split(" (")[1], v: R.aux[k][t] })));
+  }
+
+  H("div", { class: "sec-title" }, el, "2006년 이후 추이 (누르면 그 달로 이동)");
+  history_(H("div", { class: "hist" }, el), R);
+
+  const note = H("div", { class: "note" }, el);
+  const ic = R.ic;
+  if (isSeoul) {
+    H("b", {}, note, "정확도 ");
+    note.append(`${ym(D.official_start)} 이후 이 지수와 이후 12개월 서울 실거래 가격의 순위상관은 ${f2(R.acc)}예요. 5년 단위로 보면 구간에 따라 크게 달라서, 주로 나쁜 구간을 덜 나쁘게 만드는 정도로 이해해 주세요. 권역 점수는 각 권역 자료로 따로 계산해서 평균이 서울 점수와 꼭 같지는 않아요.`);
+  } else {
+    H("b", {}, note, "정확도 ");
+    const better = R.acc - R.acc_seoul;
+    note.append(`${ym(D.official_start)} 이후 이 권역 지수와 이후 12개월 ${state.region} 실거래 가격의 순위상관은 ${f2(R.acc)}, 서울 지수를 그대로 쓰면 ${f2(R.acc_seoul)}예요. `);
+    note.append(better > 0.02 ? "이 권역은 권역 지수가 조금 더 잘 맞았어요." : better < -0.02 ? "이 권역은 서울 지수가 더 잘 맞았어요. 권역 점수의 차이는 참고로만 보세요." : "둘이 거의 같아요.");
+    const c = H("div", { class: "note" }, el);
+    H("b", {}, c, "서울과 비교할 때 ");
+    const sv = D.regions["서울"].score[t], zv = R.score[t];
+    c.append(`${D.n_votes}표 중 ${R.zone_votes}표만 이 권역 값이고 나머지는 서울과 같은 값이에요. `);
+    if (sv != null && zv != null) c.append(Math.abs(zv - sv) < 5 ? `서울과의 차이(${(zv - sv >= 0 ? "+" : "−") + Math.abs(zv - sv).toFixed(1)})는 5점 미만이라 의미 있는 차이로 보기 어려워요.` : `서울보다 ${Math.abs(zv - sv).toFixed(1)}점 ${zv > sv ? "높아요" : "낮아요"}.`);
+  }
+}
+
+function renderMap() {
+  const t = state.t;
+  ZONES.forEach((z) => {
+    const v = val(z, t), p3 = t >= 3 ? val(z, t - 3) : null;
+    zonePaths[z].style.fill = fill(v);
+    zonePaths[z].setAttribute("aria-label", `${z} ${v == null ? "값 없음" : Math.round(v) + " " + zoneName(v)}`);
+    zonePaths[z].setAttribute("aria-pressed", String(state.region === z));
+    const pin = pins[z];
+    pin.children[1].textContent = v == null ? "–" : String(Math.round(v));
+    pin.children[2].textContent = v != null && p3 != null ? `${v - p3 >= 0 ? "▲" : "▼"}${Math.abs(v - p3).toFixed(1)}` : "";
+    pin.classList.toggle("sel", state.region === z);
+  });
+  selOutline.setAttribute("d", state.region === "서울" ? g.outline : g.zones[state.region].d);
+  guNames.forEach(([z, el]) => (el.hidden = z !== state.region));
+  chips.querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.r === state.region)));
+  $("#time-now").textContent = ym(D.dates[t]);
+  const early = D.dates[t] < D.official_start;
+  const en = $("#early-note");
+  en.hidden = !early;
+  if (early) en.textContent = `${ym(D.official_start)} 이전은 지표가 다 갖춰지지 않아(${D.n_votes}표 중 일부만 계산) 참고용이에요.`;
+  Object.values(pins).forEach((p) => (p.style.opacity = early ? 0.65 : 1));
+  Object.values(zonePaths).forEach((p) => (p.style.opacity = early ? 0.7 : 1));
+}
+
+function renderTable() {
+  const tb = $("#tbl"), t = state.t;
+  tb.replaceChildren();
+  const hr = H("tr", {}, H("thead", {}, tb));
+  [["권역", ""], ["지수", "n"], ["구간", ""], ["3개월 변화", "n"], ["선행", "n"], ["동행", "n"], ["후행", "n"], ["이후 1년 실거래", "n"]].forEach(([h, c]) => H("th", { class: c }, hr, h));
+  const body = H("tbody", {}, tb);
+  ["서울", ...ZONES].forEach((r) => {
+    const R = D.regions[r], v = R.score[t], p3 = t >= 3 ? R.score[t - 3] : null;
+    const row = H("tr", {}, body);
+    H("td", {}, row, r === "서울" ? "서울 전체" : r);
+    H("td", { class: "n" }, row, v == null ? "–" : String(Math.round(v)));
+    H("td", {}, row, v == null ? "–" : zoneName(v));
+    H("td", { class: "n" }, row, v != null && p3 != null ? (v - p3 >= 0 ? "+" : "−") + Math.abs(v - p3).toFixed(1) : "–");
+    ["선행", "동행", "후행"].forEach((k) => H("td", { class: "n" }, row, R.speed[k][t] == null ? "–" : String(Math.round(R.speed[k][t]))));
+    H("td", { class: "n" }, row, R.fwd12[t] == null ? "–" : pct(Math.expm1(R.fwd12[t])));
+  });
+}
+
+$("#eyebrow").textContent = `서울 아파트 · 공포탐욕지수 ${D.version} · 5대 권역`;
+(() => {
+  const f = $("#foot-method");
+  H("b", { style: "color:var(--ink-2)" }, f, `계산 방식 (${D.version})`);
+  f.append(` · 2009년 이전부터 자료가 있는 지표 ${D.n_ind}개를 쓰되, 같은 원자료에서 나온 지표는 한 표로 묶어 ${D.n_votes}표로 계산해요(구글 검색어 6개도 한 표). 표를 선행·동행·후행 3그룹으로 나눠 같은 비중으로 평균 내요. 권역 지수는 ${D.n_votes}표 중 가격·실거래·거래량·매입자 구성·전세·미분양 등 일부를 권역 값으로 바꿔 계산하고, 금리·검색량·주가·PIR 등은 서울 공통 값을 써요. 각 지표는 과거 120개월 안에서의 백분위로 바꾸고, 검색량이 너무 적던 시기(직전 2년 평균 5 미만)의 검색 지표는 쓰지 않아요.`);
+})();
+
+/* ---------- 반원 게이지 ---------- */
+const BAND_STYLE = [["var(--fear)", 1], ["var(--fear)", 0.5], ["var(--neutral)", 0.55], ["var(--greed)", 0.5], ["var(--greed)", 1]];
+const toXY = (cx, cy, r, v) => { const a = Math.PI * (1 - v / 100); return [cx + r * Math.cos(a), cy - r * Math.sin(a)]; };
+function arcPath(cx, cy, r, a, b) {
+  const [x1, y1] = toXY(cx, cy, r, a), [x2, y2] = toXY(cx, cy, r, b);
+  return `M${x1.toFixed(2)},${y1.toFixed(2)} A${r},${r} 0 0 1 ${x2.toFixed(2)},${y2.toFixed(2)}`;
+}
+function buildGauge(box, big) {
+  const W = 300, H = big ? 236 : 206, cx = 150, cy = big ? 150 : 132, r = big ? 112 : 112, sw = big ? 26 : 30;
+  const svg = S("svg", { viewBox: `0 ${big ? -8 : 0} ${W} ${H}`, role: "img" }, box);
+  const arcs = BANDS.map(([a, b], i) => S("path", { d: arcPath(cx, cy, r, a + (a ? 0.7 : 0), b - (b < 100 ? 0.7 : 0)), class: "g-arc",
+    style: `stroke:${BAND_STYLE[i][0]};stroke-width:${sw}` }, svg));
+  if (big) {
+    [0, 25, 50, 75, 100].forEach((v) => {
+      const [x, y] = toXY(cx, cy, r - sw / 2 - 12, v);
+      S("text", { x, y: y + 4, "text-anchor": v === 50 ? "middle" : v < 50 ? "start" : "end", class: "tick", style: "font-size:10px" }, svg).textContent = v;
+    });
+    BANDS.forEach(([a, b, lab], i) => {
+      const m = (a + b) / 2, [x, y] = toXY(cx, cy, r + sw / 2 + 16, m);
+      const tx = S("text", { x, y: y + 3, "text-anchor": m < 40 ? "end" : m > 60 ? "start" : "middle", style: "font-size:10.5px;fill:var(--muted)" }, svg);
+      tx.textContent = lab;
+    });
+  }
+  const needle = S("g", { class: "g-needle", style: `transform-origin:${cx}px ${cy}px` }, svg);
+  S("path", { d: `M${cx - 5},${cy} L${cx},${cy - r + sw / 2 + 4} L${cx + 5},${cy} Z`, style: "fill:var(--ink)" }, needle);
+  S("circle", { cx, cy, r: big ? 9 : 10, style: "fill:var(--ink)" }, svg);
+  S("circle", { cx, cy, r: big ? 3.5 : 4, style: "fill:var(--surface)" }, svg);
+  const num = S("text", { x: cx, y: cy + (big ? 50 : 62), "text-anchor": "middle", style: `font-size:${big ? 42 : 54}px;font-weight:700;fill:var(--ink);font-variant-numeric:tabular-nums` }, svg);
+  const zl = big ? S("text", { x: cx, y: cy + 72, "text-anchor": "middle", style: "font-size:14px;font-weight:600;fill:var(--ink-2)" }, svg) : null;
+  return { svg, arcs, needle, num, zl };
+}
+function setGauge(g, v, label) {
+  const has = v != null;
+  const deg = has ? (v / 100) * 180 - 90 : -90;
+  g.needle.style.transform = `rotate(${deg}deg)`;
+  g.needle.style.opacity = has ? 1 : 0.2;
+  const bi = has ? BANDS.findIndex(([a, b]) => v >= a && (v < b || b === 100)) : -1;
+  g.arcs.forEach((p, i) => (p.style.opacity = i === bi ? BAND_STYLE[i][1] : 0.18));
+  g.num.textContent = has ? String(Math.round(v)) : "–";
+  if (g.zl) g.zl.textContent = has ? zoneName(v) : "자료 없음";
+  g.svg.setAttribute("aria-label", `${label} ${has ? Math.round(v) + ", " + zoneName(v) : "자료 없음"}`);
+}
+const gBig = buildGauge($("#g-big"), true);
+const gMinis = {};
+["서울", ...ZONES].forEach((r) => {
+  const b = H("button", { class: "g-mini", type: "button", "aria-pressed": "false" }, $("#g-minis"));
+  const holder = H("div", {}, b);
+  const g = buildGauge(holder, false);
+  H("span", { class: "nm" }, b, r === "서울" ? "서울 전체" : r);
+  g.zn = H("span", { class: "zn" }, b, "");
+  b.addEventListener("click", () => select(r));
+  gMinis[r] = { g, b };
+});
+function renderGauges() {
+  const t = state.t, r = state.region, R = D.regions[r];
+  $("#g-title").textContent = `${r === "서울" ? "서울 전체" : r} · ${ym(D.dates[t])}`;
+  setGauge(gBig, R.score[t], r === "서울" ? "서울 전체" : r);
+  const cmp = $("#g-cmp");
+  cmp.replaceChildren();
+  [["지난달", 1], ["3개월 전", 3], ["1년 전", 12]].forEach(([k, back]) => {
+    const i = t - back, v = i >= 0 ? R.score[i] : null;
+    const row = H("div", { class: "row" }, cmp);
+    const kk = H("div", { class: "k" }, row, k);
+    if (i >= 0) H("small", {}, kk, ym(D.dates[i]));
+    const vv = H("div", { class: "v" }, row);
+    if (v != null) H("span", { class: "g-chip", style: `border-color:${side(v)};color:var(--ink)` }, vv, zoneName(v));
+    H("b", {}, vv, v == null ? "–" : String(Math.round(v)));
+  });
+  Object.entries(gMinis).forEach(([reg, { g, b }]) => {
+    const v = D.regions[reg].score[t];
+    setGauge(g, v, reg === "서울" ? "서울 전체" : reg);
+    g.zn.textContent = v == null ? "자료 없음" : zoneName(v);
+    b.setAttribute("aria-pressed", String(reg === r));
+  });
+  const early = D.dates[t] < D.official_start;
+  $(".gauges").style.opacity = early ? 0.75 : 1;
+}
+function render() { renderGauges(); renderMap(); renderRead(); renderTable(); }
+render();
+let rt;
+new ResizeObserver(() => { clearTimeout(rt); rt = setTimeout(renderRead, 150); }).observe($("#read"));
+document.addEventListener("keydown", (e) => {
+  if (e.target === slider || e.target.tagName === "INPUT") return;
+  if (e.key === "Escape") select("서울");
+});
+</script>
