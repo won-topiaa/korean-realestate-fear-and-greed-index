@@ -1,7 +1,8 @@
-"""서울 5대 권역별 공포탐욕지수 (v2 방식: 45개 지표, 속도별 3그룹 균등).
+"""서울 5대 권역·25개 구별 공포탐욕지수 지표.
 
-권역 값이 있는 지표는 권역 값으로 바꾸고(가격·거래·수급·전세·미분양·신고가 등),
-없는 지표(금리·검색량·주가·청약·PIR 등)는 서울 공통 값을 쓴다. 점수는 권역마다 자기 과거 기준 백분위.
+권역(구) 값이 있는 지표는 그 값으로 바꾸고(가격·거래·수급·전세·미분양·신고가 등),
+없는 지표(금리·검색량·주가·청약·PIR 등)는 서울 공통 값을 쓴다. 구 단위가 없는 자료(부동산원 수급, 상승 구 비율)는
+그 구가 속한 권역 값, KB 설문은 강북·강남 값을 쓴다. 미분양도 구 하나는 대부분 0호라 권역 값을 쓴다. 점수는 권역마다 자기 과거 기준 백분위.
 정답: 권역별 실거래 반복매매지수. 서울 전체 = 권역 점수의 최근 12개월 거래금액 가중평균.
 결과: results_zone/zone_data.json
 """
@@ -59,15 +60,17 @@ KB_REPLACED = ["가격_3개월모멘텀", "가격_12개월이평괴리", "가격
                "설문_가격전망", "전세_수급", "전세_가격전망", "전세_매매선호", "전세_3개월모멘텀", "부담_전세가율역수"]
 
 
-def zone_indicators(z, seoul_ind):
-    gus = ZONES[z]
+def zone_indicators(z, seoul_ind, gus=None):
+    """z: 권역. gus를 주면 그 구들(보통 구 하나)의 값으로 계산하고, 구 단위가 없는 자료는 권역 z 값을 쓴다."""
+    gus = gus or ZONES[z]
     side = KB_SIDE[z]
     ind = seoul_ind.copy()
     price_gu = kb_gu("아파트매매지수_월간_서울구")
     zp = zone_chain(price_gu, gus)
     ind["가격_3개월모멘텀"] = np.log(zp).diff(3)
     ind["가격_12개월이평괴리"] = zp / zp.rolling(12).mean() - 1
-    up = (price_gu[gus].diff() > 0).where(price_gu[gus].diff().notna())
+    ug = gus if len(gus) > 1 else ZONES[z]  # 구 하나면 상승 구 비율은 권역 값
+    up = (price_gu[ug].diff() > 0).where(price_gu[ug].diff().notna())
     ind["가격_상승구비율"] = up.mean(axis=1).rolling(3).mean()
     buy = kb_side("매수우위_월간", "매수우위지수", side)
     js = kb_side("전세수급_월간", "전세수급지수", side)
@@ -93,7 +96,7 @@ def zone_indicators(z, seoul_ind):
     subj = sum(reb_file(f"gu_거래주체_{g}", cls=True) for g in gus)
     corp = subj[[c for c in subj.columns if c.endswith("→법인")]].sum(axis=1)
     ind["거래_법인매수비중"] = (corp / subj["합계"]).rolling(3).mean()
-    ind["공급_미분양역수"] = -np.log1p(sum(reb_file(f"gu_미분양_{g}") for g in gus))
+    ind["공급_미분양역수"] = -np.log1p(sum(reb_file(f"gu_미분양_{g}") for g in ug))  # 구 하나는 대부분 0호라 몇 호에도 크게 흔들려 권역 값
     replaced = ["거래_거래량", "거래_거래량증가", "거래_외지인비중", "거래_원정매수비중", "거래_2030비중", "거래_법인매수비중",
                 "공급_미분양역수", "설문_부동산원매매수급", "전세_부동산원전세수급"]
     zone_cols = [c for c in ind.columns if c in replaced or c in KB_REPLACED]
@@ -116,10 +119,7 @@ def main():
     value = trades.groupby(["zone", "date"])["price"].sum().unstack(0).reindex(idx).fillna(0)
     weight = value.rolling(12).sum().shift(2)  # 신고 시차 반영
 
-    out = {}
-    for z in ZONES:
-        ind = zone_indicators(z, seoul_ind).reindex(idx)
-        sub = trades[trades["zone"] == z]
+    def build(name, sub, ind, ref_ind):
         rs, _ = MI.repeat_sales(sub)
         hi, dr, _ = MI.high_low(sub)
         ind["거래_신고가비중"] = hi.rolling(3).mean().shift(2).reindex(idx)
@@ -127,13 +127,28 @@ def main():
         rs = rs.reindex(idx)
         rs.iloc[-2:] = np.nan
         y = np.log(rs).shift(-12) - np.log(rs)
-        zone_specific = [c for c in meta.index if not ind[c].equals(seoul_ind[c].reindex(idx).ffill(limit=3))]
-        out[z] = {"ind": ind, "rs": rs, "fwd12": y, "zone_specific": zone_specific}
-        print(f"{z}: 권역 고유 지표 {len(zone_specific)}개, 실거래 지수 {rs.dropna().index[-1].date()}까지", flush=True)
-    return out, weight
+        own = [c for c in meta.index if not ind[c].equals(ref_ind[c].reindex(idx).ffill(limit=3) if ref_ind is seoul_ind else ref_ind[c])]
+        print(f"{name}: 고유 지표 {len(own)}개, 실거래 지수 {rs.dropna().index[-1].date()}까지 · 반복매매 쌍 월 중앙값 {int(_pairs(sub))}", flush=True)
+        return {"ind": ind, "rs": rs, "fwd12": y, "zone_specific": own}
+
+    out, gu_out = {}, {}
+    for z in ZONES:
+        out[z] = build(z, trades[trades["zone"] == z], zone_indicators(z, seoul_ind).reindex(idx), seoul_ind)
+    for z, gs in ZONES.items():  # 구: 권역 값과 다른 지표를 '구 고유'로 센다
+        for g in gs:
+            gu_out[g] = build(g, trades[trades["gu"] == g], zone_indicators(z, seoul_ind, gus=[g]).reindex(idx), out[z]["ind"])
+            gu_out[g]["zone"] = z
+    gvalue = trades.groupby(["gu", "date"])["price"].sum().unstack(0).reindex(idx).fillna(0)
+    gu_weight = gvalue.rolling(12).sum().shift(2)
+    return out, weight, gu_out, gu_weight
+
+
+def _pairs(sub):
+    s = sub.sort_values(["key", "date"])
+    return s[s.duplicated("key", keep="first")].groupby("date").size().median()
 
 
 if __name__ == "__main__":
-    out, weight = main()
+    out, weight, gu_out, gu_weight = main()
     print("최근 거래금액 비중", (weight.iloc[-1] / weight.iloc[-1].sum()).round(3).to_dict())
-    pd.to_pickle({"zones": out, "weight": weight}, OUT / "zone_calc.pkl")
+    pd.to_pickle({"zones": out, "weight": weight, "gus": gu_out, "gu_weight": gu_weight}, OUT / "zone_calc.pkl")

@@ -1,4 +1,4 @@
-"""지도 페이지용 데이터 (results_zone/map_data.json) — v3."""
+"""지도 페이지용 데이터 (results_zone/map_data.json) — v3. 서울·5대 권역·25개 구."""
 import json
 
 import numpy as np
@@ -58,12 +58,31 @@ for z in ZONES:
     regions[z]["zone_votes"] = int(sum(any(c in zs for c in comp.split(", ")) for comp in VM["구성"]))
 m = idx >= OFF
 regions["서울"]["acc"] = r3(bt.spearman(sf[m].to_numpy(), y_seoul[m].to_numpy()))
+for z in ZONES:
+    regions[z]["level"] = "zone"
+regions["서울"]["level"] = "seoul"
+# 25개 구: 보조 지표는 서울·권역과 같은 값이라 빼고 (파일 크기), 정확도는 구·권역·서울 지수 셋을 같은 구 실거래로 비교
+gus, gw = Z["gus"], Z["gu_weight"]
+GW = gw.reindex(idx)
+GWn = GW.div(GW.sum(axis=1), axis=0)
+gc = pd.read_pickle(bt.ROOT / "results_zone" / "zone_calc.pkl")["gus"]
+gu_order = [g for z in ZONES for g in ZONES[z]]
+for g in gu_order:
+    r = gus[g]
+    pk = pack(r, r["rs"], r["fwd12"], [], None, r3(GWn[g].dropna().iloc[-1]), [g])
+    pk.pop("aux"); pk.pop("ic"); pk.pop("ic_seoul")
+    pk.update({"level": "gu", "zone": r["zone"], "acc": r3(r["acc3"]["gu"]), "acc_zone": r3(r["acc3"]["zone"]),
+               "acc_seoul": r3(r["acc3"]["seoul"])})
+    own = set(gc[g]["zone_specific"])
+    pk["own_votes"] = int(sum(any(c in own for c in comp.split(", ")) for comp in VM["구성"]))
+    regions[g] = pk
 geo = json.loads((bt.ROOT / "data" / "seoul_map.json").read_text())
 data = {"dates": [d.strftime("%Y-%m") for d in idx], "regions": regions, "geo": geo,
         "theme_order": list(VM["주제"].unique()), "aux_label": AUX_LABEL,
         "n_ind": int(sum(len(c.split(", ")) for c in VM["구성"])), "n_votes": int(len(VM)),
-        "n_zone_specific": int(zones[next(iter(ZONES))]["n_zone"]), "k": v3.K,
+        "n_zone_specific": int(zones[next(iter(ZONES))]["n_zone"]), "k": v3.K, "gu_order": gu_order,
+        "gu_acc_mean": {k: r3(np.mean([gus[g]["acc3"][k] for g in gu_order])) for k in ("gu", "zone", "seoul")},
         "version": v3.VERSION, "official_start": v3.OFFICIAL_START[:7]}
 json.dump(data, open(bt.ROOT / "results_zone" / "map_data.json", "w"), ensure_ascii=False, separators=(",", ":"))
 print("bytes", len(json.dumps(data, ensure_ascii=False, separators=(",", ":"))), "| 서울 v3 IC", np.round(ic_seoul, 2))
-print({z: regions[z]["score"][-1] for z in regions}, "| themes", data["theme_order"], "| zone-specific", data["n_zone_specific"])
+print({z: regions[z]["score"][-1] for z in ["서울", *ZONES]}, "| themes", data["theme_order"], "| zone-specific", data["n_zone_specific"])

@@ -44,7 +44,8 @@ def evaluate():
     rs = {"서울": pd.read_csv(ROOT / "data" / "targets_extra.csv", index_col=0, parse_dates=True)["실거래지수"]}
     zc = ROOT / "results_zone" / "zone_calc.pkl"
     if zc.exists():
-        for z, o in pd.read_pickle(zc)["zones"].items():
+        zcd = pd.read_pickle(zc)
+        for z, o in {**zcd["zones"], **zcd.get("gus", {})}.items():
             rs[z] = o["rs"]
     out = {}
     for r, sub in log.groupby("region"):

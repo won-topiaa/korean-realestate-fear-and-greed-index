@@ -47,6 +47,7 @@
   color-scheme: dark;
 }
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
 body { background: var(--bg); color: var(--ink); font-family: var(--font); font-size: 15px; line-height: 1.6; padding-inline: 16px; padding-block: 28px 56px; -webkit-font-smoothing: antialiased; }
 .wrap { max-width: 1180px; margin: 0 auto; display: grid; gap: 20px; }
 h1, h2, h3 { margin: 0; line-height: 1.3; text-wrap: balance; }
@@ -64,7 +65,9 @@ p { margin: 0; }
 .time-row input[type="range"] { flex: 1 1 240px; min-width: 0; accent-color: var(--ink); }
 .btn { font: inherit; font-size: 13px; color: var(--ink); background: var(--surface); border: 1px solid var(--hair); border-radius: 999px; padding: 4px 12px; cursor: pointer; }
 .btn:hover { background: var(--hl); }
-.btn:focus-visible, .zone-path:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.btn:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.zone-path:focus { outline: none; }
+.zone-path:focus-visible { stroke: var(--ink); stroke-width: 3; }
 .btn[aria-pressed="true"] { background: var(--ink); color: var(--surface); border-color: var(--ink); }
 .btn.icon { padding: 4px 10px; font-family: var(--mono); }
 .presets { display: flex; gap: 6px; flex-wrap: wrap; }
@@ -80,11 +83,19 @@ p { margin: 0; }
 .hist { position: relative; }
 .hist-tip { position: absolute; pointer-events: none; transform: translate(-50%, -100%); background: var(--surface); border: 1px solid var(--hair); border-radius: 8px; padding: 4px 9px; font-size: 12px; line-height: 1.45; white-space: nowrap; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1); color: var(--ink-2); }
 .hist-tip b { color: var(--ink); font-variant-numeric: tabular-nums; }
-.chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.chips { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.maptop { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+.seg { display: inline-flex; border: 1px solid var(--hair); border-radius: 999px; padding: 2px; background: var(--hl); }
+.seg button { font: inherit; font-size: 12.5px; border: 0; background: transparent; color: var(--ink-2); padding: 3px 12px; border-radius: 999px; cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--surface); color: var(--ink); font-weight: 600; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12); }
+.seg button:focus-visible, .gu-select:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.gu-select { font: inherit; font-size: 13px; color: var(--ink); background: var(--surface); border: 1px solid var(--hair); border-radius: 999px; padding: 4px 10px; cursor: pointer; }
 .mapbox { position: relative; width: 100%; }
 .mapbox svg { display: block; width: 100%; height: auto; }
 .zone-path { cursor: pointer; stroke: var(--surface); stroke-width: 3; stroke-linejoin: round; transition: fill 0.25s ease; }
 .zone-path:hover { stroke: var(--ink-2); stroke-width: 2; }
+.gu-path { stroke-width: 1.5; }
+.zone-border { fill: none; stroke: var(--ink-2); stroke-width: 1.6; opacity: 0.5; stroke-linejoin: round; pointer-events: none; }
 .gu-line { fill: none; stroke: var(--surface); stroke-width: 0.8; opacity: 0.7; pointer-events: none; }
 .river { fill: none; stroke: var(--river); stroke-width: 9; stroke-linecap: round; stroke-linejoin: round; opacity: 0.85; pointer-events: none; }
 .sel-outline { fill: none; stroke: var(--ink); stroke-width: 2.5; stroke-linejoin: round; pointer-events: none; }
@@ -92,9 +103,12 @@ p { margin: 0; }
 .pin .n { font-size: 12px; color: var(--ink-2); font-weight: 500; white-space: nowrap; }
 .pin .v { font-size: 19px; font-weight: 700; line-height: 1.1; font-variant-numeric: tabular-nums; }
 .pin .d { font-size: 10.5px; font-family: var(--mono); color: var(--muted); white-space: nowrap; }
+.pin.gu { padding: 1px 5px 2px; border-radius: 7px; }
+.pin.gu .n { font-size: 10px; }
+.pin.gu .v { font-size: 14px; }
 .pin.sel { border-color: var(--ink); box-shadow: 0 0 0 1px var(--ink), 0 2px 8px rgba(0, 0, 0, 0.12); }
 .gu-name { position: absolute; transform: translate(-50%, -50%); font-size: 10.5px; color: var(--ink-2); pointer-events: none; white-space: nowrap; text-shadow: 0 0 3px var(--surface), 0 0 3px var(--surface); }
-@media (max-width: 560px) { .pin { padding: 2px 6px 3px; } .pin .v { font-size: 15px; } .pin .n { font-size: 10.5px; } .pin .d, .gu-name { display: none; } }
+@media (max-width: 560px) { .pin.gu .n { display: none; } .pin.gu .v { font-size: 11.5px; } .pin { padding: 2px 6px 3px; } .pin .v { font-size: 15px; } .pin .n { font-size: 10.5px; } .pin .d, .gu-name { display: none; } }
 .scale { display: grid; gap: 4px; font-size: 11.5px; color: var(--muted); }
 .scale-bar { height: 8px; border-radius: 4px; }
 .scale-labels { display: flex; justify-content: space-between; font-family: var(--mono); }
@@ -168,7 +182,7 @@ td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; }
   <header style="display:grid;gap:6px">
     <div class="eyebrow" id="eyebrow">서울 아파트 · 공포탐욕지수 · 5대 권역</div>
     <h1>서울 공포탐욕 지도</h1>
-    <p class="sub">권역을 누르면 그 권역의 지수를 보여주고, 아무 데도 누르지 않으면 서울 전체 지수를 보여줘요. 위의 슬라이더로 2006년부터 지금까지 달마다 볼 수 있어요.</p>
+    <p class="sub">권역이나 구를 누르면 그곳의 지수를 보여주고, 아무 데도 누르지 않으면 서울 전체 지수를 보여줘요. 지도 위 버튼으로 5대 권역과 25개 구를 바꿔 볼 수 있어요. 위의 슬라이더로 2006년부터 지금까지 달마다 볼 수 있어요.</p>
     <p class="sub" style="font-size:13.5px"><b style="color:var(--ink)">읽는 법</b> · 이 지수는 추세를 재는 온도계예요. 탐욕 구간 뒤에는 상승이 이어진 경우가 많았고, 극단적 공포 구간 뒤에는 오히려 반등한 경우가 많았어요(바닥 근처였던 2008~09년, 2022~23년, 표본이 적어요). 사고팔 시점을 알려주는 신호로 쓰지 마세요.</p>
   </header>
 
@@ -197,7 +211,13 @@ td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; }
   <section class="main">
     <div class="col-left">
     <div class="panel mapcard">
-      <div class="chips" id="chips" role="group" aria-label="권역 선택"></div>
+      <div class="maptop">
+        <div class="chips" id="chips" role="group" aria-label="권역 선택"></div>
+        <div class="seg" role="group" aria-label="지도 단위">
+          <button type="button" id="lv-zone" aria-pressed="true">5대 권역</button>
+          <button type="button" id="lv-gu" aria-pressed="false">25개 구</button>
+        </div>
+      </div>
       <div class="mapbox" id="mapbox"></div>
       <div class="scale" aria-hidden="true">
         <div class="scale-bar" id="scale-bar"></div>
@@ -218,7 +238,7 @@ td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; }
     <p id="foot-method"></p>
     <p><b style="color:var(--ink-2)">눈금</b> · 여러 지표를 평균하면 점수가 가운데로 몰려서, 마지막에 50을 중심으로 눈금을 1.5배 넓혔어요(점수 = 50 + 1.5 × (원점수 − 50)). 모든 시점에 같은 배율을 써서 순서와 정확도는 그대로예요. 이력이 짧은 청약 경쟁률, 20·30대 매수 비중, 소비심리, 전망지수 등 11개는 보조 지표로만 보여줘요.</p>
     <p><b style="color:var(--ink-2)">시점</b> · 매달 20일에 갱신해요. 그때 아직 공개되지 않은 그달 자료(부동산원 거래 통계, 미분양, 월평균 금리, 월말 주가, 검색량)는 지난달 값을 써요. 과거 점수도 같은 규칙으로 계산해서, 한 번 발표한 점수가 나중에 바뀌지 않아요. 지표 구성이 다 갖춰진 건 2011년 2월부터라 그 이전은 참고용이에요.</p>
-    <p><b style="color:var(--ink-2)">정확도</b> · 권역 지수는 지금 어디가 더 뜨거운지를 보는 데 쓰세요. 권역 점수 차이가 5점 미만이면 의미 있는 차이로 보기 어렵고, 서남권처럼 서울 지수가 더 잘 맞은 권역도 있어요. 권역을 누르면 해당 수치가 나와요.</p>
+    <p><b style="color:var(--ink-2)">정확도</b> · 권역·구 지수는 지금 어디가 더 뜨거운지를 보는 데 쓰세요. 점수 차이가 5점 미만이면 의미 있는 차이로 보기 어렵고, 서남권처럼 서울 지수가 더 잘 맞은 곳도 있어요. 25개 구 평균으로 보면 구 지수, 권역 지수, 서울 지수가 그 구의 이후 가격을 맞힌 정도가 거의 같아요. 권역이나 구를 누르면 해당 수치가 나와요.</p>
     <p><b style="color:var(--ink-2)">출처</b> · KB부동산, 한국부동산원 R-ONE, 국토교통부 실거래가, 청약홈, 한국은행 ECOS, 네이버 금융, 구글 트렌드. 지도는 통계청 2013년 구 경계(southkorea/seoul-maps)와 Natural Earth 한강 중심선이에요.</p>
   </footer>
 </div>
@@ -252,13 +272,16 @@ function fill(v) {
 const val = (r, t) => D.regions[r].score[t];
 function lastValid(arr, t) { for (let i = t; i >= 0; i--) if (arr[i] != null) return [arr[i], i]; return [null, -1]; }
 
-const state = { region: "서울", t: N - 1 };
+const GUS = D.gu_order || [];
+const lvlOf = (r) => (D.regions[r] && D.regions[r].level) || "zone";
+const state = { region: "서울", t: N - 1, level: "zone" };
 try { const h = decodeURIComponent(location.hash.slice(1)); if (D.regions[h]) state.region = h; } catch (e) {}
+if (lvlOf(state.region) === "gu") state.level = "gu";
 
 /* ---------- map ---------- */
 const g = D.geo;
 const box = $("#mapbox");
-const svg = S("svg", { viewBox: `0 0 ${g.w} ${g.h}`, role: "group", "aria-label": "서울 5대 권역 지도" }, box);
+const svg = S("svg", { viewBox: `0 0 ${g.w} ${g.h}`, role: "group", "aria-label": "서울 5대 권역·25개 구 지도" }, box);
 const zonePaths = {};
 ZONES.forEach((z) => {
   const p = S("path", { d: g.zones[z].d, class: "zone-path", tabindex: 0, role: "button", "aria-label": z }, svg);
@@ -266,7 +289,15 @@ ZONES.forEach((z) => {
   p.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); select(state.region === z ? "서울" : z); } });
   zonePaths[z] = p;
 });
+const guPaths = {};
+GUS.forEach((gn) => {
+  const p = S("path", { d: g.gu[gn].d, class: "zone-path gu-path", tabindex: 0, role: "button", "aria-label": gn }, svg);
+  p.addEventListener("click", () => select(state.region === gn ? "서울" : gn));
+  p.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); select(state.region === gn ? "서울" : gn); } });
+  guPaths[gn] = p;
+});
 Object.values(g.gu).forEach((v) => S("path", { d: v.d, class: "gu-line" }, svg));
+const zoneBorders = ZONES.map((z) => S("path", { d: g.zones[z].d, class: "zone-border" }, svg));
 S("path", { d: g.river, class: "river" }, svg);
 const selOutline = S("path", { class: "sel-outline", d: "" }, svg);
 const pins = {}, guNames = [];
@@ -277,6 +308,14 @@ ZONES.forEach((z) => {
   H("span", { class: "v" }, pin);
   H("span", { class: "d" }, pin);
   pins[z] = pin;
+});
+const guPins = {};
+GUS.forEach((gn) => {
+  const [x, y] = g.gu[gn].label;
+  const pin = H("div", { class: "pin gu", style: `left:${(x / g.w) * 100}%;top:${(y / g.h) * 100}%`, hidden: "" }, box);
+  H("span", { class: "n" }, pin, gn);
+  H("span", { class: "v" }, pin);
+  guPins[gn] = pin;
 });
 Object.entries(g.gu).forEach(([name, v]) => {
   const el = H("div", { class: "gu-name", style: `left:${(v.label[0] / g.w) * 100}%;top:${(v.label[1] / g.h) * 100}%`, hidden: "" }, box, name);
@@ -289,6 +328,13 @@ const chips = $("#chips");
   const b = H("button", { class: "btn", type: "button", "data-r": r, "aria-pressed": "false" }, chips, r === "서울" ? "서울 전체" : r);
   b.addEventListener("click", () => select(r));
 });
+const gsel = H("select", { class: "gu-select", "aria-label": "구 선택" }, chips);
+H("option", { value: "" }, gsel, "구 선택");
+ZONES.forEach((z) => { const og = H("optgroup", { label: z }, gsel); D.regions[z].gus.forEach((gn) => { if (D.regions[gn]) H("option", { value: gn }, og, gn); }); });
+gsel.addEventListener("change", () => { if (gsel.value) select(gsel.value); });
+$("#lv-zone").addEventListener("click", () => setLevel("zone"));
+$("#lv-gu").addEventListener("click", () => setLevel("gu"));
+if (!GUS.length) $(".seg").hidden = true;
 $("#scale-bar").style.background = `linear-gradient(90deg, ${fill(10)}, ${fill(30)}, ${fill(50)}, ${fill(70)}, ${fill(90)})`;
 
 /* ---------- time ---------- */
@@ -306,7 +352,13 @@ PRESETS.forEach(([d, l]) => {
   H("button", { class: "btn", type: "button" }, pre, `${d.replace("-", ".")} ${l}`).addEventListener("click", () => setT(i));
 });
 function setT(t) { state.t = Math.max(0, Math.min(N - 1, t)); slider.value = String(state.t); render(); }
-function select(r) { state.region = r; try { history.replaceState(null, "", r === "서울" ? location.pathname : "#" + encodeURIComponent(r)); } catch (e) {} render(); }
+function setHash(r) { try { history.replaceState(null, "", r === "서울" ? location.pathname : "#" + encodeURIComponent(r)); } catch (e) {} }
+function setLevel(lv) {
+  state.level = lv;
+  if (lv === "zone" && lvlOf(state.region) === "gu") { state.region = D.regions[state.region].zone; setHash(state.region); }
+  render();
+}
+function select(r) { state.region = r; if (lvlOf(r) === "gu") state.level = "gu"; try { history.replaceState(null, "", r === "서울" ? location.pathname : "#" + encodeURIComponent(r)); } catch (e) {} render(); }
 
 /* ---------- reading panel ---------- */
 function bars(el, rows) {
@@ -367,7 +419,8 @@ function renderRead() {
   const [v, ti] = lastValid(R.score, t);
   const isSeoul = state.region === "서울";
   H("div", { class: "eyebrow" }, el, isSeoul ? `서울 전체 · ${ym(D.dates[t])}` : `${state.region} · ${ym(D.dates[t])}`);
-  if (!isSeoul) H("p", { style: "font-size:13px;color:var(--ink-2);margin-top:-10px" }, el, R.gus.join(" · "));
+  if (R.level === "gu") H("p", { style: "font-size:13px;color:var(--ink-2);margin-top:-10px" }, el, `${R.zone} · ${D.n_votes}표 중 ${R.own_votes}표가 이 구 값`);
+  else if (!isSeoul) H("p", { style: "font-size:13px;color:var(--ink-2);margin-top:-10px" }, el, R.gus.join(" · "));
   else H("p", { style: "font-size:13px;color:var(--ink-2);margin-top:-10px" }, el, `서울 전체 지표 ${D.n_ind}개(같은 출처끼리 묶어 ${D.n_votes}표)로 계산한 ${D.version} 지수`);
   const row = H("div", { class: "row" }, el);
   H("span", { class: "hero-num" }, row, v == null ? "–" : String(Math.round(v)));
@@ -392,11 +445,14 @@ function renderRead() {
   const b1 = H("div", { class: "bars" }, el);
   bars(b1, [["선행", "기대·금리 변화·검색·주가"], ["동행", "가격·거래·수급"], ["후행", "가격부담·금리 수준·미분양"]].map(([k, note]) => ({ name: k, note, v: R.speed[k][t] })));
 
-  if (isSeoul) {
-    H("div", { class: "sec-title" }, el, "권역 순위 (누르면 이동)");
-    const b2 = H("div", { class: "bars" }, el);
-    bars(b2, ZONES.map((z) => ({ name: z, note: `거래 비중 ${Math.round(D.regions[z].weight * 100)}%`, v: val(z, t), onclick: () => select(z) })).sort((a, b) => (b.v ?? -1) - (a.v ?? -1)));
-  }
+  const rank = (title, list, note) => {
+    H("div", { class: "sec-title" }, el, title);
+    bars(H("div", { class: "bars" }, el), list.map((z) => ({ name: z, note: note(z), v: val(z, t), onclick: () => select(z) })).sort((a, b) => (b.v ?? -1) - (a.v ?? -1)));
+  };
+  const share = (z) => `거래 비중 ${Math.round(D.regions[z].weight * 100)}%`;
+  if (isSeoul && state.level === "gu" && GUS.length) rank("구 순위 (누르면 이동)", GUS, (z) => D.regions[z].zone);
+  else if (isSeoul) rank("권역 순위 (누르면 이동)", ZONES, share);
+  else if (R.level === "zone" && GUS.length) rank("이 권역의 구 (누르면 이동)", R.gus.filter((z) => D.regions[z]), share);
 
   H("div", { class: "sec-title" }, el, "주제별 (참고)");
   const b3 = H("div", { class: "bars" }, el);
@@ -423,6 +479,16 @@ function renderHist() {
   if (isSeoul) {
     H("b", {}, note, "정확도 ");
     note.append(`${ym(D.official_start)} 이후 이 지수와 이후 12개월 서울 실거래 가격의 순위상관은 ${f2(R.acc)}예요. 5년 단위로 보면 구간에 따라 크게 달라서, 주로 나쁜 구간을 덜 나쁘게 만드는 정도로 이해해 주세요. 권역 점수는 각 권역 자료로 따로 계산해서 평균이 서울 점수와 꼭 같지는 않아요.`);
+  } else if (R.level === "gu") {
+    H("b", {}, note, "정확도 ");
+    const A = D.gu_acc_mean;
+    note.append(`${ym(D.official_start)} 이후 이 구 지수와 이후 12개월 ${state.region} 실거래 가격의 순위상관은 ${f2(R.acc)}예요. 같은 기간 ${R.zone} 지수를 쓰면 ${f2(R.acc_zone)}, 서울 지수를 쓰면 ${f2(R.acc_seoul)}예요. 25개 구 평균은 구 지수 ${f2(A.gu)}, 권역 지수 ${f2(A.zone)}, 서울 지수 ${f2(A.seoul)}로 거의 같아서, 구 점수는 지금 이 구가 서울 안에서 상대적으로 어떤지를 보는 용도로 쓰세요.`);
+    const c = H("div", { class: "note" }, el);
+    H("b", {}, c, "비교할 때 ");
+    c.append(`${D.n_votes}표 중 ${R.own_votes}표만 이 구 값이고(가격·전세·거래량·매입자 구성·실거래), 부동산원 수급과 미분양은 ${R.zone} 값, 나머지는 서울 값이에요. 거래가 적은 구는 점수가 더 흔들려요. `);
+    const v = R.score[t], sv = D.regions["서울"].score[t], zv = D.regions[R.zone].score[t];
+    const fmt = (d) => (d >= 0 ? "+" : "−") + Math.abs(d).toFixed(1);
+    if (v != null && sv != null && zv != null) c.append(`서울과의 차이 ${fmt(v - sv)}, ${R.zone}과의 차이 ${fmt(v - zv)}. 5점 미만 차이는 의미 있는 차이로 보기 어려워요.`);
   } else {
     H("b", {}, note, "정확도 ");
     const better = R.acc - R.acc_seoul;
@@ -448,8 +514,25 @@ function renderMap() {
     pin.children[2].textContent = v != null && p3 != null ? `${v - p3 >= 0 ? "▲" : "▼"}${Math.abs(v - p3).toFixed(1)}` : "";
     pin.classList.toggle("sel", state.region === z);
   });
-  selOutline.setAttribute("d", state.region === "서울" ? g.outline : g.zones[state.region].d);
-  guNames.forEach(([z, el]) => (el.hidden = z !== state.region));
+  const guMode = state.level === "gu", lv = lvlOf(state.region);
+  ZONES.forEach((z) => { zonePaths[z].style.display = guMode ? "none" : ""; pins[z].hidden = guMode; });
+  zoneBorders.forEach((p) => (p.style.display = guMode ? "" : "none"));
+  GUS.forEach((gn) => {
+    const v = val(gn, t), p = guPaths[gn], pin = guPins[gn];
+    p.style.display = guMode ? "" : "none";
+    p.style.fill = fill(v);
+    p.setAttribute("aria-label", `${gn} ${v == null ? "값 없음" : Math.round(v) + " " + zoneName(v)}`);
+    p.setAttribute("aria-pressed", String(state.region === gn));
+    pin.hidden = !guMode;
+    pin.children[1].textContent = v == null ? "–" : String(Math.round(v));
+    pin.classList.toggle("sel", state.region === gn);
+    pin.style.opacity = D.dates[t] < D.official_start ? 0.65 : 1;
+  });
+  selOutline.setAttribute("d", state.region === "서울" ? g.outline : lv === "gu" ? g.gu[state.region].d : g.zones[state.region].d);
+  guNames.forEach(([z, el]) => (el.hidden = guMode || z !== state.region));
+  $("#lv-zone").setAttribute("aria-pressed", String(!guMode));
+  $("#lv-gu").setAttribute("aria-pressed", String(guMode));
+  gsel.value = lv === "gu" ? state.region : "";
   chips.querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.r === state.region)));
   $("#time-now").textContent = ym(D.dates[t]);
   const early = D.dates[t] < D.official_start;
@@ -464,9 +547,9 @@ function renderTable() {
   const tb = $("#tbl"), t = state.t;
   tb.replaceChildren();
   const hr = H("tr", {}, H("thead", {}, tb));
-  [["권역", ""], ["지수", "n"], ["구간", ""], ["3개월 변화", "n"], ["선행", "n"], ["동행", "n"], ["후행", "n"], ["이후 1년 실거래", "n"]].forEach(([h, c]) => H("th", { class: c }, hr, h));
+  [["지역", ""], ["지수", "n"], ["구간", ""], ["3개월 변화", "n"], ["선행", "n"], ["동행", "n"], ["후행", "n"], ["이후 1년 실거래", "n"]].forEach(([h, c]) => H("th", { class: c }, hr, h));
   const body = H("tbody", {}, tb);
-  ["서울", ...ZONES].forEach((r) => {
+  ["서울", ...ZONES, ...(state.level === "gu" ? GUS : [])].forEach((r) => {
     const R = D.regions[r], v = R.score[t], p3 = t >= 3 ? R.score[t - 3] : null;
     const row = H("tr", {}, body);
     H("td", {}, row, r === "서울" ? "서울 전체" : r);
@@ -478,11 +561,11 @@ function renderTable() {
   });
 }
 
-$("#eyebrow").textContent = `서울 아파트 · 공포탐욕지수 ${D.version} · 5대 권역`;
+$("#eyebrow").textContent = `서울 아파트 · 공포탐욕지수 ${D.version} · 5대 권역 · 25개 구`;
 (() => {
   const f = $("#foot-method");
   H("b", { style: "color:var(--ink-2)" }, f, `계산 방식 (${D.version})`);
-  f.append(` · 2009년 이전부터 자료가 있는 지표 ${D.n_ind}개를 쓰되, 같은 원자료에서 나온 지표는 한 표로 묶어 ${D.n_votes}표로 계산해요(구글 검색어 6개도 한 표). 표를 선행·동행·후행 3그룹으로 나눠 같은 비중으로 평균 내요. 권역 지수는 ${D.n_votes}표 중 가격·실거래·거래량·매입자 구성·전세·미분양 등 일부를 권역 값으로 바꿔 계산하고, 금리·검색량·주가·PIR 등은 서울 공통 값을 써요. 각 지표는 과거 120개월 안에서의 백분위로 바꾸고, 검색량이 너무 적던 시기(직전 2년 평균 5 미만)의 검색 지표는 쓰지 않아요.`);
+  f.append(` · 2009년 이전부터 자료가 있는 지표 ${D.n_ind}개를 쓰되, 같은 원자료에서 나온 지표는 한 표로 묶어 ${D.n_votes}표로 계산해요(구글 검색어 6개도 한 표). 표를 선행·동행·후행 3그룹으로 나눠 같은 비중으로 평균 내요. 권역 지수는 ${D.n_votes}표 중 가격·실거래·거래량·매입자 구성·전세·미분양 등 일부를 권역 값으로 바꿔 계산하고, 금리·검색량·주가·PIR 등은 서울 공통 값을 써요. 25개 구 지수도 같은 방식으로 가격·전세·거래량·매입자 구성·실거래는 구 값, 부동산원 수급과 미분양은 권역 값, KB 설문은 강북·강남 값을 써요. 각 지표는 과거 120개월 안에서의 백분위로 바꾸고, 검색량이 너무 적던 시기(직전 2년 평균 5 미만)의 검색 지표는 쓰지 않아요.`);
 })();
 
 /* ---------- 반원 게이지 ---------- */

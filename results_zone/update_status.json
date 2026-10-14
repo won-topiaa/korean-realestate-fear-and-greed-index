@@ -1,88 +1,46 @@
 {
- "run": "20261014_1515",
+ "run": "20261014_1637",
  "steps": [
-  {
-   "step": "KB부동산",
-   "ok": true,
-   "sec": 124,
-   "detail": "KB 최신 202609"
-  },
-  {
-   "step": "한국은행 금리·가계신용·CSI",
-   "ok": true,
-   "sec": 11,
-   "detail": "한국은행 기준금리 202609, 국고채10년 202609, 주담대금리 202608, 가계신용 2026Q2, 명목GDP 2026Q2, 주택가격전망CSI 202609"
-  },
-  {
-   "step": "네이버 금융 주가",
-   "ok": true,
-   "sec": 9,
-   "detail": "건설주·KOSPI"
-  },
-  {
-   "step": "구글 트렌드",
-   "ok": true,
-   "sec": 68,
-   "detail": "검색어 8/8개 갱신 (실패분은 지난달 자료 유지)"
-  },
-  {
-   "step": "한국부동산원 R-ONE",
-   "ok": true,
-   "sec": 712,
-   "detail": "부동산원 143/145개 시계열 갱신 · 거래량 최신 202608 · 실패 예: zone_전세수급_동북권: SttsApiTblData.do {'STATBL_ID': 'A_2024_00077', 'DTACYCLE_CD': 'MM', 'pIndex': 1, 'pSize': 1000, 'CLS_ID': 520011, 'ITM_"
-  },
-  {
-   "step": "국토부 실거래",
-   "ok": true,
-   "sec": 136,
-   "detail": "실거래 202606~202610: 5개월 갱신 (125회 호출) · 저장소 1,442,851건"
-  },
-  {
-   "step": "청약홈",
-   "ok": true,
-   "sec": 128,
-   "detail": "청약홈 (보조 지표)"
-  },
   {
    "step": "계산 molit_indicators.py",
    "ok": true,
-   "sec": 12,
+   "sec": 4,
    "detail": ""
   },
   {
    "step": "계산 extra_indicators.py",
    "ok": true,
-   "sec": 1,
+   "sec": 0,
    "detail": ""
   },
   {
    "step": "계산 build_indicators.py",
    "ok": true,
-   "sec": 1,
+   "sec": 0,
    "detail": ""
   },
   {
    "step": "계산 v3.py",
    "ok": true,
-   "sec": 1,
+   "sec": 0,
    "detail": ""
   },
   {
    "step": "계산 zone_index.py",
    "ok": true,
-   "sec": 15,
+   "sec": 9,
    "detail": ""
   },
   {
    "step": "계산 zone_v3.py",
    "ok": true,
-   "sec": 1,
+   "sec": 2,
    "detail": ""
   },
   {
    "step": "계산 export_zone.py",
    "ok": true,
-   "sec": 1,
+   "sec": 0,
    "detail": ""
   },
   {
@@ -119,7 +77,7 @@
    "step": "점검",
    "ok": true,
    "sec": 0,
-   "detail": "기준월 2026-09 · 서울 50.4 · 도심권 52.0, 동북권 54.4, 서북권 50.4, 서남권 51.6, 동남권 42.8"
+   "detail": "기준월 2026-09 · 서울 50.4 · 도심권 52.0, 동북권 54.4, 서북권 50.4, 서남권 51.6, 동남권 42.8 · 구 25개 36.2~57.3"
   }
  ]
 }

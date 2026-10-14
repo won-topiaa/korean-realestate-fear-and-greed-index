@@ -248,9 +248,13 @@ def check_and_summarize():
     regs = d["regions"]
     latest = d["dates"][-1]
     now = {r: regs[r]["score"][-1] for r in regs}
-    bad = [r for r, v in now.items() if v is None or not (0 <= v <= 100)]
+    bad = [r for r, v in now.items() if regs[r].get("level") != "gu" and (v is None or not (0 <= v <= 100))]
     if bad:
         raise RuntimeError(f"최신 점수 이상: {bad}")
+    gbad = [r for r, v in now.items() if regs[r].get("level") == "gu" and (v is None or not (0 <= v <= 100))]
+    if gbad:  # 구는 거래가 적어 빠질 수 있음 — 게시는 계속하고 알림만
+        log(f"알림: 최신 점수가 없거나 이상한 구 {gbad}")
+        now = {r: v for r, v in now.items() if r not in gbad}
     r = pd.read_pickle(ROOT / "results_v2/v3_seoul.pkl")
     nv = r["n_votes_available"]
     missing = list(r["votes"].columns[r["votes"].iloc[-1].isna()])
@@ -269,7 +273,10 @@ def check_and_summarize():
     pd.concat([hist, pd.DataFrame([row])], ignore_index=True).to_csv(hist_path, index=False)
     summary = {"run": STAMP, "latest_month": latest, "scores": now, "log": str(LOG.relative_to(ROOT))}
     (ROOT / "results_zone/update_summary.json").write_text(json.dumps(summary, ensure_ascii=False, indent=1))
-    return f"기준월 {latest} · 서울 {now['서울']} · " + ", ".join(f"{r} {v}" for r, v in now.items() if r != "서울")
+    zs = [r for r in now if regs[r].get("level") == "zone"]
+    gs = {r: v for r, v in now.items() if regs[r].get("level") == "gu"}
+    gtxt = f" · 구 {len(gs)}개 {min(gs.values()):.1f}~{max(gs.values()):.1f}" if gs else ""
+    return f"기준월 {latest} · 서울 {now['서울']} · " + ", ".join(f"{r} {now[r]}" for r in zs) + gtxt
 
 
 # ---------------- 게시 ----------------
