@@ -84,16 +84,12 @@ def refresh_kb():
     return f"KB 최신 {d['날짜리스트'][-1]}"
 
 
-def refresh_fred():
-    for sid in ["IRSTCI01KRM156N", "IRLTLT01KRM156N", "QKRHAM770A"]:
-        tmp = ROOT / "data/raw/fred" / f"{sid}.tmp"
-        subprocess.run(["curl", "-sS", "--http1.1", "-m", "90", "-o", str(tmp), f"https://fred.stlouisfed.org/graph/fredgraph.csv?id={sid}"], check=True)
-        if tmp.read_text().startswith("observation_date"):
-            tmp.replace(ROOT / "data/raw/fred" / f"{sid}.csv")
-        else:
-            tmp.unlink()
-            raise RuntimeError(f"{sid} 응답 이상")
-    return "FRED 3종"
+def refresh_ecos():
+    import ecos_fetch
+    if not ecos_fetch.KEY:
+        raise RuntimeError(".env에 ECOS_KEY 없음 (저장소에 있는 지난 자료로 계속)")
+    done = ecos_fetch.refresh()
+    return "한국은행 " + ", ".join(f"{k} {v}" for k, v in done.items())
 
 
 def refresh_stocks():
@@ -305,7 +301,7 @@ def main():
     log(f"=== 갱신 시작 {STAMP} ===")
     if not a.skip_fetch:
         step("KB부동산", refresh_kb)
-        step("FRED 금리·가계신용", refresh_fred)
+        step("한국은행 금리·가계신용·CSI", refresh_ecos)
         step("네이버 금융 주가", refresh_stocks)
         step("구글 트렌드", refresh_trends)
         step("한국부동산원 R-ONE", refresh_reb)

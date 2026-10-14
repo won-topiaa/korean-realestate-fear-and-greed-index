@@ -91,7 +91,7 @@ for lo, hi, lab in [(0, 25, "극단적 공포"), (25, 45, "공포"), (45, 55, "�
     sel = mo & (fi >= lo) & (fi < hi) & y.notna()
     D["buckets"].append({"label": lab, "range": f"{lo}–{min(hi, 100)}", "mean": r3(np.expm1(y[sel].mean())) if sel.any() else None,
                          "up": r3((y[sel] > 0).mean()) if sel.any() else None, "n": int(sel.sum())})
-# 5년 이동 구간: v3.1 vs 단순 기준
+# 5년 이동 구간: 현재 버전 vs 단순 기준
 raw_ = pd.read_csv(bt.ROOT / "data" / "indicators.csv", index_col=0, parse_dates=True)
 raw_ = raw_[raw_.index <= raw_["__price"].last_valid_index()]
 rs_full = tg_["실거래지수"].reindex(raw_.index)
@@ -119,5 +119,5 @@ D["live"] = live_track.evaluate()
 D["now"]["speed_n"] = {s: int((VM["속도"] == s).sum()) for s in v3.SPEED}
 D["spread"]["ic_core"] = [r3(v) for v in [bt.spearman(core[bt.window_mask(core.index, w)].to_numpy(), y[bt.window_mask(core.index, w)].to_numpy()) for w in P3]]
 json.dump(D, open(bt.ROOT / "results_v2" / "report_data_v3.json", "w"), ensure_ascii=False)
-print("v3.1:", D["ic_official"], "| rolling", [(x["name"], x["median"], x["min"], x["full"]) for x in D["rolling"]["rows"]])
+print(v3.VERSION + ":", D["ic_official"], "| rolling", [(x["name"], x["median"], x["min"], x["full"]) for x in D["rolling"]["rows"]])
 print("weights", D["weights"]["themes"], "| live", D["live"])

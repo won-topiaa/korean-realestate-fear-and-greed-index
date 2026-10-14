@@ -38,7 +38,8 @@ jobs:
         env:
           DATA_GO_KR_KEY: ${{ secrets.DATA_GO_KR_KEY }}
           REB_KEY: ${{ secrets.REB_KEY }}
-        run: printf 'DATA_GO_KR_KEY=%s\nREB_KEY=%s\n' "$DATA_GO_KR_KEY" "$REB_KEY" > .env
+          ECOS_KEY: ${{ secrets.ECOS_KEY }}
+        run: printf 'DATA_GO_KR_KEY=%s\nREB_KEY=%s\nECOS_KEY=%s\n' "$DATA_GO_KR_KEY" "$REB_KEY" "$ECOS_KEY" > .env
 
       - name: 지난달 원자료 캐시 (KB·주가는 저장소에 올리지 않음)
         uses: actions/cache@v4
@@ -49,7 +50,7 @@ jobs:
           key: raw-${{ github.run_id }}
           restore-keys: raw-
 
-      - name: 자료 갱신 → v3.1 재계산 → 사이트 빌드
+      - name: 자료 갱신 → v3.2 재계산 → 사이트 빌드
         run: python update_pipeline.py --no-publish
 
       - name: 실행 기록 보관
