@@ -1,52 +1,52 @@
 {
- "run": "20261014_1936",
+ "run": "20261015_0103",
  "steps": [
   {
    "step": "KB부동산",
    "ok": true,
-   "sec": 116,
+   "sec": 131,
    "detail": "KB 최신 202609"
   },
   {
    "step": "한국은행 금리·가계신용·CSI",
    "ok": true,
-   "sec": 10,
+   "sec": 12,
    "detail": "한국은행 기준금리 202609, 국고채10년 202609, 주담대금리 202608, 가계신용 2026Q2, 명목GDP 2026Q2, 주택가격전망CSI 202609"
   },
   {
    "step": "네이버 금융 주가",
    "ok": true,
-   "sec": 7,
+   "sec": 10,
    "detail": "건설주·KOSPI"
   },
   {
    "step": "구글 트렌드",
    "ok": true,
-   "sec": 68,
+   "sec": 229,
    "detail": "검색어 8/8개 갱신 (실패분은 지난달 자료 유지)"
   },
   {
    "step": "한국부동산원 R-ONE",
    "ok": true,
-   "sec": 817,
-   "detail": "부동산원 142/145개 시계열 갱신 · 거래량 최신 202608 · 실패 예: zone_전세수급_서북권: SttsApiTblData.do {'STATBL_ID': 'A_2024_00077', 'DTACYCLE_CD': 'MM', 'pIndex': 1, 'pSize': 1000, 'CLS_ID': 520012, 'ITM_ID': 100001}: "
+   "sec": 860,
+   "detail": "부동산원 143/145개 시계열 갱신 · 거래량 최신 202608 · 실패 예: gu_매입자거주지_용산구: SttsApiTblData.do {'STATBL_ID': 'A_2024_00609', 'DTACYCLE_CD': 'MM', 'pIndex': 2, 'pSize': 1000, 'GRP_ID': 910005, 'ITM_ID': 100001}: "
   },
   {
    "step": "국토부 실거래",
-   "ok": true,
-   "sec": 113,
-   "detail": "실거래 202606~202610: 5개월 갱신 (125회 호출) · 저장소 1,442,851건"
+   "ok": false,
+   "sec": 1500,
+   "detail": "TimeoutError('25분 한도를 넘겨 중단 (지난 자료 유지)')"
   },
   {
    "step": "청약홈",
    "ok": true,
-   "sec": 120,
+   "sec": 118,
    "detail": "청약홈 (보조 지표)"
   },
   {
    "step": "계산 molit_indicators.py",
    "ok": true,
-   "sec": 11,
+   "sec": 19,
    "detail": ""
   },
   {
@@ -76,19 +76,19 @@
   {
    "step": "계산 zone_index.py",
    "ok": true,
-   "sec": 27,
+   "sec": 43,
    "detail": ""
   },
   {
    "step": "계산 zone_v3.py",
    "ok": true,
-   "sec": 5,
+   "sec": 6,
    "detail": ""
   },
   {
    "step": "계산 export_zone.py",
    "ok": true,
-   "sec": 1,
+   "sec": 2,
    "detail": ""
   },
   {
@@ -98,7 +98,13 @@
    "detail": ""
   },
   {
-   "step": "계산 live_track.py",
+   "step": "점검",
+   "ok": true,
+   "sec": 0,
+   "detail": "기준월 2026-09 · 서울 48.8 · 도심권 51.7, 동북권 52.1, 서북권 50.2, 서남권 51.2, 동남권 42.3 · 구 25개 35.8~57.1"
+  },
+  {
+   "step": "실시간 기록",
    "ok": true,
    "sec": 1,
    "detail": ""
@@ -120,12 +126,6 @@
    "ok": true,
    "sec": 0,
    "detail": ""
-  },
-  {
-   "step": "점검",
-   "ok": true,
-   "sec": 0,
-   "detail": "기준월 2026-09 · 서울 50.2 · 도심권 51.8, 동북권 54.2, 서북권 50.3, 서남권 51.4, 동남권 42.6 · 구 25개 36.0~57.2"
   }
  ]
 }
