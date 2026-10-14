@@ -1,5 +1,5 @@
 {
- "run": "20261014_1637",
+ "run": "20261014_1708",
  "steps": [
   {
    "step": "계산 molit_indicators.py",
@@ -40,7 +40,7 @@
   {
    "step": "계산 export_zone.py",
    "ok": true,
-   "sec": 0,
+   "sec": 1,
    "detail": ""
   },
   {

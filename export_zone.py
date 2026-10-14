@@ -76,12 +76,38 @@ for g in gu_order:
     own = set(gc[g]["zone_specific"])
     pk["own_votes"] = int(sum(any(c in own for c in comp.split(", ")) for comp in VM["구성"]))
     regions[g] = pk
+# 서울 안 상대 강도 (구): 신고가 비중의 25개 구 안 순위. 공포탐욕 점수와 섞지 않는 별도 지표 (근거: gu_engine_study.py)
+HI = pd.DataFrame({g: gc[g]["ind"]["거래_신고가비중"] for g in gu_order}).reindex(idx)
+okm = HI.notna().sum(axis=1) >= 20
+RANK = HI.rank(axis=1, ascending=False, method="min").where(okm)
+PCT = (HI.rank(axis=1, pct=True) * 100).where(okm)
+for g in gu_order:
+    regions[g]["rel"] = {"rank": [None if pd.isna(v) else int(v) for v in RANK[g]], "pct": ser(PCT[g]),
+                         "hi": [r3(v) for v in HI[g]]}
+regions["서울"]["hi"] = [r3(v) for v in raw["거래_신고가비중"].reindex(idx)]
+
+
+def cs_mean(Sdf):
+    """달마다 25개 구 순위상관 (2011.2~, 이후 12개월 가격이 나온 달) → 평균, 양수인 해."""
+    Yg = pd.DataFrame({g: gus[g]["fwd12"] for g in gu_order}).reindex(idx)
+    out = {}
+    for t in idx[idx >= OFF]:
+        a, b = Sdf.loc[t], Yg.loc[t]
+        mm = a.notna() & b.notna()
+        if mm.sum() >= 20 and a[mm].nunique() > 1:
+            out[t] = bt.spearman(a[mm].to_numpy(), b[mm].to_numpy())
+    s = pd.Series(out)
+    yr = s.groupby(s.index.year).mean()
+    return {"ic": r3(s.mean()), "pos_years": int((yr > 0).sum()), "years": int(len(yr))}
+
+
+gu_cs = {"score": cs_mean(pd.DataFrame({g: gus[g]["final"] for g in gu_order}).reindex(idx)), "rel": cs_mean(HI)}
 geo = json.loads((bt.ROOT / "data" / "seoul_map.json").read_text())
 data = {"dates": [d.strftime("%Y-%m") for d in idx], "regions": regions, "geo": geo,
         "theme_order": list(VM["주제"].unique()), "aux_label": AUX_LABEL,
         "n_ind": int(sum(len(c.split(", ")) for c in VM["구성"])), "n_votes": int(len(VM)),
         "n_zone_specific": int(zones[next(iter(ZONES))]["n_zone"]), "k": v3.K, "gu_order": gu_order,
-        "gu_acc_mean": {k: r3(np.mean([gus[g]["acc3"][k] for g in gu_order])) for k in ("gu", "zone", "seoul")},
+        "gu_acc_mean": {k: r3(np.mean([gus[g]["acc3"][k] for g in gu_order])) for k in ("gu", "zone", "seoul")}, "gu_cs": gu_cs,
         "version": v3.VERSION, "official_start": v3.OFFICIAL_START[:7]}
 json.dump(data, open(bt.ROOT / "results_zone" / "map_data.json", "w"), ensure_ascii=False, separators=(",", ":"))
 print("bytes", len(json.dumps(data, ensure_ascii=False, separators=(",", ":"))), "| 서울 v3 IC", np.round(ic_seoul, 2))
