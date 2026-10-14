@@ -1,46 +1,88 @@
 {
- "run": "20261014_1349",
+ "run": "20261014_1418",
  "steps": [
+  {
+   "step": "KB부동산",
+   "ok": true,
+   "sec": 106,
+   "detail": "KB 최신 202609"
+  },
+  {
+   "step": "한국은행 금리·가계신용·CSI",
+   "ok": false,
+   "sec": 0,
+   "detail": "RuntimeError('.env에 ECOS_KEY 없음 (저장소에 있는 지난 자료로 계속)')"
+  },
+  {
+   "step": "네이버 금융 주가",
+   "ok": true,
+   "sec": 7,
+   "detail": "건설주·KOSPI"
+  },
+  {
+   "step": "구글 트렌드",
+   "ok": true,
+   "sec": 67,
+   "detail": "검색어 8/8개 갱신 (실패분은 지난달 자료 유지)"
+  },
+  {
+   "step": "한국부동산원 R-ONE",
+   "ok": true,
+   "sec": 659,
+   "detail": "부동산원 143/145개 시계열 갱신 · 거래량 최신 202608 · 실패 예: gu_매입자거주지_종로구: SttsApiTblData.do {'STATBL_ID': 'A_2024_00609', 'DTACYCLE_CD': 'MM', 'pIndex': 1, 'pSize': 1000, 'GRP_ID': 910003, 'ITM_"
+  },
+  {
+   "step": "국토부 실거래",
+   "ok": true,
+   "sec": 238,
+   "detail": "실거래 202606~202610: 5개월 갱신 (125회 호출) · 저장소 1,442,851건"
+  },
+  {
+   "step": "청약홈",
+   "ok": true,
+   "sec": 117,
+   "detail": "청약홈 (보조 지표)"
+  },
   {
    "step": "계산 molit_indicators.py",
    "ok": true,
-   "sec": 4,
+   "sec": 12,
    "detail": ""
   },
   {
    "step": "계산 extra_indicators.py",
    "ok": true,
-   "sec": 0,
+   "sec": 1,
    "detail": ""
   },
   {
    "step": "계산 build_indicators.py",
    "ok": true,
-   "sec": 0,
+   "sec": 1,
    "detail": ""
   },
   {
    "step": "계산 v3.py",
    "ok": true,
-   "sec": 0,
+   "sec": 1,
    "detail": ""
   },
   {
    "step": "계산 zone_index.py",
    "ok": true,
-   "sec": 5,
+   "sec": 15,
    "detail": ""
   },
   {
    "step": "계산 zone_v3.py",
    "ok": true,
-   "sec": 1,
+   "sec": 2,
    "detail": ""
   },
   {
    "step": "계산 export_zone.py",
    "ok": true,
-   "sec": 0,
+   "sec": 1,
    "detail": ""
   },
   {
