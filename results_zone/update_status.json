@@ -1,76 +1,34 @@
 {
- "run": "20261014_1234",
+ "run": "20261014_1338",
  "steps": [
-  {
-   "step": "KB부동산",
-   "ok": true,
-   "sec": 112,
-   "detail": "KB 최신 202609"
-  },
-  {
-   "step": "FRED 금리·가계신용",
-   "ok": true,
-   "sec": 1,
-   "detail": "FRED 3종"
-  },
-  {
-   "step": "네이버 금융 주가",
-   "ok": true,
-   "sec": 7,
-   "detail": "건설주·KOSPI"
-  },
-  {
-   "step": "구글 트렌드",
-   "ok": true,
-   "sec": 68,
-   "detail": "검색어 8/8개 갱신 (실패분은 지난달 자료 유지)"
-  },
-  {
-   "step": "한국부동산원 R-ONE",
-   "ok": true,
-   "sec": 2285,
-   "detail": "부동산원 거래량 최신 202608"
-  },
-  {
-   "step": "국토부 실거래",
-   "ok": false,
-   "sec": 330,
-   "detail": "RuntimeError('11110 202610: parse fail')"
-  },
-  {
-   "step": "청약홈",
-   "ok": true,
-   "sec": 118,
-   "detail": "청약홈 (보조 지표)"
-  },
   {
    "step": "계산 molit_indicators.py",
    "ok": true,
-   "sec": 12,
+   "sec": 4,
    "detail": ""
   },
   {
    "step": "계산 extra_indicators.py",
    "ok": true,
-   "sec": 1,
+   "sec": 0,
    "detail": ""
   },
   {
    "step": "계산 build_indicators.py",
    "ok": true,
-   "sec": 1,
+   "sec": 0,
    "detail": ""
   },
   {
    "step": "계산 v3.py",
    "ok": true,
-   "sec": 1,
+   "sec": 0,
    "detail": ""
   },
   {
    "step": "계산 zone_index.py",
    "ok": true,
-   "sec": 15,
+   "sec": 5,
    "detail": ""
   },
   {
@@ -82,7 +40,7 @@
   {
    "step": "계산 export_zone.py",
    "ok": true,
-   "sec": 1,
+   "sec": 0,
    "detail": ""
   },
   {

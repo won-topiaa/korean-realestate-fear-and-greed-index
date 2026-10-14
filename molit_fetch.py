@@ -32,15 +32,17 @@ def fetch(lawd, ym):
     items, page = [], 1
     while True:
         url = f"{URL}?serviceKey={KEY}&LAWD_CD={lawd}&DEAL_YMD={ym}&numOfRows=1000&pageNo={page}"
-        for attempt in range(5):
+        snippet = ""
+        for attempt in range(6):
             out = subprocess.run(["curl", "-sS", "--http1.1", "-m", "60", url], capture_output=True, text=True)
             try:
                 root = ET.fromstring(out.stdout)
                 break
             except ET.ParseError:
-                time.sleep(2 * (attempt + 1))
+                snippet = (out.stdout or out.stderr).replace(KEY, "***")[:160].replace("\n", " ")
+                time.sleep(min(60, 3 * 2 ** attempt))  # 3, 6, 12, 24, 48, 60초
         else:
-            raise RuntimeError(f"{lawd} {ym}: parse fail")
+            raise RuntimeError(f"{lawd} {ym}: 응답 해석 실패 · {snippet}")
         code = (root.findtext(".//resultCode") or root.findtext(".//returnReasonCode") or "").strip()
         if code in ("22", "LIMITED_NUMBER_OF_SERVICE_REQUESTS_EXCEEDS_ERROR"):
             raise QuotaExceeded

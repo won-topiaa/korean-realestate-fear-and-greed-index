@@ -136,28 +136,43 @@ SEOUL_REB = {  # extra_indicators.py가 읽는 부동산원 서울 시계열
 }
 
 
-def refresh_reb():
+def refresh_reb(workers=4):
     import reb_fetch as R
     import zone_fetch as Z
+    from concurrent.futures import ThreadPoolExecutor
+    jobs = []  # (통계표, 저장 이름, 필터)
     for name, (sid, f) in SEOUL_REB.items():
         f = dict(f)
         if "fullnm" in f:
             full = f.pop("fullnm")
             f["CLS_ID"] = next(x["ITM_ID"] for x in R.items(sid) if x["ITM_TAG"] == "분류" and x["ITM_FULLNM"] == full)
-        R.data(sid, "MM", name=name, refresh=True, **f)
+        jobs.append((sid, name, f))
     for sid, nm in [("A_2024_00076", "매매수급"), ("A_2024_00077", "전세수급")]:
         for z, cid in Z.ids(sid, "분류", "서울>").items():
             if z in Z.ZONES:
-                R.data(sid, "MM", name=f"zone_{nm}_{z}", refresh=True, CLS_ID=cid, ITM_ID=100001)
+                jobs.append((sid, f"zone_{nm}_{z}", dict(CLS_ID=cid, ITM_ID=100001)))
     for g, cid in Z.ids("A_2024_00554", "분류", "서울>").items():
-        R.data("A_2024_00554", "MM", name=f"gu_거래량_{g}", refresh=True, CLS_ID=cid, ITM_ID=100001)
+        jobs.append(("A_2024_00554", f"gu_거래량_{g}", dict(CLS_ID=cid, ITM_ID=100001)))
     for sid, nm in [("A_2024_00609", "매입자거주지"), ("A_2024_00610", "매입자연령"), ("A_2024_00611", "거래주체")]:
         for g, gid in Z.ids(sid, "그룹", "서울>").items():
-            R.data(sid, "MM", name=f"gu_{nm}_{g}", refresh=True, GRP_ID=gid, ITM_ID=100001)
+            jobs.append((sid, f"gu_{nm}_{g}", dict(GRP_ID=gid, ITM_ID=100001)))
     for g, cid in Z.ids("T237973129847263", "분류", "서울>").items():
-        R.data("T237973129847263", "MM", name=f"gu_미분양_{g}", refresh=True, CLS_ID=cid, ITM_ID=10001)
+        jobs.append(("T237973129847263", f"gu_미분양_{g}", dict(CLS_ID=cid, ITM_ID=10001)))
+    errors = []
+
+    def one(job):
+        sid, name, f = job
+        try:
+            R.data(sid, "MM", name=name, refresh=True, **f)
+        except Exception as e:  # noqa: BLE001  (실패한 시계열은 지난 파일 유지)
+            errors.append(f"{name}: {str(e)[:120]}")
+
+    with ThreadPoolExecutor(max_workers=workers) as ex:  # 해외에서 응답이 느려 동시에 몇 개씩
+        list(ex.map(one, jobs))
+    if len(errors) == len(jobs):
+        raise RuntimeError(f"부동산원 전부 실패 · 예: {errors[0]}")
     last = max(x["WRTTIME_IDTFR_ID"] for x in json.loads((ROOT / "data/raw/reb/reb_거래량_서울.json").read_text()))
-    return f"부동산원 거래량 최신 {last}"
+    return f"부동산원 {len(jobs) - len(errors)}/{len(jobs)}개 시계열 갱신 · 거래량 최신 {last}" + (f" · 실패 예: {errors[0]}" if errors else "")
 
 
 def refresh_molit(back=4):
@@ -171,16 +186,29 @@ def refresh_molit(back=4):
             y, m = y - 1, 12
     start, end = f"{y}{m:02d}", f"{today.year}{today.month:02d}"
     import molit_store
-    n, new = 0, {}
+    n, new, failed = 0, {}, {}
     for ym in M.months(start, end):
         for lawd in M.SEOUL:
-            rows = M.fetch(lawd, ym)
+            try:
+                rows = M.fetch(lawd, ym)
+            except M.QuotaExceeded:
+                failed.setdefault(ym, []).append(f"{lawd} 호출 한도")
+                continue
+            except Exception as e:  # noqa: BLE001  (한 구·월이 실패해도 나머지는 계속)
+                failed.setdefault(ym, []).append(str(e)[:200])
+                continue
             M.OUT.joinpath(f"{lawd}_{ym}.json").write_text(json.dumps(rows, ensure_ascii=False))
             new.setdefault(ym, []).append((lawd, rows))
             n += 1
             time.sleep(0.15)
-    total = molit_store.replace_months(new)
-    return f"실거래 {start}~{end} 재수집 ({n}회 호출) · 저장소 {total:,}건"
+    complete = {ym: v for ym, v in new.items() if ym not in failed and len(v) == len(M.SEOUL)}
+    if not complete:
+        raise RuntimeError(f"실거래 갱신 실패 (모든 달) · 예: {next(iter(failed.values()))[0] if failed else '응답 없음'}")
+    total = molit_store.replace_months(complete)
+    msg = f"실거래 {start}~{end}: {len(complete)}개월 갱신 ({n}회 호출) · 저장소 {total:,}건"
+    if failed:
+        msg += f" · 일부 실패로 지난 자료 유지: {', '.join(sorted(failed))} (예: {next(iter(failed.values()))[0]})"
+    return msg
 
 
 def refresh_applyhome():
