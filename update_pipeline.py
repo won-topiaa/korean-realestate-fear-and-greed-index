@@ -37,14 +37,32 @@ def log(msg):
         f.write(line + "\n")
 
 
+STATUS = []  # 단계별 성공·실패 (공개 파일 results_zone/update_status.json 로 남김)
+
+
+def _clean(msg):
+    """공개 기록용: API 키가 섞이지 않게 지운다."""
+    env = ROOT / ".env"
+    if env.exists():
+        import urllib.parse
+        for line in env.read_text().split():
+            v = line.split("=", 1)[-1]
+            for k in (v, urllib.parse.unquote(v)):
+                if k:
+                    msg = msg.replace(k, "***")
+    return msg[:300]
+
+
 def step(name, fn, critical=False):
     t0 = time.time()
     try:
         out = fn()
         log(f"OK   {name} ({time.time() - t0:.0f}s){' · ' + str(out) if out else ''}")
+        STATUS.append({"step": name, "ok": True, "sec": round(time.time() - t0), "detail": _clean(str(out or ""))})
         return True
     except Exception as e:  # noqa: BLE001
         log(f"FAIL {name}: {e!r}")
+        STATUS.append({"step": name, "ok": False, "sec": round(time.time() - t0), "detail": _clean(repr(e))})
         with LOG.open("a") as f:
             f.write(traceback.format_exc() + "\n")
         if critical:
@@ -268,14 +286,22 @@ def main():
     for rel in COMPUTE:
         if not step(f"계산 {rel}", lambda rel=rel: run_script(rel)):
             log("=== 계산 실패로 중단 (게시 안 함) ===")
+            write_status()
             return 1
     if not step("점검", check_and_summarize):
         log("=== 점검 실패로 중단 (게시 안 함) ===")
+        write_status()
         return 1
     if not a.no_publish and not os.environ.get("CI"):
         step("아티팩트 게시", publish)
     log("=== 완료 ===")
+    write_status()
     return 0
+
+
+def write_status():
+    (ROOT / "results_zone/update_status.json").write_text(json.dumps(
+        {"run": STAMP, "steps": STATUS}, ensure_ascii=False, indent=1))
 
 
 if __name__ == "__main__":

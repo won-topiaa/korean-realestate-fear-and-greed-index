@@ -1,0 +1,83 @@
+{
+ "run": "20261014_1230",
+ "steps": [
+  {
+   "step": "계산 molit_indicators.py",
+   "ok": true,
+   "sec": 4,
+   "detail": ""
+  },
+  {
+   "step": "계산 extra_indicators.py",
+   "ok": true,
+   "sec": 0,
+   "detail": ""
+  },
+  {
+   "step": "계산 build_indicators.py",
+   "ok": true,
+   "sec": 0,
+   "detail": ""
+  },
+  {
+   "step": "계산 v3.py",
+   "ok": true,
+   "sec": 0,
+   "detail": ""
+  },
+  {
+   "step": "계산 zone_index.py",
+   "ok": true,
+   "sec": 5,
+   "detail": ""
+  },
+  {
+   "step": "계산 zone_v3.py",
+   "ok": true,
+   "sec": 1,
+   "detail": ""
+  },
+  {
+   "step": "계산 export_zone.py",
+   "ok": true,
+   "sec": 0,
+   "detail": ""
+  },
+  {
+   "step": "계산 map/build.py",
+   "ok": true,
+   "sec": 0,
+   "detail": ""
+  },
+  {
+   "step": "계산 live_track.py",
+   "ok": true,
+   "sec": 1,
+   "detail": ""
+  },
+  {
+   "step": "계산 export_report_v3.py",
+   "ok": true,
+   "sec": 1,
+   "detail": ""
+  },
+  {
+   "step": "계산 report/build.py",
+   "ok": true,
+   "sec": 0,
+   "detail": ""
+  },
+  {
+   "step": "계산 site_build.py",
+   "ok": true,
+   "sec": 0,
+   "detail": ""
+  },
+  {
+   "step": "점검",
+   "ok": true,
+   "sec": 0,
+   "detail": "기준월 2026-09 · 서울 52.7 · 도심권 54.3, 동북권 56.8, 서북권 52.8, 서남권 53.9, 동남권 45.2"
+  }
+ ]
+}

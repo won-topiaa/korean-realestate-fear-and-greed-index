@@ -22,6 +22,7 @@
 - 실행 기록: `logs/update_YYYYMMDD_HHMM.log`
 - 최신 점수 요약: `results_zone/update_summary.json`
 - 달마다 쌓이는 점수: `results_zone/update_history.csv`
+- 출처별 성공·실패: `results_zone/update_status.json` (키는 지워서 기록)
 
 ## 맥에서 예약 실행 (선택)
 GitHub Actions를 쓰면 필요 없다. 맥에서도 돌리고 싶으면 `automation/install.sh`(등록), `automation/uninstall.sh`(해제).

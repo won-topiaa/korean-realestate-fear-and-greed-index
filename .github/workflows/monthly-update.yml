@@ -18,6 +18,8 @@ jobs:
   update:
     runs-on: ubuntu-latest
     timeout-minutes: 90
+    env:
+      TZ: Asia/Seoul   # 실행 기록 시간을 한국 시간으로
     environment:
       name: github-pages
       url: ${{ steps.deploy.outputs.page_url }}
