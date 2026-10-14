@@ -15,6 +15,7 @@ import pandas as pd
 import backtest as bt
 import timing
 import molit_indicators as MI
+import v3
 from zone_fetch import ZONES
 
 ROOT = Path(__file__).parent
@@ -113,30 +114,41 @@ def main():
     idx = seoul.index
     seoul_ind = seoul[meta.index]
 
-    trades = MI.load()
+    trades = MI.load()  # 정답(반복매매)·거래 비중: 해제·직거래 제외
     trades["gu"] = trades["gu"].map(LAWD2GU)
     trades["zone"] = trades["gu"].map(GU2ZONE)
+    tall = MI.load(market_only=False)  # 신고가·급락 지표: 모든 거래 (서울과 같은 정의, v3.3)
+    tall["gu"] = tall["gu"].map(LAWD2GU)
+    tall["zone"] = tall["gu"].map(GU2ZONE)
     value = trades.groupby(["zone", "date"])["price"].sum().unstack(0).reindex(idx).fillna(0)
     weight = value.rolling(12).sum().shift(2)  # 신고 시차 반영
 
-    def build(name, sub, ind, ref_ind):
+    def build(name, sub, sub_all, ind, ref_ind):
         rs, _ = MI.repeat_sales(sub)
-        hi, dr, _ = MI.high_low(sub)
+        hi, dr, _ = MI.high_low(sub_all)
         ind["거래_신고가비중"] = hi.rolling(3).mean().shift(2).reindex(idx)
         ind["거래_급락거래역수"] = (-dr.rolling(3).mean().shift(2)).reindex(idx)
+        # 지역 자료가 늦게 시작하는 지표(구별 전세가율 2013~ 등)는 그 전까지 상위(서울·권역) 값으로 → 표 구성이 서울과 같게
+        ref = ref_ind.reindex(idx)
+        for c in [c for c in meta.index if c in ind.columns and c in ref.columns]:
+            first = ind[c].first_valid_index()
+            if first is None:
+                ind[c] = ref[c]
+            elif ref[c].first_valid_index() is not None and ref[c].first_valid_index() < first:
+                ind.loc[ind.index < first, c] = ref.loc[ref.index < first, c]
+        rs.iloc[-2:] = np.nan  # 실거래 신고가 덜 찬 최근 2개월 (실거래 자료 기준, 서울과 같게)
         rs = rs.reindex(idx)
-        rs.iloc[-2:] = np.nan
         y = np.log(rs).shift(-12) - np.log(rs)
-        own = [c for c in meta.index if not ind[c].equals(ref_ind[c].reindex(idx).ffill(limit=3) if ref_ind is seoul_ind else ref_ind[c])]
+        own = [c for c in meta.index if c not in v3.DROP and not ind[c].equals(ref[c])]
         print(f"{name}: 고유 지표 {len(own)}개, 실거래 지수 {rs.dropna().index[-1].date()}까지 · 반복매매 쌍 월 중앙값 {int(_pairs(sub))}", flush=True)
         return {"ind": ind, "rs": rs, "fwd12": y, "zone_specific": own}
 
     out, gu_out = {}, {}
     for z in ZONES:
-        out[z] = build(z, trades[trades["zone"] == z], zone_indicators(z, seoul_ind).reindex(idx), seoul_ind)
+        out[z] = build(z, trades[trades["zone"] == z], tall[tall["zone"] == z], zone_indicators(z, seoul_ind).reindex(idx), seoul_ind)
     for z, gs in ZONES.items():  # 구: 권역 값과 다른 지표를 '구 고유'로 센다
         for g in gs:
-            gu_out[g] = build(g, trades[trades["gu"] == g], zone_indicators(z, seoul_ind, gus=[g]).reindex(idx), out[z]["ind"])
+            gu_out[g] = build(g, trades[trades["gu"] == g], tall[tall["gu"] == g], zone_indicators(z, seoul_ind, gus=[g]).reindex(idx), out[z]["ind"])
             gu_out[g]["zone"] = z
     gvalue = trades.groupby(["gu", "date"])["price"].sum().unstack(0).reindex(idx).fillna(0)
     gu_weight = gvalue.rolling(12).sum().shift(2)

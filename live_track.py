@@ -29,8 +29,9 @@ def record(map_data_path=ROOT / "results_zone" / "map_data.json"):
     log = load()
     have = set(zip(log["engine"], log["month"], log["region"]))
     now = dt.datetime.now().strftime("%Y-%m-%d %H:%M")
-    new = [{"logged_at": now, "engine": v3.VERSION, "month": month, "region": r, "score": round(reg["score"][-1], 1)}
-           for r, reg in d["regions"].items() if reg["score"][-1] is not None and (v3.VERSION, month, r) not in have]
+    eng = d.get("version", v3.VERSION)  # 지도 자료를 만든 엔진 버전 (기록 시점의 코드 버전이 아니라)
+    new = [{"logged_at": now, "engine": eng, "month": month, "region": r, "score": round(reg["score"][-1], 1)}
+           for r, reg in d["regions"].items() if reg["score"][-1] is not None and (eng, month, r) not in have]
     # 서울 안 상대 강도 (구, 신고가 비중의 25개 구 안 백분위): 구끼리 순위로만 채점
     new += [{"logged_at": now, "engine": REL, "month": month, "region": r, "score": reg["rel"]["pct"][-1]}
             for r, reg in d["regions"].items() if reg.get("rel") and reg["rel"]["pct"][-1] is not None and (REL, month, r) not in have]

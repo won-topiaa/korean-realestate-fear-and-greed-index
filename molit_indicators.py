@@ -1,7 +1,8 @@
 """국토부 실거래(서울 아파트) → 반복매매 가격지수(정답용) + 신고가·급락 거래 비중(지표).
 
 같은 단지(aptSeq)·같은 전용면적(㎡ 반올림)의 연속 거래 쌍으로 Bailey-Muth-Nourse 반복매매지수를 추정.
-해제 신고 거래와 직거래는 제외. 결과: data/repeat_sales.csv
+정답(반복매매지수)은 해제 신고 거래와 직거래를 뺀다(시장 가격). 신고가·급락 지표는 해제·직거래 표시가 2020~2021년에야
+생겨서, 표시 전후로 정의가 달라지지 않게 모든 거래로 계산한다 (v3.3). 결과: data/repeat_sales.csv
 """
 import json
 from pathlib import Path
@@ -15,8 +16,9 @@ ROOT = Path(__file__).parent
 SRC = ROOT / "data" / "raw" / "molit" / "apt"
 
 
-def load():
-    """압축 저장소(molit_store) 우선, 없으면 구·월 JSON 캐시에서 읽는다."""
+def load(market_only=True):
+    """압축 저장소(molit_store) 우선, 없으면 구·월 JSON 캐시에서 읽는다.
+    market_only: 해제 신고(2020.2~ 표시)·직거래(2021.11~ 표시) 제외. 지표용은 False (표시가 없던 시기와 같은 정의)."""
     import molit_store
     if molit_store.exists():
         df = molit_store.load()
@@ -33,7 +35,9 @@ def load():
     df["day"] = pd.to_numeric(df["dealDay"], errors="coerce").fillna(15)
     df["key"] = df["aptSeq"] + "|" + df["area"].astype(str)
     df["gu"] = df["aptSeq"].str.split("-").str[0]
-    df = df[(df["cdealType"].fillna("") == "") & (df["dealingGbn"].fillna("") != "직거래") & df["price"].gt(0) & df["area"].gt(0)]
+    df = df[df["price"].gt(0) & df["area"].gt(0)]
+    if market_only:
+        df = df[(df["cdealType"].fillna("") == "") & (df["dealingGbn"].fillna("") != "직거래")]
     return df.sort_values(["key", "date", "day", "price"], kind="mergesort").reset_index(drop=True)  # 같은 날 거래도 순서 고정
 
 
@@ -71,8 +75,12 @@ def high_low(df, high_window_days=1095, drop_gap_months=24):
     roll = (d.groupby("key").rolling(f"{high_window_days}D", on="dt", closed="left")["price"].max()
               .reset_index(level=0, drop=True))
     d["prior_max"] = roll.values
-    g = d.groupby("key")
-    prev_dt, prev_p = g["dt"].shift(1), g["price"].shift(1)
+    # 직전 '다른 날' 거래가 (같은 날 거래끼리는 비교하지 않음, 그날 거래가 여럿이면 중앙값)
+    day = d.groupby(["key", "dt"], sort=False)["price"].median().reset_index()
+    gd = day.groupby("key")
+    day["prev_dt"], day["prev_p"] = gd["dt"].shift(1), gd["price"].shift(1)
+    d = d.merge(day[["key", "dt", "prev_dt", "prev_p"]], on=["key", "dt"], how="left")
+    prev_dt, prev_p = d["prev_dt"], d["prev_p"]
     gap = (d["dt"].dt.year - prev_dt.dt.year) * 12 + (d["dt"].dt.month - prev_dt.dt.month)
     has_hi = d["prior_max"].notna()
     has_drop = prev_p.notna() & (gap <= drop_gap_months)
@@ -85,9 +93,11 @@ def high_low(df, high_window_days=1095, drop_gap_months=24):
 
 if __name__ == "__main__":
     df = load()
+    df_all = load(market_only=False)  # 지표용: 해제·직거래 표시 전후로 같은 정의
     print("거래", len(df), "| 기간", df["date"].min().date(), "~", df["date"].max().date(), "| aptSeq 빈 값", (df["aptSeq"] == "").mean().round(3))
     idx, npairs = repeat_sales(df)
-    hi, dr, cnt = high_low(df)
+    hi, dr, _ = high_low(df_all)
+    cnt = df.groupby("date").size()
     out = pd.DataFrame({"index": idx, "pairs": npairs, "trades": cnt})
     # 지표는 신고 기한(최대 60일) 때문에 2개월 뒤에야 확정 → 2개월 늦춰서 사용
     out["거래_신고가비중"] = hi.rolling(3).mean().shift(2)

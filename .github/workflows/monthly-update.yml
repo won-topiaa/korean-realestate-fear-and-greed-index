@@ -50,7 +50,7 @@ jobs:
           key: raw-${{ github.run_id }}
           restore-keys: raw-
 
-      - name: 자료 갱신 → v3.2 재계산 → 사이트 빌드
+      - name: 자료 갱신 → 재계산 → 점검 → 사이트 빌드
         run: python update_pipeline.py --no-publish
 
       - name: 실행 기록 보관

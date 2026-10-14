@@ -1,4 +1,4 @@
-<title>서울 공포탐욕 지도</title>
+<title>서울 아파트 공포탐욕지도</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap">
@@ -55,6 +55,14 @@ h1 { font-size: clamp(26px, 3.6vw, 34px); font-weight: 700; letter-spacing: -0.0
 h3 { font-size: 14px; font-weight: 600; }
 p { margin: 0; }
 .eyebrow { font-family: var(--mono); font-size: 12px; letter-spacing: 0.06em; color: var(--muted); text-transform: uppercase; }
+.topbar { display: flex; justify-content: space-between; align-items: center; gap: 8px 12px; flex-wrap: wrap; }
+.theme-ctl { display: inline-flex; align-items: center; gap: 2px; padding: 2px; border: 1px solid var(--hair); border-radius: 999px; background: var(--surface); }
+.theme-ctl .tl { font-size: 11.5px; color: var(--muted); padding: 0 6px 0 8px; }
+.theme-ctl button { font: inherit; font-size: 12px; border: 0; background: transparent; color: var(--ink-2); padding: 3px 10px; border-radius: 999px; cursor: pointer; }
+.theme-ctl button:hover { color: var(--ink); }
+.theme-ctl button[aria-pressed="true"] { background: var(--ink); color: var(--surface); font-weight: 600; }
+.theme-ctl button:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+@media print { .theme-ctl { display: none; } }
 .sub { color: var(--ink-2); max-width: 70ch; }
 .panel { background: var(--surface); border: 1px solid var(--hair); border-radius: 12px; min-width: 0; }
 
@@ -63,6 +71,8 @@ p { margin: 0; }
 .time-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .time-now { font-size: 20px; font-weight: 600; font-variant-numeric: tabular-nums; min-width: 8.5em; }
 .time-row input[type="range"] { flex: 1 1 240px; min-width: 0; accent-color: var(--ink); }
+@media (max-width: 600px) { .time-now { flex-basis: 100%; } .time-row input[type="range"] { flex-basis: 80px; } }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 .btn { font: inherit; font-size: 13px; color: var(--ink); background: var(--surface); border: 1px solid var(--hair); border-radius: 999px; padding: 4px 12px; cursor: pointer; }
 .btn:hover { background: var(--hl); }
 .btn:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
@@ -99,7 +109,7 @@ p { margin: 0; }
 .gu-line { fill: none; stroke: var(--surface); stroke-width: 0.8; opacity: 0.7; pointer-events: none; }
 .river { fill: none; stroke: var(--river); stroke-width: 9; stroke-linecap: round; stroke-linejoin: round; opacity: 0.85; pointer-events: none; }
 .sel-outline { fill: none; stroke: var(--ink); stroke-width: 2.5; stroke-linejoin: round; pointer-events: none; }
-.pin { position: absolute; transform: translate(-50%, -50%); pointer-events: none; display: grid; justify-items: center; gap: 0; background: var(--surface); border: 1px solid var(--hair); border-radius: 10px; padding: 3px 9px 4px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08); }
+.pin { z-index: 2; position: absolute; transform: translate(-50%, -50%); pointer-events: none; display: grid; justify-items: center; gap: 0; background: var(--surface); border: 1px solid var(--hair); border-radius: 10px; padding: 3px 9px 4px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08); }
 .pin .n { font-size: 12px; color: var(--ink-2); font-weight: 500; white-space: nowrap; }
 .pin .v { font-size: 19px; font-weight: 700; line-height: 1.1; font-variant-numeric: tabular-nums; }
 .pin .d { font-size: 10.5px; font-family: var(--mono); color: var(--muted); white-space: nowrap; }
@@ -108,6 +118,9 @@ p { margin: 0; }
 .pin.gu .v { font-size: 14px; }
 .pin.sel { border-color: var(--ink); box-shadow: 0 0 0 1px var(--ink), 0 2px 8px rgba(0, 0, 0, 0.12); }
 .gu-name { position: absolute; transform: translate(-50%, -50%); font-size: 10.5px; color: var(--ink-2); pointer-events: none; white-space: nowrap; text-shadow: 0 0 3px var(--surface), 0 0 3px var(--surface); }
+.mapbox.compact .pin.gu .n { display: none; }
+.mapbox.compact .pin.gu .v { font-size: 12px; }
+.mapbox.compact .pin.gu { padding: 1px 5px; }
 @media (max-width: 560px) { .pin.gu .n { display: none; } .pin.gu .v { font-size: 11.5px; } .pin { padding: 2px 6px 3px; } .pin .v { font-size: 15px; } .pin .n { font-size: 10.5px; } .pin .d, .gu-name { display: none; } }
 .scale { display: grid; gap: 4px; font-size: 11.5px; color: var(--muted); }
 .scale-bar { height: 8px; border-radius: 4px; }
@@ -181,11 +194,15 @@ td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; }
 .g-mini .zn { font-size: 11px; color: var(--muted); }
 @media (prefers-reduced-motion: reduce) { .zone-path, .gauge-marker, .bar-fill, .g-needle, .g-arc { transition: none; } }
 </style>
+<script>try { const m = localStorage.getItem("fgi-theme"); if (m === "light" || m === "dark") document.documentElement.setAttribute("data-theme", m); } catch (e) {}</script>
 
 <div class="wrap">
   <header style="display:grid;gap:6px">
-    <div class="eyebrow" id="eyebrow">서울 아파트 · 공포탐욕지수 · 5대 권역</div>
-    <h1>서울 공포탐욕 지도</h1>
+    <div class="topbar">
+      <div class="eyebrow" id="eyebrow">서울 아파트 · 공포탐욕지수 · 5대 권역</div>
+      <div class="theme-ctl" id="theme-ctl" role="group" aria-label="화면 밝기"><span class="tl" aria-hidden="true">화면</span><button type="button" data-m="auto" aria-pressed="true" title="기기 설정을 따라요">자동</button><button type="button" data-m="light" aria-pressed="false">밝게</button><button type="button" data-m="dark" aria-pressed="false">어둡게</button></div>
+    </div>
+    <h1>서울 아파트 공포탐욕지도</h1>
     <p class="sub">권역이나 구를 누르면 그곳의 지수를 보여주고, 아무 데도 누르지 않으면 서울 전체 지수를 보여줘요. 지도 위 버튼으로 5대 권역과 25개 구를 바꿔 볼 수 있어요. 위의 슬라이더로 2006년부터 지금까지 달마다 볼 수 있어요.</p>
     <p class="sub" style="font-size:13.5px"><b style="color:var(--ink)">읽는 법</b> · 이 지수는 추세를 재는 온도계예요. 탐욕 구간 뒤에는 상승이 이어진 경우가 많았고, 극단적 공포 구간 뒤에는 오히려 반등한 경우가 많았어요(바닥 근처였던 <span id="fear-years">2008년, 2012년, 2022~23년</span>, 표본이 적어요). 사고팔 시점을 알려주는 신호로 쓰지 마세요.</p>
   </header>
@@ -230,7 +247,8 @@ td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; }
     </div>
     <div class="panel histcard" id="histcard"></div>
     </div>
-    <div class="panel read" id="read" aria-live="polite"></div>
+    <div class="panel read" id="read"></div>
+    <p class="sr-only" id="live-summary" aria-live="polite"></p>
   </section>
 
   <details class="panel" style="padding:14px 18px">
@@ -368,7 +386,18 @@ function select(r) { state.region = r; if (lvlOf(r) === "gu") state.level = "gu"
 function bars(el, rows) {
   rows.forEach((r) => {
     const row = H("div", { class: "bar-row" + (r.onclick ? " click" : "") }, el);
-    if (r.onclick) { row.addEventListener("click", r.onclick); row.setAttribute("role", "button"); row.tabIndex = 0; row.addEventListener("keydown", (e) => { if (e.key === "Enter") r.onclick(); }); }
+    if (r.onclick) {
+      row.addEventListener("click", r.onclick);
+      row.setAttribute("role", "button");
+      row.tabIndex = 0;
+      row.dataset.name = r.name;
+      row.addEventListener("keydown", (e) => {
+        if (e.key !== "Enter" && e.key !== " ") return;
+        e.preventDefault();
+        r.onclick();
+        afterRender(() => { const back = [...document.querySelectorAll(".bar-row.click")].find((x) => x.dataset.name === r.name); if (back) back.focus(); });
+      });
+    }
     const lab = H("div", { class: "lab" }, row, r.name);
     if (r.note) H("small", {}, lab, r.note);
     const tr = H("div", { class: "bar-track", role: "img", "aria-label": `${r.name} ${r.v == null ? "없음" : Math.round(r.v)}` }, row);
@@ -680,14 +709,45 @@ function renderGauges() {
   const early = D.dates[t] < D.official_start;
   $(".gauges").style.opacity = early ? 0.75 : 1;
 }
-function render() { renderGauges(); renderMap(); renderRead(); renderHist(); renderTable(); }
-render();
-let rt;
-new ResizeObserver(() => { clearTimeout(rt); rt = setTimeout(renderRead, 150); }).observe($("#read"));
+const tblDetails = $("#tbl").closest("details");
+let raf = 0, after = [];
+function afterRender(fn) { after.push(fn); }
+function drawNow() {
+  raf = 0;
+  renderGauges(); renderMap(); renderRead(); renderHist();
+  if (!tblDetails || tblDetails.open) renderTable();
+  const R = D.regions[state.region], v = R.score[state.t];
+  $("#live-summary").textContent = `${state.region === "서울" ? "서울 전체" : state.region} ${ym(D.dates[state.t])} ${v == null ? "자료 없음" : Math.round(v) + "점 " + zoneName(v)}`;
+  const fs = after; after = [];
+  fs.forEach((f) => f());
+}
+function render() { if (!raf) raf = requestAnimationFrame(drawNow); }  // 슬라이더를 끌 때 한 프레임에 한 번만
+if (tblDetails) tblDetails.addEventListener("toggle", () => { if (tblDetails.open) renderTable(); });
+drawNow();
+new ResizeObserver(() => box.classList.toggle("compact", box.clientWidth < 560)).observe(box);
 let ht;
 new ResizeObserver(() => { clearTimeout(ht); ht = setTimeout(renderHist, 150); }).observe($("#histcard"));
 document.addEventListener("keydown", (e) => {
   if (e.target === slider || e.target.tagName === "INPUT") return;
   if (e.key === "Escape") select("서울");
 });
+
+/* ---------- 화면 밝기 (자동 · 밝게 · 어둡게, 지도·보고서가 같은 설정을 씀) ---------- */
+(() => {
+  const ctl = document.getElementById("theme-ctl"), root = document.documentElement, KEY = "fgi-theme";
+  if (!ctl) return;
+  const apply = (m) => {
+    if (m === "light" || m === "dark") root.setAttribute("data-theme", m); else root.removeAttribute("data-theme");
+    ctl.querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.m === (m === "light" || m === "dark" ? m : "auto"))));
+  };
+  let saved = "auto";
+  try { saved = localStorage.getItem(KEY) || "auto"; } catch (e) {}
+  apply(saved);
+  ctl.addEventListener("click", (e) => {
+    const b = e.target.closest("button");
+    if (!b) return;
+    apply(b.dataset.m);
+    try { if (b.dataset.m === "auto") localStorage.removeItem(KEY); else localStorage.setItem(KEY, b.dataset.m); } catch (e2) {}
+  });
+})();
 </script>

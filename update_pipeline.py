@@ -267,8 +267,8 @@ def refresh_applyhome():
 
 # ---------------- 재계산 ----------------
 COMPUTE = ["molit_indicators.py", "rs_vintage.py", "extra_indicators.py", "build_indicators.py", "v3.py",
-           "zone_index.py", "zone_v3.py", "export_zone.py", "map/build.py", "live_track.py", "export_report_v3.py",
-           "report/build.py", "site_build.py"]
+           "zone_index.py", "zone_v3.py", "export_zone.py", "map/build.py"]
+AFTER_CHECK = ["export_report_v3.py", "report/build.py", "site_build.py"]  # 실시간 기록은 점검을 통과한 뒤에
 
 
 def run_script(rel):
@@ -343,6 +343,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--no-publish", action="store_true")
     ap.add_argument("--skip-fetch", action="store_true")
+    ap.add_argument("--record", action="store_true", help="로컬 실행에서도 실시간 기록에 남김")
     a = ap.parse_args()
     sys.path.insert(0, str(ROOT))
     log(f"=== 갱신 시작 {STAMP} ===")
@@ -363,6 +364,16 @@ def main():
         log("=== 점검 실패로 중단 (게시 안 함) ===")
         write_status()
         return 1
+    # 실시간 기록(지우지 않는 기록)은 점검을 통과한 공식 실행(GitHub Actions)에서만. 로컬 시험 실행이 값을 굳히지 않게
+    if os.environ.get("CI") or a.record:
+        step("실시간 기록", lambda: run_script("live_track.py"))
+    else:
+        log("실시간 기록: 로컬 실행이라 건너뜀 (기록하려면 --record)")
+    for rel in AFTER_CHECK:
+        if not step(f"계산 {rel}", lambda rel=rel: run_script(rel)):
+            log("=== 계산 실패로 중단 (게시 안 함) ===")
+            write_status()
+            return 1
     if not a.no_publish and not os.environ.get("CI"):
         step("아티팩트 게시", publish)
     log("=== 완료 ===")

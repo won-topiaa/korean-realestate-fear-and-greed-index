@@ -12,6 +12,7 @@ HEAD = """<!doctype html>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="description" content="{desc}">
+{title}
 <style>[hidden]{{display:none!important}} body{{margin:0}}</style>
 </head>
 <body>
@@ -21,12 +22,16 @@ TAIL = "\n</body>\n</html>\n"
 
 def wrap(src, dst, desc, inject=None):
     html = src.read_text()
+    import re
+    m = re.search(r"<title>.*?</title>", html)
+    title = m.group(0) if m else ""
+    html = html.replace(title, "", 1) if title else html  # 제목은 head로 (링크 미리보기용)
     if inject:
         a, b = inject
         assert html.count(a) == 1, a
         html = html.replace(a, b)
     dst.parent.mkdir(parents=True, exist_ok=True)
-    dst.write_text(HEAD.format(desc=desc) + html + TAIL)
+    dst.write_text(HEAD.format(desc=desc, title=title) + html + TAIL)
 
 
 if __name__ == "__main__":
@@ -35,6 +40,6 @@ if __name__ == "__main__":
          inject=('<footer class="foot">', '<footer class="foot">\n    <p><a href="report/" style="color:var(--ink)">백테스트 보고서 보기 →</a></p>'))
     wrap(ROOT / "report" / "index.html", SITE / "report" / "index.html",
          "서울 아파트 공포탐욕지수 v3 백테스트 보고서.",
-         inject=('<section class="top">', '<section class="top">\n    <p style="margin:0"><a href="../" style="color:var(--ink-2);font-size:13px">← 서울 공포탐욕 지도</a></p>'))
+         inject=('<section class="top">', '<section class="top">\n    <p style="margin:0"><a href="../" style="color:var(--ink-2);font-size:13px">← 서울 아파트 공포탐욕지도</a></p>'))
     (SITE / ".nojekyll").write_text("")
     print("site:", [str(p.relative_to(ROOT)) for p in SITE.rglob("*.html")])
