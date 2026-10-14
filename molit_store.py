@@ -42,7 +42,9 @@ def save(df, years=None):
             continue
         part = part.assign(_m=part["dealMonth"].astype(int), _d=pd.to_numeric(part["dealDay"], errors="coerce").fillna(0))
         part = part.sort_values(["_m", "lawd", "_d", "aptSeq", "dealAmount"]).drop(columns=["_m", "_d"])
-        part.to_csv(DIR / f"trades_{y}.csv.gz", index=False, compression={"method": "gzip", "compresslevel": 9, "mtime": 0})
+        tmp = DIR / f"trades_{y}.csv.gz.tmp"
+        part.to_csv(tmp, index=False, compression={"method": "gzip", "compresslevel": 9, "mtime": 0})
+        tmp.replace(DIR / f"trades_{y}.csv.gz")  # 쓰다 끊겨도 지난 파일 유지
 
 
 def consolidate_from_json():

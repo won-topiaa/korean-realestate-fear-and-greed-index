@@ -77,9 +77,8 @@ def build():
     rs = ROOT / "data" / "repeat_sales.csv"
     if rs.exists():
         r = pd.read_csv(rs, index_col=0, parse_dates=True)
-        tg["실거래지수"] = r["index"]
-        for c in ["거래_신고가비중", "거래_급락거래역수"]:
-            df[c] = r[c]
+        tg = tg.join(r[["index"]].rename(columns={"index": "실거래지수"}), how="outer")
+        df = df.join(r[["거래_신고가비중", "거래_급락거래역수"]], how="outer")  # 부동산원·청약홈보다 최신 달이 있을 수 있음
     return df.sort_index(), tg.sort_index()
 
 

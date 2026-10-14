@@ -18,9 +18,9 @@ permissions:
   pages: write
   id-token: write
 
-concurrency:
-  group: pages-deploy
-  cancel-in-progress: true
+concurrency:  # 월간 자동 갱신과 같은 묶음: 갱신이 끝난 뒤 차례로 돈다
+  group: pages
+  cancel-in-progress: false
 
 jobs:
   deploy:
@@ -31,6 +31,8 @@ jobs:
       url: ${{ steps.deploy.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: main  # 이 푸시 시점이 아니라 지금의 main (기다리는 동안 갱신 커밋이 들어왔을 수 있음)
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"

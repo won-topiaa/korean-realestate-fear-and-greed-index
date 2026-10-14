@@ -31,7 +31,11 @@ def fetch(endpoint: str, params: dict, name: str, refresh: bool = False):
             r.raise_for_status()
             j = r.json()
             data = j["dataBody"]["data"]
-            path.write_text(json.dumps(data, ensure_ascii=False))
+            if not data:
+                raise ValueError("빈 응답")
+            tmp = path.with_suffix(".json.tmp")
+            tmp.write_text(json.dumps(data, ensure_ascii=False))
+            tmp.replace(path)  # 다 받은 뒤에만 바꿔 씀
             time.sleep(1.5)
             return data
         except Exception as e:  # 연결 리셋이 잦아 재시도

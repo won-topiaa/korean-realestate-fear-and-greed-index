@@ -1,4 +1,5 @@
 """네이버 금융 월봉 (건설주 바스켓, KOSPI). 키 불필요."""
+import datetime as dt
 import json
 import subprocess
 from pathlib import Path
@@ -12,11 +13,15 @@ TICKERS = {"현대건설": "000720", "GS건설": "006360", "대우건설": "0470
 
 
 def monthly(path):
-    url = f"https://api.stock.naver.com/chart/domestic/{path}/month?startDateTime=199801010000&endDateTime=202612310000"
+    end = dt.date.today().strftime("%Y%m%d") + "2359"
+    url = f"https://api.stock.naver.com/chart/domestic/{path}/month?startDateTime=199801010000&endDateTime={end}"
     raw = subprocess.run(["curl", "-sS", "--http1.1", "-m", "120", url], capture_output=True).stdout
     rows = json.loads(raw)
-    s = pd.Series({pd.Timestamp(r["localDate"]): float(r["closePrice"]) for r in rows})
-    return s.sort_index()
+    s = pd.Series({pd.Timestamp(r["localDate"]): float(r["closePrice"]) for r in rows}).sort_index()
+    last = s.index.max().to_period("M") if len(s) else None
+    if last is None or last < pd.Timestamp(dt.date.today()).to_period("M") - 1:
+        raise RuntimeError(f"{path}: 최신 월봉이 오래됨 ({last})")
+    return s
 
 
 if __name__ == "__main__":
@@ -26,4 +31,6 @@ if __name__ == "__main__":
         print(k, len(s), s.index.min().date(), s.index.max().date())
     df = pd.DataFrame(out)
     df.index = df.index.to_period("M").to_timestamp()
-    df.to_csv(OUT / "stocks_monthly.csv")
+    tmp = OUT / "stocks_monthly.csv.tmp"
+    df.to_csv(tmp)
+    tmp.replace(OUT / "stocks_monthly.csv")  # 다 받은 뒤에만 바꿔 씀

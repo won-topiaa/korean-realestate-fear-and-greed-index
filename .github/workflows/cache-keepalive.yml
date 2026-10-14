@@ -1,0 +1,31 @@
+name: 원자료 캐시 유지
+
+# KB·네이버 원자료는 저장소에 올리지 않고 Actions 캐시에만 둔다.
+# GitHub는 7일 넘게 안 쓴 캐시를 지우므로, 월간 갱신 사이에 며칠마다 한 번씩 꺼내 써서 살려 둔다.
+# (캐시가 살아 있어야 KB·주가 받기가 실패한 달에 지난 자료로 계속할 수 있다)
+on:
+  schedule:
+    - cron: "41 2 */4 * *"   # 4일마다
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  touch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: 지난 원자료 캐시 꺼내기
+        id: c
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            data/raw/kb
+            data/raw/market
+          key: raw-keepalive-${{ github.run_id }}
+          restore-keys: raw-
+      - name: 결과
+        run: |
+          echo "캐시 복원: ${{ steps.c.outputs.cache-matched-key || '없음' }}"
+          ls data/raw/kb 2>/dev/null | wc -l

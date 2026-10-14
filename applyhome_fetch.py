@@ -30,9 +30,9 @@ def get(path, page, per=1000, **cond):
     raise RuntimeError(out.stdout[:300].replace(KEY, "***"))
 
 
-def fetch_all(name):
+def fetch_all(name, refresh=False):
     path = OUT / f"{name}.json"
-    if path.exists():
+    if path.exists() and not refresh:
         return json.loads(path.read_text())
     rows, page = [], 1
     while True:
@@ -41,11 +41,15 @@ def fetch_all(name):
             raise RuntimeError(f"{name}: {str(j)[:200]}")
         rows += j["data"]
         print(f"{name} p{page} {len(rows)}/{j.get('totalCount')}", flush=True)
-        if len(rows) >= j.get("totalCount", 0) or not j["data"]:
+        if len(rows) >= j.get("totalCount", 0):
             break
+        if not j["data"]:
+            raise RuntimeError(f"{name}: {len(rows)}/{j.get('totalCount')}건에서 빈 쪽 (지난 파일 유지)")
         page += 1
         time.sleep(0.3)
-    path.write_text(json.dumps(rows, ensure_ascii=False))
+    tmp = path.with_suffix(".json.tmp")
+    tmp.write_text(json.dumps(rows, ensure_ascii=False))
+    tmp.replace(path)  # 다 받은 뒤에만 바꿔 씀
     return rows
 
 

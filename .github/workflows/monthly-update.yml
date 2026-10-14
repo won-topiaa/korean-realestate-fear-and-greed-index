@@ -10,8 +10,8 @@ permissions:
   pages: write
   id-token: write
 
-concurrency:
-  group: monthly-update
+concurrency:  # '화면만 다시 배포'와 같은 묶음: 둘이 겹치지 않고 차례로 (배포·푸시 충돌 방지)
+  group: pages
   cancel-in-progress: false
 
 jobs:
@@ -67,7 +67,12 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A data results_zone results_v2 map report
           git diff --cached --quiet || git commit -m "월간 자동 갱신 $(TZ=Asia/Seoul date +%Y-%m-%d)"
-          git push
+          # 실행 중에 누가 화면 등을 올렸으면: 그 위에 얹고(자료는 이번 실행 값 우선), 새 화면으로 다시 빌드
+          git pull --rebase -X theirs origin main
+          python map/build.py && python report/build.py && python site_build.py
+          git add -A map report
+          git diff --cached --quiet || git commit -m "화면 다시 빌드 (갱신 중 바뀐 화면 반영)"
+          git push origin HEAD:main
 
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3

@@ -37,7 +37,9 @@ def fetch(name, end):
     if not rows:
         raise RuntimeError(f"{name}: {json.dumps(j.get('RESULT', j), ensure_ascii=False)[:200].replace(KEY, '***')}")
     data = [{"date": r["TIME"], "value": float(r["DATA_VALUE"]), "unit": r.get("UNIT_NAME"), "item": r.get("ITEM_NAME1")} for r in rows]
-    (OUT / f"{name}.json").write_text(json.dumps(data, ensure_ascii=False))
+    tmp = OUT / f"{name}.json.tmp"
+    tmp.write_text(json.dumps(data, ensure_ascii=False))
+    tmp.replace(OUT / f"{name}.json")
     return data
 
 

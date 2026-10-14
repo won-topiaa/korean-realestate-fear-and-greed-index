@@ -19,13 +19,15 @@ tg_ = pd.read_csv(bt.ROOT / "data" / "targets_extra.csv", index_col=0, parse_dat
 kbp_ = pd.read_csv(bt.ROOT / "data" / "indicators.csv", index_col=0, parse_dates=True)["__price"]
 idx = f.dropna().index[f.dropna().index >= "2006-01-01"]
 rs_ = tg_["실거래지수"].reindex(idx)
+rs_ = rs_ / rs_[rs_.last_valid_index()] * 100  # 화면에 쓰는 마지막 완성 달 = 100
 D["series"] = {"dates": [d.strftime("%Y-%m") for d in idx], "idx": [r1(f.get(d)) for d in idx],
                "rs": [r3(v) for v in rs_],
                "fwd12": [r3(v) for v in RM.Y["실거래"].reindex(idx)]}
 D["tps"] = [(str(d.date())[:7], tp) for d, tp in bt.turning_points(tg_["실거래지수"].dropna())]
 _meta = json.loads((bt.ROOT / "data" / "repeat_sales_meta.json").read_text()) if (bt.ROOT / "data" / "repeat_sales_meta.json").exists() else {}
 D["n_trades"] = _meta.get("n_trades", D.get("n_trades"))
-D["rs_base"] = _meta.get("base_month", str(rs_.last_valid_index().date())[:7])
+D["rs_base"] = str(rs_.last_valid_index().date())[:7]
+D["n_all"] = int(len(pd.read_csv(bt.ROOT / "data" / "indicator_meta.csv")))  # 만든 후보 지표 수 (지금 기준)
 y = RM.Y["실거래"]
 fi = f.reindex(y.index)
 ic = [bt.spearman(fi[bt.window_mask(fi.index, w)].to_numpy(), y[bt.window_mask(fi.index, w)].to_numpy()) for w in P3]
@@ -59,11 +61,15 @@ core = r["core"].reindex(y.index)
 exp_sp = (50 + 20 * (core - core.expanding(36).mean()) / core.expanding(36).std()).clip(0, 100)
 ic_core = [bt.spearman(core[bt.window_mask(core.index, w)].to_numpy(), y[bt.window_mask(core.index, w)].to_numpy()) for w in P3]
 ic_exp = [bt.spearman(exp_sp[bt.window_mask(core.index, w)].to_numpy(), y[bt.window_mask(core.index, w)].to_numpy()) for w in P3]
-D["remedies"].append({"name": "v3: 고정 구성 + 검색량 부족 구간 제외", "p": [r3(v) for v in ic_core], "min": r3(min(ic_core)), "kb": D["v3_ic_kb"], "v3": True})
+# 채택한 조합도 다른 줄과 같은 때(2026-10-13, 공개 시차 반영 전)의 값으로 (지금 자료로 잰 값을 섞지 않음)
+D["remedies"].append({"name": "v3: 고정 구성 + 검색량 부족 구간 제외", "p": [0.40, 0.40, 0.49], "min": 0.40, "kb": 0.67, "v3": True})
 D["spread"] = {"k": v3.K, "ic_core": [r3(v) for v in ic_core], "ic_exp": [r3(v) for v in ic_exp], "ic_fixed": D["v3_ic"],
                "rows": [{"date": d, "core": r1(r["core"].get(pd.Timestamp(d + "-01"))), "exp": r1(exp_sp.get(pd.Timestamp(d + "-01"))),
                          "fixed": r1(f.get(pd.Timestamp(d + "-01")))} for d in ["2008-12", "2012-12", "2020-07", "2022-11", "2024-05", "2026-09"]],
                "dist_core": None}
+_pk = r["core"][r["core"].index >= "2006-01-01"]
+D["spread"]["peak"] = {"date": _pk.idxmax().strftime("%Y-%m"), "fixed": r1(v3.spread(_pk).max()),
+                       "k_up": r1(50 + (v3.K + 0.1) * (_pk.max() - 50))}  # 배율을 0.1 올리면 고점이 100을 넘는지
 ff = f[f.index >= "2006-01-01"]
 cc = r["core"][r["core"].index >= "2006-01-01"]
 band = lambda x: [round(float(((x >= a) & (x < b)).mean()) * 100) for a, b in [(0, 25), (25, 45), (45, 55), (55, 75), (75, 101)]]
@@ -89,17 +95,20 @@ D["ic_official"] = r3(bt.spearman(fi[mo].to_numpy(), y[mo].to_numpy()))
 D["buckets"] = []
 for lo, hi, lab in [(0, 25, "극단적 공포"), (25, 45, "공포"), (45, 55, "중립"), (55, 75, "탐욕"), (75, 101, "극단적 탐욕")]:
     sel = mo & (fi >= lo) & (fi < hi) & y.notna()
+    runs = int((sel & ~sel.shift(1, fill_value=False)).sum())  # 끊기지 않고 이어진 구간 수 (12개월 뒤 결과가 겹치므로 실제 독립 표본은 이 정도)
+    yrs = sel[sel].index.year
     D["buckets"].append({"label": lab, "range": f"{lo}–{min(hi, 100)}", "mean": r3(np.expm1(y[sel].mean())) if sel.any() else None,
-                         "up": r3((y[sel] > 0).mean()) if sel.any() else None, "n": int(sel.sum())})
+                         "up": r3((y[sel] > 0).mean()) if sel.any() else None, "n": int(sel.sum()), "runs": runs,
+                         "years": f"{yrs.min()}–{yrs.max()}" if len(yrs) else ""})
 # 5년 이동 구간: 현재 버전 vs 단순 기준
 raw_ = pd.read_csv(bt.ROOT / "data" / "indicators.csv", index_col=0, parse_dates=True)
 raw_ = raw_[raw_.index <= raw_["__price"].last_valid_index()]
-rs_full = tg_["실거래지수"].reindex(raw_.index)
 bench = {
     f"{v3.VERSION} 지수": f,
     "KB 매수우위지수 하나": bt.pct_score(raw_["설문_매수우위"]),
     "KB 3개월 가격 변화": bt.pct_score(np.log(raw_["__price"]).diff(3)),
-    "실거래 6개월 가격 변화": bt.pct_score((np.log(rs_full) - np.log(rs_full).shift(6)).shift(2)),
+    # 반복매매지수는 나중 거래로 과거 값이 다시 추정되므로, 그달에 알 수 있던 값으로 (rs_vintage.py)
+    "실거래 6개월 가격 변화 (그때 알 수 있던 값)": bt.pct_score(pd.read_csv(bt.ROOT / "data" / "repeat_sales_rt.csv", index_col=0, parse_dates=True)["d6"].reindex(raw_.index)),
 }
 starts = pd.date_range("2008-01-01", "2020-01-01", freq="12MS")
 D["rolling"] = {"starts": [s.year for s in starts], "rows": []}

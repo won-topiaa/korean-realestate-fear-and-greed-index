@@ -355,7 +355,7 @@ code { font-family: var(--mono); font-size: 12.5px; }
       <p>v3 지수를 구성하는 세 그룹과, 설명용으로 본 주제별 점수예요. 모두 같은 1.5배 눈금이고, 50보다 오른쪽이면 탐욕, 왼쪽이면 공포예요.</p>
     </header>
     <div class="cols">
-      <div class="panel"><h3 style="margin-bottom:14px">v3 지수 구성 (속도별)</h3><div class="bars" id="speed-bars"></div></div>
+      <div class="panel"><h3 style="margin-bottom:14px">지수 구성 (속도별)</h3><div class="bars" id="speed-bars"></div></div>
       <div class="panel"><h3 style="margin-bottom:14px">주제별 (참고)</h3><div class="bars" id="theme-bars"></div></div>
     </div>
   </section>
@@ -461,7 +461,7 @@ function drawTop() {
     H("p", {}, d, p);
   });
   const box = $("#now");
-  H("div", { class: "eyebrow" }, box, `지금 서울 · ${ym(now.date)} 기준 · v3`);
+  H("div", { class: "eyebrow" }, box, `지금 서울 · ${ym(now.date)} 기준 · ${D.version}`);
   const row = H("div", { class: "row" }, box);
   H("span", { class: "hero-num" }, row, String(Math.round(now.v2)));
   H("span", { class: "zone-chip" }, row, zone(now.v2));
@@ -478,7 +478,16 @@ function drawTop() {
     .forEach(([k, val]) => { H("dt", {}, kv, k); H("dd", {}, kv, val); });
   const t = now.themes;
   H("p", { style: "font-size:13px;color:var(--ink-2)" }, box,
-    `탐욕 경계에 걸친 중립이에요. 전세(${Math.round(t["전세"])})와 가격부담(${Math.round(t["가격부담"])})은 높고, 자금(${Math.round(t["자금"])})과 공급(${Math.round(t["공급"])})은 공포 쪽이에요. 3개월 전보다 조금 식었어요.`);
+    (() => {  // 지금 자료로 문장을 만듦 (고정 문구는 다음 달에 틀려짐)
+      const v = now.v2, d3 = v - now.prev3;
+      const edge = v >= 52 && v < 55 ? "탐욕 경계에 가까운 " : v > 45 && v <= 48 ? "공포 경계에 가까운 " : v >= 23 && v < 25 ? "공포 경계에 가까운 " : "";
+      const ent = Object.entries(t).filter(([, x]) => x != null);
+      const hi = ent.filter(([, x]) => x >= 60).sort((a, b) => b[1] - a[1]).slice(0, 3);
+      const lo = ent.filter(([, x]) => x <= 40).sort((a, b) => a[1] - b[1]).slice(0, 3);
+      const list = (xs) => xs.map(([k, x]) => `${k} ${Math.round(x)}`).join(" · ");
+      return `${edge}${zone(v)} 구간이에요.` + (hi.length ? ` 탐욕 쪽: ${list(hi)}.` : "") + (lo.length ? ` 공포 쪽: ${list(lo)}.` : "") +
+        ` 3개월 전(${Math.round(now.prev3)} · ${zone(now.prev3)})보다 ${Math.abs(d3).toFixed(1)}점 ${d3 < 0 ? "내려왔어요" : "올라왔어요"}.`;
+    })());
 }
 
 function drawMain() {
@@ -899,13 +908,14 @@ function drawSpread() {
   const ul = $("#spread-notes");
   [["정확도", `매번 다시 잰 평균·표준편차로 펴면 시기마다 눈금이 달라져서 세 구간 순위상관이 ${S_.ic_exp.map(f2).join(" / ")}로 떨어졌어요. 고정 배율은 ${S_.ic_fixed.map(f2).join(" / ")}로 원점수와 똑같아요.`],
    ["구간 분포", `원점수는 극단적 공포 ${S_.dist_core[0]}% · 극단적 탐욕 ${S_.dist_core[4]}%였는데, 펴고 나면 ${S_.dist_fixed[0]}% · ${S_.dist_fixed[4]}%예요. 서울은 대부분의 기간에 올라서 탐욕 쪽이 더 자주 나와요.`],
-   ["배율 1.5를 고른 이유", "1.6 이상이면 2020년 7월 영끌 시기가 100에 붙어서 그 위의 차이가 사라져요. 1.5에서는 99로 끝이 살아 있어요."]]
+   [`배율 ${S_.k}를 고른 이유`, `가장 뜨거웠던 때(${ym(S_.peak.date)})도 ${S_.k}배에서는 ${Math.round(S_.peak.fixed)}점으로 100 아래에 남아 끝의 차이가 살아 있어요. ${(S_.k + 0.1).toFixed(1)}배로 올리면 ${Math.round(S_.peak.k_up)}점${S_.peak.k_up >= 100 ? "이 되어 100에 붙어요" : "이 돼요"}.`]]
     .forEach(([h, p]) => { const li = H("li", {}, ul); H("b", {}, li, h + ": "); li.append(p); });
 }
 
 function bucketCap() {
   const B = D.buckets, g = B[4], f = B[0], f2_ = B[1];
-  $("#bucket-cap").textContent = `점수가 높을수록 이후 1년 상승 폭이 커졌어요. 극단적 탐욕 구간 ${g.n}개월 중 ${Math.round(g.up * 100)}%가 이후 1년간 올랐고, 평균 ${pct(g.mean)}였어요. 반면 극단적 공포(${f.n}개월)와 공포(${f2_.n}개월) 구간 뒤에도 평균 ${pct(f.mean)}, ${pct(f2_.mean)}로 올랐어요. 탐욕 신호는 믿을 만하지만, 공포 신호만으로 하락을 예상하기는 어려워요.`;
+  const runs = (b) => (b.runs != null ? `, 이어진 구간 ${b.runs}번${b.years ? ` · ${b.years}` : ""}` : "");
+  $("#bucket-cap").textContent = `점수가 높을수록 이후 1년 상승 폭이 컸어요. 극단적 탐욕 구간 ${g.n}개월(${runs(g).slice(2)}) 중 ${Math.round(g.up * 100)}%가 이후 1년간 올랐고, 평균 ${pct(g.mean)}였어요. 반면 극단적 공포(${f.n}개월${runs(f)})와 공포(${f2_.n}개월) 구간 뒤에도 평균 ${pct(f.mean)}, ${pct(f2_.mean)}로 올랐어요. 다만 이후 12개월 결과가 서로 겹쳐서 실제로 독립된 사례는 '이어진 구간' 수 정도예요. 탐욕 쪽 결과도 몇 번의 상승장에서 나온 것이라, 신호로 믿기에는 표본이 적어요.`;
 }
 
 function drawFixes() {

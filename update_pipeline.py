@@ -1,7 +1,8 @@
-"""서울 공포탐욕지수 v3.1 월간 자동 갱신.
+"""서울 공포탐욕지수 월간 자동 갱신 (엔진 버전은 v3.VERSION).
 
-순서: 원자료 갱신 → 지표·지수 재계산(v3.1) → 실시간 기록 → 지도·보고서·사이트 → 점검 → (선택) 아티팩트 게시.
+순서: 원자료 갱신 → 지표·지수 재계산 → 실시간 기록 → 지도·보고서·사이트 → 점검 → (선택) 아티팩트 게시.
 한 단계가 실패해도 이전 데이터로 계속 진행하고, 지수 계산이나 점검이 실패하면 게시하지 않는다.
+자료처마다 시간 한도(FETCH_BUDGET)가 있어, 한 곳 서버가 멈춰도 전체 실행 시간(Actions 150분)을 넘기지 않는다.
 
 사용:
   .venv/bin/python update_pipeline.py              # 전체 갱신 + 게시
@@ -9,10 +10,11 @@
   .venv/bin/python update_pipeline.py --skip-fetch # 받은 자료로 재계산만
 """
 import argparse
+import multiprocessing as mp
 import os
 import datetime as dt
 import json
-import shutil
+import queue
 import subprocess
 import sys
 import time
@@ -31,7 +33,7 @@ CLAUDE = str(Path.home() / ".local" / "bin" / "claude")
 
 
 def log(msg):
-    line = f"[{dt.datetime.now():%H:%M:%S}] {msg}"
+    line = _scrub(f"[{dt.datetime.now():%H:%M:%S}] {msg}")
     print(line, flush=True)
     with LOG.open("a") as f:
         f.write(line + "\n")
@@ -40,8 +42,9 @@ def log(msg):
 STATUS = []  # 단계별 성공·실패 (공개 파일 results_zone/update_status.json 로 남김)
 
 
-def _clean(msg):
-    """공개 기록용: API 키가 섞이지 않게 지운다."""
+def _scrub(msg):
+    """API 키가 섞이지 않게 지운다 (실행 기록·공개 상태 파일 모두, 자르기 전에)."""
+    msg = str(msg)
     env = ROOT / ".env"
     if env.exists():
         import urllib.parse
@@ -50,13 +53,49 @@ def _clean(msg):
             for k in (v, urllib.parse.unquote(v)):
                 if k:
                     msg = msg.replace(k, "***")
-    return msg[:300]
+    return msg
+
+
+def _clean(msg):
+    """공개 기록용: 키를 지운 뒤 300자로."""
+    return _scrub(msg)[:300]
+
+
+FETCH_BUDGET = {"KB부동산": 15, "한국은행 금리·가계신용·CSI": 8, "네이버 금융 주가": 5, "구글 트렌드": 15,
+                "한국부동산원 R-ONE": 40, "국토부 실거래": 25, "청약홈": 12}  # 분. 평소: R-ONE 11분, 나머지 1~4분
+
+
+def _child(fn, q):
+    try:
+        q.put(("ok", str(fn() or "")))
+    except Exception as e:  # noqa: BLE001
+        q.put(("err", repr(e)))
+
+
+def with_budget(fn, minutes):
+    """fn을 자식 프로세스로 돌려 minutes 안에 안 끝나면 끊는다."""
+    ctx = mp.get_context("fork")
+    q = ctx.Queue()
+    p = ctx.Process(target=_child, args=(fn, q))
+    p.start()
+    p.join(minutes * 60)
+    if p.is_alive():
+        p.terminate()
+        p.join(10)
+        raise TimeoutError(f"{minutes}분 한도를 넘겨 중단 (지난 자료 유지)")
+    try:
+        kind, val = q.get(timeout=10)
+    except queue.Empty:
+        kind, val = "err", f"결과 없이 종료 (종료코드 {p.exitcode})"
+    if kind == "err":
+        raise RuntimeError(val)
+    return val
 
 
 def step(name, fn, critical=False):
     t0 = time.time()
     try:
-        out = fn()
+        out = with_budget(fn, FETCH_BUDGET[name]) if name in FETCH_BUDGET else fn()
         log(f"OK   {name} ({time.time() - t0:.0f}s){' · ' + str(out) if out else ''}")
         STATUS.append({"step": name, "ok": True, "sec": round(time.time() - t0), "detail": _clean(str(out or ""))})
         return True
@@ -64,7 +103,7 @@ def step(name, fn, critical=False):
         log(f"FAIL {name}: {e!r}")
         STATUS.append({"step": name, "ok": False, "sec": round(time.time() - t0), "detail": _clean(repr(e))})
         with LOG.open("a") as f:
-            f.write(traceback.format_exc() + "\n")
+            f.write(_scrub(traceback.format_exc()) + "\n")
         if critical:
             raise
         return False
@@ -73,15 +112,21 @@ def step(name, fn, critical=False):
 # ---------------- 원자료 갱신 ----------------
 def refresh_kb():
     import kb_fetch as K
-    for name, (ep, p) in K.JOBS.items():
-        K.fetch(ep, p, name, refresh=True)
+    jobs = dict(K.JOBS)
     gu = {"아파트매매지수_월간_서울구": ("priceIndex", {"월간주간구분코드": "01", "매물종별구분": "01", "매매전세코드": "01", "기간": "99", "지역코드": "1100000000"}),
           "아파트전세지수_월간_서울구": ("priceIndex", {"월간주간구분코드": "01", "매물종별구분": "01", "매매전세코드": "02", "기간": "99", "지역코드": "1100000000"}),
           "전세가율_아파트_서울구": ("dealCntstTnantRato", {"매물종별구분": "01", "지역코드": "1100000000"})}
-    for name, (ep, p) in gu.items():
-        K.fetch(ep, p, name, refresh=True)
+    jobs.update(gu)
+    failed = []
+    for name, (ep, p) in jobs.items():
+        try:
+            K.fetch(ep, p, name, refresh=True)
+        except Exception as e:  # noqa: BLE001
+            failed.append(f"{name}: {_scrub(e)[:80]}")
+    if len(failed) == len(jobs):
+        raise RuntimeError(f"KB 전부 실패 · 예: {failed[0]}")
     d = json.loads((ROOT / "data/raw/kb/아파트매매지수_월간.json").read_text())
-    return f"KB 최신 {d['날짜리스트'][-1]}"
+    return f"KB 최신 {d['날짜리스트'][-1]}" + (f" · {len(failed)}개 실패로 지난 파일 유지: {'; '.join(failed[:3])}" if failed else "")
 
 
 def refresh_ecos():
@@ -93,7 +138,9 @@ def refresh_ecos():
 
 
 def refresh_stocks():
-    subprocess.run([PY, str(ROOT / "fetch_stocks.py")], cwd=ROOT, check=True, capture_output=True)
+    r = subprocess.run([PY, str(ROOT / "fetch_stocks.py")], cwd=ROOT, capture_output=True, text=True)
+    if r.returncode != 0:
+        raise RuntimeError(f"fetch_stocks 실패: {(r.stderr or r.stdout).strip().splitlines()[-1:]}")
     return "건설주·KOSPI"
 
 
@@ -109,12 +156,16 @@ def refresh_trends():
                 py.build_payload([kw], timeframe=f"2004-01-01 {end}", geo="KR")
                 df = py.interest_over_time()
                 if len(df) > 200:
-                    df[[kw]].to_csv(T.OUT / f"{kw}.csv")
+                    tmp = T.OUT / f"{kw}.csv.tmp"
+                    df[[kw]].to_csv(tmp)
+                    tmp.replace(T.OUT / f"{kw}.csv")
                     ok += 1
                 break
             except Exception:  # noqa: BLE001  (429가 잦음 → 기다렸다가 재시도, 끝내 실패하면 기존 파일 유지)
                 time.sleep(20 * (attempt + 1))
         time.sleep(8)
+    if ok == 0:
+        raise RuntimeError(f"검색어 0/{len(T.KEYWORDS)}개 갱신 (모두 지난 자료 유지)")
     return f"검색어 {ok}/{len(T.KEYWORDS)}개 갱신 (실패분은 지난달 자료 유지)"
 
 
@@ -161,7 +212,7 @@ def refresh_reb(workers=4):
         try:
             R.data(sid, "MM", name=name, refresh=True, **f)
         except Exception as e:  # noqa: BLE001  (실패한 시계열은 지난 파일 유지)
-            errors.append(f"{name}: {str(e)[:120]}")
+            errors.append(f"{name}: {_scrub(e)[:160]}")
 
     with ThreadPoolExecutor(max_workers=workers) as ex:  # 해외에서 응답이 느려 동시에 몇 개씩
         list(ex.map(one, jobs))
@@ -210,23 +261,12 @@ def refresh_molit(back=4):
 def refresh_applyhome():
     import applyhome_fetch as A
     for name in A.APIS:
-        p = A.OUT / f"{name}.json"
-        bak = p.with_suffix(".bak")
-        if p.exists():
-            shutil.copy(p, bak)
-            p.unlink()
-        try:
-            A.fetch_all(name)
-            bak.unlink(missing_ok=True)
-        except Exception:
-            if bak.exists():
-                bak.replace(p)
-            raise
+        A.fetch_all(name, refresh=True)  # 다 받은 뒤에만 바꿔 씀 (실패하면 지난 파일 유지)
     return "청약홈 (보조 지표)"
 
 
 # ---------------- 재계산 ----------------
-COMPUTE = ["molit_indicators.py", "extra_indicators.py", "build_indicators.py", "v3.py",
+COMPUTE = ["molit_indicators.py", "rs_vintage.py", "extra_indicators.py", "build_indicators.py", "v3.py",
            "zone_index.py", "zone_v3.py", "export_zone.py", "map/build.py", "live_track.py", "export_report_v3.py",
            "report/build.py", "site_build.py"]
 
