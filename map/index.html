@@ -72,7 +72,14 @@ p { margin: 0; }
 /* main grid */
 .main { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr); gap: 20px; align-items: start; }
 @media (max-width: 880px) { .main { grid-template-columns: 1fr; } }
+.col-left { display: grid; gap: 20px; min-width: 0; align-content: start; }
 .mapcard { padding: 14px 14px 12px; display: grid; gap: 10px; }
+.histcard { padding: 16px 18px 16px; display: grid; gap: 12px; }
+.hist-head { display: flex; justify-content: space-between; align-items: baseline; gap: 4px 12px; flex-wrap: wrap; }
+.hist-title { font-size: 15px; font-weight: 600; }
+.hist { position: relative; }
+.hist-tip { position: absolute; pointer-events: none; transform: translate(-50%, -100%); background: var(--surface); border: 1px solid var(--hair); border-radius: 8px; padding: 4px 9px; font-size: 12px; line-height: 1.45; white-space: nowrap; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1); color: var(--ink-2); }
+.hist-tip b { color: var(--ink); font-variant-numeric: tabular-nums; }
 .chips { display: flex; gap: 6px; flex-wrap: wrap; }
 .mapbox { position: relative; width: 100%; }
 .mapbox svg { display: block; width: 100%; height: auto; }
@@ -137,6 +144,7 @@ td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; }
 .g-main svg, .g-mini svg { display: block; width: 100%; height: auto; overflow: visible; }
 .g-title { font-size: 13px; color: var(--ink-2); font-weight: 600; margin-bottom: 2px; }
 .g-arc { fill: none; stroke-linecap: butt; transition: opacity 0.3s ease; }
+.g-tick { transition: opacity 0.3s ease; }
 .g-needle { transition: transform 0.6s cubic-bezier(.3,.9,.3,1); }
 .g-cmp { display: grid; gap: 0; }
 .g-cmp .row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: center; padding-block: 8px; border-top: 1px solid var(--hair); font-size: 13px; }
@@ -187,6 +195,7 @@ td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; }
   </section>
 
   <section class="main">
+    <div class="col-left">
     <div class="panel mapcard">
       <div class="chips" id="chips" role="group" aria-label="권역 선택"></div>
       <div class="mapbox" id="mapbox"></div>
@@ -194,6 +203,8 @@ td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; }
         <div class="scale-bar" id="scale-bar"></div>
         <div class="scale-labels"><span>0 극단적 공포</span><span>50 중립</span><span>극단적 탐욕 100</span></div>
       </div>
+    </div>
+    <div class="panel histcard" id="histcard"></div>
     </div>
     <div class="panel read" id="read" aria-live="polite"></div>
   </section>
@@ -315,23 +326,39 @@ function bars(el, rows) {
 }
 
 function history_(el, R) {
-  const W = el.clientWidth || 360, h = 120, top = 6, ml = 26, mr = 6, Hh = top + h + 20;
+  const W = el.clientWidth || 600, h = W < 480 ? 180 : 250, top = 10, ml = 30, mr = 8, Hh = top + h + 24;
   const s = R.score;
   const x = (i) => ml + (i / (N - 1)) * (W - ml - mr), y = (v) => top + (1 - v / 100) * h;
   const sv = S("svg", { width: W, height: Hh, viewBox: `0 0 ${W} ${Hh}`, role: "img", "aria-label": "지수 추이. 누르면 그 달로 이동합니다." }, el);
   BANDS.forEach(([a, b, , c]) => S("rect", { x: ml, y: y(b), width: W - ml - mr, height: y(a) - y(b), style: `fill:${c}` }, sv));
-  [0, 50, 100].forEach((v) => (S("text", { x: ml - 5, y: y(v) + 4, "text-anchor": "end", class: "tick" }, sv).textContent = v));
+  [0, 25, 50, 75, 100].forEach((v) => (S("text", { x: ml - 6, y: y(v) + 4, "text-anchor": "end", class: "tick" }, sv).textContent = v));
   let d = "";
   s.forEach((v, i) => { if (v != null) d += (d && s[i - 1] != null ? "L" : "M") + x(i).toFixed(1) + "," + y(v).toFixed(1); });
-  S("path", { d, style: "fill:none;stroke:var(--ink);stroke-width:1.6;stroke-linejoin:round" }, sv);
-  const step = W < 340 ? 8 : 4;
-  D.dates.forEach((dd, i) => { const yy = +dd.slice(0, 4); if (dd.endsWith("-01") && yy % step === 2) S("text", { x: x(i), y: top + h + 15, "text-anchor": "middle", class: "tick" }, sv).textContent = yy; });
+  S("path", { d, style: "fill:none;stroke:var(--ink);stroke-width:2;stroke-linejoin:round" }, sv);
+  const step = W < 420 ? 8 : W < 640 ? 4 : 2;
+  D.dates.forEach((dd, i) => { const yy = +dd.slice(0, 4); if (dd.endsWith("-01") && (yy - 2006) % step === 0) S("text", { x: x(i), y: top + h + 17, "text-anchor": "middle", class: "tick" }, sv).textContent = yy; });
   const xi = x(state.t);
   S("line", { x1: xi, x2: xi, y1: top, y2: top + h, style: "stroke:var(--ink-2);stroke-width:1" }, sv);
-  if (s[state.t] != null) S("circle", { cx: xi, cy: y(s[state.t]), r: 4.5, style: "fill:var(--ink);stroke:var(--surface);stroke-width:2" }, sv);
+  if (s[state.t] != null) S("circle", { cx: xi, cy: y(s[state.t]), r: 5, style: "fill:var(--ink);stroke:var(--surface);stroke-width:2" }, sv);
+  const guide = S("line", { y1: top, y2: top + h, style: "stroke:var(--muted);stroke-width:1;stroke-dasharray:3 3;opacity:0" }, sv);
+  const hdot = S("circle", { r: 4.5, style: "fill:var(--surface);stroke:var(--ink);stroke-width:2;opacity:0" }, sv);
   const hit = S("rect", { x: ml, y: 0, width: W - ml - mr, height: Hh, style: "fill:transparent;cursor:pointer" }, sv);
-  const go = (e) => { const b = sv.getBoundingClientRect(); setT(Math.round(((e.clientX - b.left - ml) / (W - ml - mr)) * (N - 1))); };
-  hit.addEventListener("click", go);
+  const tip = H("div", { class: "hist-tip", hidden: "" }, el);
+  const idx = (e) => { const bb = sv.getBoundingClientRect(); return Math.max(0, Math.min(N - 1, Math.round(((e.clientX - bb.left - ml) / (W - ml - mr)) * (N - 1)))); };
+  hit.addEventListener("mousemove", (e) => {
+    const i = idx(e), v = s[i], xx = x(i);
+    guide.setAttribute("x1", xx); guide.setAttribute("x2", xx); guide.style.opacity = 1;
+    if (v != null) { hdot.setAttribute("cx", xx); hdot.setAttribute("cy", y(v)); hdot.style.opacity = 1; } else hdot.style.opacity = 0;
+    tip.replaceChildren();
+    tip.append(ym(D.dates[i]) + " · ");
+    H("b", {}, tip, v == null ? "–" : String(Math.round(v)));
+    if (v != null) tip.append(" " + zoneName(v));
+    tip.hidden = false;
+    tip.style.left = Math.max(70, Math.min(W - 70, xx)) + "px";
+    tip.style.top = Math.max(30, (v == null ? top + h / 2 : y(v)) - 10) + "px";
+  });
+  hit.addEventListener("mouseleave", () => { guide.style.opacity = 0; hdot.style.opacity = 0; tip.hidden = true; });
+  hit.addEventListener("click", (e) => setT(idx(e)));
 }
 
 function renderRead() {
@@ -381,10 +408,16 @@ function renderRead() {
     const b4 = H("div", { class: "bars" }, el);
     bars(b4, auxKeys.map((k) => ({ name: D.aux_label[k].split(" (")[0], note: "(" + D.aux_label[k].split(" (")[1], v: R.aux[k][t] })));
   }
+}
 
-  H("div", { class: "sec-title" }, el, "2006년 이후 추이 (누르면 그 달로 이동)");
+function renderHist() {
+  const R = D.regions[state.region], t = state.t, el = $("#histcard");
+  const isSeoul = state.region === "서울";
+  el.replaceChildren();
+  const head = H("div", { class: "hist-head" }, el);
+  H("div", { class: "hist-title" }, head, `${isSeoul ? "서울 전체" : state.region} 지수 추이`);
+  H("div", { class: "sec-title" }, head, "2006년부터 · 마우스를 올리면 그 달 값, 누르면 그 달로 이동");
   history_(H("div", { class: "hist" }, el), R);
-
   const note = H("div", { class: "note" }, el);
   const ic = R.ic;
   if (isSeoul) {
@@ -461,18 +494,22 @@ function arcPath(cx, cy, r, a, b) {
 }
 function buildGauge(box, big) {
   const W = 300, H = big ? 236 : 206, cx = 150, cy = big ? 150 : 132, r = big ? 112 : 112, sw = big ? 26 : 30;
-  const svg = S("svg", { viewBox: `0 ${big ? -8 : 0} ${W} ${H}`, role: "img" }, box);
+  const svg = S("svg", { viewBox: big ? `-18 -8 ${W + 36} ${H}` : `0 0 ${W} ${H}`, role: "img" }, box);
   const arcs = BANDS.map(([a, b], i) => S("path", { d: arcPath(cx, cy, r, a + (a ? 0.7 : 0), b - (b < 100 ? 0.7 : 0)), class: "g-arc",
     style: `stroke:${BAND_STYLE[i][0]};stroke-width:${sw}` }, svg));
+  let ticks = null;
   if (big) {
-    [0, 25, 50, 75, 100].forEach((v) => {
+    ticks = [0, 25, 50, 75, 100].map((v) => {
       const [x, y] = toXY(cx, cy, r - sw / 2 - 12, v);
-      S("text", { x, y: y + 4, "text-anchor": v === 50 ? "middle" : v < 50 ? "start" : "end", class: "tick", style: "font-size:10px" }, svg).textContent = v;
+      const tx = S("text", { x, y: y + 4, "text-anchor": v === 50 ? "middle" : v < 50 ? "start" : "end", class: "tick g-tick", style: "font-size:10px" }, svg);
+      tx.textContent = v;
+      return [v, tx];
     });
-    BANDS.forEach(([a, b, lab], i) => {
-      const m = (a + b) / 2, [x, y] = toXY(cx, cy, r + sw / 2 + 16, m);
+    BANDS.forEach(([a, b, lab]) => {
+      const m = (a + b) / 2, [x, y] = toXY(cx, cy, r + sw / 2 + 14, m);
       const tx = S("text", { x, y: y + 3, "text-anchor": m < 40 ? "end" : m > 60 ? "start" : "middle", style: "font-size:10.5px;fill:var(--muted)" }, svg);
-      tx.textContent = lab;
+      const parts = lab.startsWith("극단적") ? ["극단적", lab.slice(4)] : [lab];  // 양 끝 글자는 두 줄로
+      parts.forEach((p, k) => (S("tspan", { x, dy: k ? 13 : parts.length > 1 ? -6 : 0 }, tx).textContent = p));
     });
   }
   const needle = S("g", { class: "g-needle", style: `transform-origin:${cx}px ${cy}px` }, svg);
@@ -481,7 +518,7 @@ function buildGauge(box, big) {
   S("circle", { cx, cy, r: big ? 3.5 : 4, style: "fill:var(--surface)" }, svg);
   const num = S("text", { x: cx, y: cy + (big ? 50 : 62), "text-anchor": "middle", style: `font-size:${big ? 42 : 54}px;font-weight:700;fill:var(--ink);font-variant-numeric:tabular-nums` }, svg);
   const zl = big ? S("text", { x: cx, y: cy + 72, "text-anchor": "middle", style: "font-size:14px;font-weight:600;fill:var(--ink-2)" }, svg) : null;
-  return { svg, arcs, needle, num, zl };
+  return { svg, arcs, needle, num, zl, ticks };
 }
 function setGauge(g, v, label) {
   const has = v != null;
@@ -492,6 +529,7 @@ function setGauge(g, v, label) {
   g.arcs.forEach((p, i) => (p.style.opacity = i === bi ? BAND_STYLE[i][1] : 0.18));
   g.num.textContent = has ? String(Math.round(v)) : "–";
   if (g.zl) g.zl.textContent = has ? zoneName(v) : "자료 없음";
+  if (g.ticks) g.ticks.forEach(([tv, el]) => (el.style.opacity = has && Math.abs(v - tv) < 8 ? 0 : 1));  // 바늘이 가리는 숫자는 숨김
   g.svg.setAttribute("aria-label", `${label} ${has ? Math.round(v) + ", " + zoneName(v) : "자료 없음"}`);
 }
 const gBig = buildGauge($("#g-big"), true);
@@ -529,10 +567,12 @@ function renderGauges() {
   const early = D.dates[t] < D.official_start;
   $(".gauges").style.opacity = early ? 0.75 : 1;
 }
-function render() { renderGauges(); renderMap(); renderRead(); renderTable(); }
+function render() { renderGauges(); renderMap(); renderRead(); renderHist(); renderTable(); }
 render();
 let rt;
 new ResizeObserver(() => { clearTimeout(rt); rt = setTimeout(renderRead, 150); }).observe($("#read"));
+let ht;
+new ResizeObserver(() => { clearTimeout(ht); ht = setTimeout(renderHist, 150); }).observe($("#histcard"));
 document.addEventListener("keydown", (e) => {
   if (e.target === slider || e.target.tagName === "INPUT") return;
   if (e.key === "Escape") select("서울");
