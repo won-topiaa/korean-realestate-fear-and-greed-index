@@ -6,6 +6,8 @@
   같은 평형이 5건 미만이면 같은 단지 다른 평형 거래를 이 평형 가격으로 환산해 10건까지 채운다.
 - 보정가: 그 사이 시장 변화(구 반복매매지수), 층(8~10층 기준), 평형 차이를 맞춘 가격. 기준은 '최근 거래가 있던 달·8~10층'.
 - 해제·직거래 제외. 비교 거래가 5건 미만이면 점수를 내지 않는다.
+출렁임(ATR 비슷): 비교 거래를 시간순으로 놓고 이웃한 두 거래 보정가의 차이(%)를 평균 — 주식 ATR이 봉 사이 변동 폭을
+  평균하듯 거래 사이 변동 폭을 평균한다. 시장·층·평형 차이를 맞춘 뒤라 '같은 조건인데 값이 얼마나 들쭉날쭉한지'를 뜻한다.
 고정값(층 효과·면적 탄력성·평형 비율 기간)은 apt_study.py 검증 결과 (2026-10, 2006~2026 실거래 141만 건).
 """
 import json
@@ -127,15 +129,16 @@ def main():
             adj[pool == i] = np.exp(yf[i] + mkv[i])  # 최근 거래 자신은 층만 맞춤 (평형 환산 없음)
             x = float(np.exp(yf[i] + mkv[i]))
             lo, hi = float(adj.min()), float(adj.max())
-            k = None
+            k = atr = None
             if len(pool) >= MIN_N:
                 k = 50.0 if hi - lo < 1e-6 * hi else (x - lo) / (hi - lo) * 100
+                atr = float(np.mean(np.abs(np.diff(np.log(adj))))) * 100
                 scored += 1
             n_same = int((typ[pool] == T).sum())
             mixed += n_same < len(pool) and k is not None
             win = (t > (dates[i] - np.timedelta64(WINDOW_DAYS, "D"))) & (t <= dates[i])
             types.append({
-                "a": int(T), "k": None if k is None else round(k, 1), "same": n_same, "conv": int(len(pool) - n_same),
+                "a": int(T), "k": None if k is None else round(k, 1), "v": None if atr is None else round(atr, 2), "same": n_same, "conv": int(len(pool) - n_same),
                 "n2y": int(((typ[a:b] == T) & win).sum()),
                 "last": [ds[i], None if np.isnan(floor[i]) else int(floor[i]), won(price[i]), round(float(area[i]), 2)],
                 "x": won(x), "lo": won(lo), "hi": won(hi),
@@ -156,6 +159,15 @@ def main():
             "info": info,
             "jibun": "" if row is None else row["jibun"],
         }
+
+    # 출렁임의 서울 안 위치 (점수가 있는 모든 단지·평형 중 출렁임이 더 작은 비율, %)
+    allv = np.sort([t["v"] for d in detail.values() for c in d.values() for t in c["types"] if t["v"] is not None])
+    for d in detail.values():
+        for c in d.values():
+            for t in c["types"]:
+                if t["v"] is not None:
+                    t["vp"] = round(float(np.searchsorted(allv, t["v"], side="left")) / len(allv) * 100)
+    vq = {q: round(float(np.percentile(allv, q)), 2) for q in (25, 50, 75)} if len(allv) else {}
 
     # 구 공포탐욕 점수 (지도와 같은 값)
     gu_fg = {}
@@ -183,10 +195,10 @@ def main():
     meta = {"asof": end.strftime("%Y-%m-%d"), "gu": gu_fg, "n_complex": len(items), "n_scored": scored, "n_mixed": mixed,
             "floor": dict(zip(["1층 이하", "2층", "3층", "4층", "5층", "6~7층", "8~10층", "11~14층", "15~19층", "20~29층", "30층 이상"],
                               [round(float(np.expm1(v)) * 100, 1) for v in FLOOR_EFF])),
-            "has_info": bool(len(bld))}
+            "has_info": bool(len(bld)), "atr_q": vq}
     (OUT / "index.json").write_text(json.dumps({"meta": meta, "items": items}, ensure_ascii=False, separators=(",", ":")))
     size = sum(f.stat().st_size for f in OUT.rglob("*.json")) / 1e6
-    print(f"기준일 {meta['asof']} · 단지 {len(items):,} · 최근 2년 거래 평형 {types_out:,} 중 점수 {scored:,} (다른 평형 섞임 {mixed:,}) · {size:.1f} MB")
+    print(f"기준일 {meta['asof']} · 단지 {len(items):,} · 최근 2년 거래 평형 {types_out:,} 중 점수 {scored:,} (다른 평형 섞임 {mixed:,}) · 출렁임 사분위 {vq} · {size:.1f} MB")
 
 
 if __name__ == "__main__":
