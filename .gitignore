@@ -9,6 +9,7 @@ logs/
 site/
 results_v2/*.pkl
 results_zone/*.pkl
+results_apt/
 # 대용량·재배포 불가 원자료 (Actions가 매달 새로 받아 캐시에 보관)
 data/raw/kb/
 data/raw/market/

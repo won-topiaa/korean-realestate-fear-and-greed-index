@@ -21,7 +21,8 @@ SEOUL = {"11110": "종로구", "11140": "중구", "11170": "용산구", "11200":
          "11500": "강서구", "11530": "구로구", "11545": "금천구", "11560": "영등포구", "11590": "동작구",
          "11620": "관악구", "11650": "서초구", "11680": "강남구", "11710": "송파구", "11740": "강동구"}
 KEEP = ["aptSeq", "aptNm", "umdNm", "jibun", "excluUseAr", "floor", "buildYear", "dealYear", "dealMonth",
-        "dealDay", "dealAmount", "cdealType", "cdealDay", "dealingGbn", "buyerGbn", "slerGbn", "rgstDate"]
+        "dealDay", "dealAmount", "cdealType", "cdealDay", "dealingGbn", "buyerGbn", "slerGbn", "rgstDate",
+        "umdCd", "bonbun", "bubun"]  # 법정동 코드·본번·부번: 건축물대장(세대수·용적률) 조회용
 
 
 class QuotaExceeded(Exception):

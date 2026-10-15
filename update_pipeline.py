@@ -62,7 +62,7 @@ def _clean(msg):
 
 
 FETCH_BUDGET = {"KB부동산": 15, "한국은행 금리·가계신용·CSI": 8, "네이버 금융 주가": 5, "구글 트렌드": 15,
-                "한국부동산원 R-ONE": 40, "국토부 실거래": 25, "청약홈": 12}  # 분. 평소: R-ONE 11분, 나머지 1~4분
+                "한국부동산원 R-ONE": 40, "국토부 실거래": 25, "청약홈": 12, "건축물대장": 15}  # 분. 평소: R-ONE 11분, 나머지 1~4분
 
 
 def _child(fn, q):
@@ -258,6 +258,12 @@ def refresh_molit(back=4):
     return msg
 
 
+def refresh_bldg():
+    """단지 기본정보(세대수·용적률 등). 받은 만큼 바로 저장하므로 시간 한도 전에 스스로 멈춘다."""
+    import bldg_fetch
+    return bldg_fetch.run(budget_s=13 * 60)
+
+
 def refresh_applyhome():
     import applyhome_fetch as A
     for name in A.APIS:
@@ -268,7 +274,9 @@ def refresh_applyhome():
 # ---------------- 재계산 ----------------
 COMPUTE = ["molit_indicators.py", "rs_vintage.py", "extra_indicators.py", "build_indicators.py", "v3.py",
            "zone_index.py", "zone_v3.py", "export_zone.py", "map/build.py"]
-AFTER_CHECK = ["export_report_v3.py", "report/build.py", "site_build.py"]  # 실시간 기록은 점검을 통과한 뒤에
+AFTER_CHECK = ["export_report_v3.py", "report/build.py"]  # 실시간 기록은 점검을 통과한 뒤에
+OPTIONAL = ["apt_score.py"]  # 단지 검색: 실패해도 지도·보고서는 게시 (알림만)
+FINAL = ["site_build.py"]
 
 
 def run_script(rel):
@@ -280,6 +288,7 @@ def run_script(rel):
     if r.returncode != 0:
         last = (r.stderr or r.stdout).strip().splitlines()[-1:] or [""]
         raise RuntimeError(f"{rel} 종료코드 {r.returncode}: {_scrub(last[0])[:200]}")  # 원인을 공개 상태 파일에서도 보이게
+    return (r.stdout.strip().splitlines() or [""])[-1][:200] if rel in OPTIONAL else ""
 
 
 # ---------------- 점검 ----------------
@@ -356,6 +365,7 @@ def main():
         step("한국부동산원 R-ONE", refresh_reb)
         step("국토부 실거래", refresh_molit)
         step("청약홈", refresh_applyhome)
+        step("건축물대장", refresh_bldg)
     for rel in COMPUTE:
         if not step(f"계산 {rel}", lambda rel=rel: run_script(rel)):
             log("=== 계산 실패로 중단 (게시 안 함) ===")
@@ -371,6 +381,14 @@ def main():
     else:
         log("실시간 기록: 로컬 실행이라 건너뜀 (기록하려면 --record)")
     for rel in AFTER_CHECK:
+        if not step(f"계산 {rel}", lambda rel=rel: run_script(rel)):
+            log("=== 계산 실패로 중단 (게시 안 함) ===")
+            write_status()
+            return 1
+    for rel in OPTIONAL:
+        if not step(f"계산 {rel}", lambda rel=rel: run_script(rel)):
+            log(f"알림: {rel} 실패 — 지도·보고서는 그대로 게시")
+    for rel in FINAL:
         if not step(f"계산 {rel}", lambda rel=rel: run_script(rel)):
             log("=== 계산 실패로 중단 (게시 안 함) ===")
             write_status()

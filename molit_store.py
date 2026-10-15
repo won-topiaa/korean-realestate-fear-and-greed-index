@@ -2,6 +2,7 @@
 
 연도별로 나눠서 매달 갱신 때 최근 연도 파일만 바뀌게 한다 (저장소가 매달 통째로 커지지 않도록).
 gzip 헤더 시간을 고정해, 내용이 같으면 파일도 바이트 단위로 같다.
+단지 이름·주소처럼 거래마다 같은 값은 단지 표(data/molit/complexes.csv)에 한 번만 둔다 (단지 검색용).
 """
 import json
 from pathlib import Path
@@ -11,7 +12,9 @@ import pandas as pd
 ROOT = Path(__file__).parent
 DIR = ROOT / "data" / "molit"
 JSON_DIR = ROOT / "data" / "raw" / "molit" / "apt"
-COLS = ["lawd", "aptSeq", "excluUseAr", "dealYear", "dealMonth", "dealDay", "dealAmount", "cdealType", "dealingGbn"]
+COLS = ["lawd", "aptSeq", "excluUseAr", "floor", "dealYear", "dealMonth", "dealDay", "dealAmount", "cdealType", "dealingGbn"]
+COMPLEX = DIR / "complexes.csv"
+CCOLS = ["aptSeq", "aptNm", "names", "umdNm", "jibun", "buildYear", "umdCd", "bonbun", "bubun", "last"]
 
 
 def _frame(rows, lawd):
@@ -47,10 +50,47 @@ def save(df, years=None):
         tmp.replace(DIR / f"trades_{y}.csv.gz")  # 쓰다 끊겨도 지난 파일 유지
 
 
+def load_complexes():
+    if not COMPLEX.exists():
+        return pd.DataFrame(columns=CCOLS)
+    return pd.read_csv(COMPLEX, dtype=str, keep_default_na=False)
+
+
+def update_complexes(rows):
+    """새로 받은 거래 행으로 단지 표를 고친다: 가장 최근 거래의 이름·주소를 쓰고, 예전 이름은 names에 남긴다 (검색용)."""
+    new = pd.DataFrame([r for r in rows if r.get("aptSeq")])
+    if new.empty:
+        return len(load_complexes())
+    new = new.reindex(columns=[c for c in CCOLS if c not in ("names", "last")] + ["dealYear", "dealMonth"]).fillna("")
+    new["last"] = new["dealYear"] + new["dealMonth"].str.zfill(2)
+    old = load_complexes()
+    both = pd.concat([old.assign(_o=0), new.drop(columns=["dealYear", "dealMonth"]).assign(_o=1)], ignore_index=True).fillna("")
+    both = both.sort_values(["aptSeq", "last", "_o"], kind="mergesort")
+    both["_n"] = both["names"].where(both["names"] != "", both["aptNm"])
+    names = both.groupby("aptSeq")["_n"].agg(  # 최근 이름이 앞
+        lambda s: "|".join(dict.fromkeys(n for x in reversed(list(s)) for n in x.split("|") if n)))
+    out = both.groupby("aptSeq").last()  # 최근 거래 기준 (코드는 빈 칸이 아닌 마지막 값을 따로 채움)
+    for c in ["umdCd", "bonbun", "bubun"]:
+        known = both[both[c] != ""].groupby("aptSeq")[c].last()
+        out[c] = known.reindex(out.index).fillna("")
+    out["names"] = names.reindex(out.index)
+    out = out.reset_index().reindex(columns=CCOLS).sort_values("aptSeq")
+    tmp = COMPLEX.with_suffix(".csv.tmp")
+    out.to_csv(tmp, index=False)
+    tmp.replace(COMPLEX)
+    return len(out)
+
+
 def consolidate_from_json():
-    frames = [_frame(json.loads(f.read_text()), f.stem.split("_")[0]) for f in sorted(JSON_DIR.glob("*.json"))]
+    frames, rows = [], []
+    for f in sorted(JSON_DIR.glob("*.json")):
+        r = json.loads(f.read_text())
+        frames.append(_frame(r, f.stem.split("_")[0]))
+        rows += r
     df = pd.concat([f for f in frames if len(f)], ignore_index=True).fillna("")
     save(df)
+    COMPLEX.unlink(missing_ok=True)
+    update_complexes(rows)
     return len(df)
 
 
@@ -62,6 +102,7 @@ def replace_months(new_by_month):
     add = [_frame(rows, lawd) for m in new_by_month.values() for lawd, rows in m]
     df = pd.concat([df] + add, ignore_index=True).fillna("")
     save(df, years={m[:4] for m in new_by_month})
+    update_complexes([r for m in new_by_month.values() for _, rows in m for r in rows])
     return len(df)
 
 
