@@ -209,7 +209,7 @@ details.more[open] > summary { margin-bottom: 10px; }
         <p><b>평형 환산</b> · 같은 단지 안에서 평형 간 가격 비율을 최근 3년 거래로 구하고, 거래가 적은 평형은 서울 평균 비율(면적 1% 차이 → 가격 0.8% 차이)에 가깝게 써요. 2021년 이후 거래로 시험했을 때 환산 오차는 중앙값 4.6%로, 같은 평형끼리 비교할 때(3.3%)보다 커요. 그래서 같은 평형이 충분하면 환산하지 않아요.</p>
         <p><b>검증</b> · 2014~2026년 실거래 82만 건으로 시험했어요. 80점 이상이었던 거래 뒤 6개월 안 같은 평형 거래는 평균 2.0% 낮았고, 20점 이하였던 거래 뒤에는 4.6% 높았어요(시장 전체 변화를 뺀 값).</p>
         <p><b>평형</b> · 'N평형'은 공급면적(전용 + 계단·복도 등) 기준의 어림값으로, 전용면적 × 1.33 ÷ 3.3058로 계산했어요. 단지마다 공용면적 비율이 달라서 1~2평 차이가 날 수 있어요. 점수는 전용면적으로 나눠서 계산해요.</p>
-        <p><b>단지 기본 정보</b> · 국토교통부 건축물대장(건축HUB)의 총괄표제부, 없으면 동별 표제부를 합친 값이에요. 동수는 세대가 있는 동만 세요.</p>
+        <p><b>단지 기본 정보</b> · 국토교통부 건축물대장(건축HUB)의 총괄표제부, 없으면 동별 표제부를 합친 값이에요. 동수는 세대가 있는 동만 세요. 오래된 단지는 대장에 대지면적이 비어 있어서, 대장의 대표 지번과 부속지번의 토지대장 면적(브이월드)을 더해 대지면적으로 쓰고 용적률(용적률 산정 연면적 ÷ 대지)과 건폐율(건축면적 ÷ 대지)을 계산했어요. 대지면적이 있는 단지 80곳으로 시험했을 때 79곳이 ±5% 안으로 맞았어요.</p>
       </div>
     </details>
     <p><b>자료</b> · 국토교통부 아파트 매매 실거래가(서울, 2006년~)와 건축물대장. 실거래는 계약 후 30일 안에 신고되므로 최근 한 달 거래는 아직 덜 들어왔을 수 있어요. <span id="asof"></span> 매달 20일에 지도와 함께 갱신해요.</p>
@@ -397,12 +397,15 @@ function renderDetail(it, d) {
     fact(facts, "동수", info.dong, "개 동", "아파트 건물 수");
     fact(facts, "최고층", info.maxFlr, "층");
     fact(facts, "입주(사용승인)", info.useApr && info.useApr.length === 8 ? info.useApr.slice(0, 4) + "년 " + +info.useApr.slice(4, 6) + "월" : it.built ? it.built + "년" : null);
-    fact(facts, "용적률", info.vlRat, "%", info.vlRat ? "땅 넓이 대비 건물 바닥면적 합 · 높을수록 빽빽" : "대장에 값이 없어요");
-    fact(facts, "건폐율", info.bcRat, "%", info.bcRat ? "땅 넓이 중 건물이 덮은 비율 · 낮을수록 동 간격이 넓어요" : "대장에 값이 없어요");
+    const land = info.landSrc === "토지대장" || info.landSrc === "면적";  // 대장에 대지가 비어 토지대장 면적으로 채운 단지
+    fact(facts, "용적률", info.vlRat, "%", info.vlRat ? "땅 넓이 대비 건물 바닥면적 합 · 높을수록 빽빽" : land ? "곧 채워져요" : "대장에 값이 없어요");
+    fact(facts, "건폐율", info.bcRat, "%", info.bcRat ? "땅 넓이 중 건물이 덮은 비율 · 낮을수록 동 간격이 넓어요" : land ? "곧 채워져요" : "대장에 값이 없어요");
     fact(facts, "주차", n(info.pkng), "대", info.pkng && info.hhld ? `세대당 ${(info.pkng / info.hhld).toFixed(2)}대` : info.pkng ? null : "대장에 값이 없어요");
-    fact(facts, "대지면적", n(info.platArea), "㎡", info.platArea ? `약 ${n(Math.round(info.platArea / 3.3058))}평` : "대장에 값이 없어요");
+    fact(facts, "대지면적", n(info.platArea), "㎡", info.platArea ? `약 ${n(Math.round(info.platArea / 3.3058))}평` + (land ? " · 토지대장 합계" : "") : "대장에 값이 없어요");
     if (info.shared > 1)
       H("p", { class: "note", style: "margin-top:10px" }, box, `실거래에서는 ${info.shared}개 단지로 나뉘어 있지만 건축물대장에는 '${info.regNm || it.name}' 한 장부로 묶여 있어요. 위 값은 ${info.shared}개 단지를 합친 기준이에요.`);
+    else if (land)
+      H("p", { class: "note", style: "margin-top:10px" }, box, "이 단지는 건축물대장에 대지면적이 비어 있어서, 대장에 적힌 지번들의 토지대장 면적을 더해 대지면적으로 쓰고 용적률·건폐율을 계산했어요.");
     else if (!info.vlRat && info.src === "총괄표제부")
       H("p", { class: "note", style: "margin-top:10px" }, box, "오래된 단지는 건축물대장에 대지면적·용적률이 비어 있는 경우가 있어요.");
   } else {

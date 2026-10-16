@@ -267,7 +267,8 @@ def refresh_bldg():
     a = bldg_fetch.run(budget_s=9 * 60)
     if "활용신청" in a:
         return a
-    return a + " / " + bldg_fetch.fill(budget_s=max(60, 13 * 60 - (time.time() - t0)))
+    b = bldg_fetch.fill(budget_s=max(60, 12 * 60 - (time.time() - t0)))
+    return " / ".join([a, b, bldg_fetch.fill_land()])  # 토지대장 면적으로 채운 단지의 용적률·건폐율
 
 
 def refresh_applyhome():

@@ -26,7 +26,8 @@ ROOT = Path(__file__).parent
 OUT = ROOT / "data" / "molit" / "buildings.csv"
 BJ = ROOT / "data" / "molit" / "bjdong.csv"  # 서울 법정동 코드표 (구·동 이름 → 코드)
 URL = "https://apis.data.go.kr/1613000/BldRgstHubService"
-COLS = ["aptSeq", "lot", "via", "regNm", "hhld", "dong", "vlRat", "bcRat", "platArea", "totArea", "pkng", "useApr", "maxFlr", "src", "fetched", "status"]
+COLS = ["aptSeq", "lot", "via", "regNm", "hhld", "dong", "vlRat", "bcRat", "platArea", "totArea", "pkng", "useApr", "maxFlr", "src", "landSrc", "fetched", "status"]
+VW = "https://api.vworld.kr/ned/data/ladfrlList"  # 브이월드 토지임야목록 (토지대장 면적)
 APT = ("공동주택", "아파트")
 
 
@@ -38,9 +39,12 @@ class QuotaExceeded(Exception):
     pass
 
 
+def _env():
+    return dict(l.split("=", 1) for l in (ROOT / ".env").read_text().split() if "=" in l)
+
+
 def _key():
-    env = dict(l.split("=", 1) for l in (ROOT / ".env").read_text().split() if "=" in l)
-    return env["DATA_GO_KR_KEY"].strip()
+    return _env()["DATA_GO_KR_KEY"].strip()
 
 
 def call(op, params, key, page=1, rows=100, maxpage=10, _try=0):
@@ -271,6 +275,86 @@ def fill(workers=2, budget_s=None, retry_days=90):
     return f"건축물대장 다시 찾기: {done}/{len(miss)}곳 확인, {found}곳 찾음{msg} · 아직 정보 없는 단지 {left}"
 
 
+def land_area(lot, vkey):
+    """한 필지의 토지대장 면적(㎡). 없는 지번이면 None."""
+    sgg, bj, gb, bun, ji = lot
+    try:
+        pnu = f"{sgg}{bj}{'2' if gb == '1' else '1'}{int(bun):04d}{int(ji):04d}"  # 토지 고유번호: 산이면 2
+    except ValueError:
+        return None
+    url = f"{VW}?key={vkey}&pnu={pnu}&format=json&numOfRows=10&pageNo=1"
+    for attempt in range(4):
+        out = subprocess.run(["curl", "-sS", "-m", "30", url], capture_output=True, text=True).stdout
+        try:
+            j = json.loads(out)
+            if "ladfrlVOList" not in j and str(j.get("response", {}).get("totalCount")) == "0":
+                return None  # 토지대장에 없는 지번 (합쳐지거나 나뉘어 없어진 지번 등)
+            items = j["ladfrlVOList"]["ladfrlVOList"]
+            return sum(float(x["lndpclAr"]) for x in items) if items else None
+        except (json.JSONDecodeError, KeyError, TypeError, ValueError):
+            time.sleep(1 + attempt)
+    raise RuntimeError(f"토지 면적: 응답 해석 실패 · {out.replace(vkey, '***')[:120]}")
+
+
+def fill_land(workers=3):
+    """오래된 단지(구대장)는 대장에 대지면적·용적률·건폐율이 0이다. 토지대장 면적으로 채운다.
+    1단계: 대지 = 대표 지번 + 대장의 부속지번 토지대장 면적 합 (대지면적이 있는 단지 80곳으로 시험: 99%가 ±5% 안).
+           지번 중 하나라도 토지대장에 없으면 채우지 않는다.
+    2단계: 용적률 = 용적률 산정 연면적 ÷ 대지, 건폐율 = 건축면적 ÷ 대지 (연면적·건축면적은 대장 값).
+    landSrc: '' 아직 · '없음' 토지대장에 없음 · '면적' 대지만 채움(비율은 다음에) · '토지대장' 비율까지 · '대장' 대장 대지로 비율만 계산."""
+    vkey = _env().get("VWORLD_KEY", "").strip()  # 없으면(자동 갱신 등) 1단계는 건너뛰고 2단계만
+    key = _key()
+    old = pd.read_csv(OUT, dtype=str, keep_default_na=False)
+    rows = {r["aptSeq"]: r for r in old.to_dict("records")}
+    ok = [r for r in rows.values() if r["status"] == "ok" and r["lot"]]
+    params = lambda r: dict(zip(("sigunguCd", "bjdongCd", "platGbCd", "bun", "ji"), r["lot"].split("-")))
+
+    def area(r):
+        p = params(r)
+        lots = {tuple(p.values())} | {(x["atchSigunguCd"], x["atchBjdongCd"], str(x["atchPlatGbCd"]), x["atchBun"], x["atchJi"])
+                                      for x in call("getBrAtchJibunInfo", p, key, maxpage=30)}
+        areas = [land_area(x, vkey) for x in sorted(lots)]
+        return r["aptSeq"], None if any(a is None for a in areas) else int(round(sum(areas)))
+
+    def ratio(r):
+        p, plat = params(r), num(r["platArea"])
+        recap = call("getBrRecapTitleInfo", p, key)
+        c = max(recap, key=lambda x: num(x.get("hhldCnt"))) if recap else {}
+        est, arch = num(c.get("vlRatEstmTotArea")), num(c.get("archArea"))
+        if not est or not arch:  # 총괄표제부가 없거나 비었으면 그 지번의 동별 표제부를 모두 더한다
+            titles = call("getBrTitleInfo", p, key)
+            est = est or sum(num(t.get("vlRatEstmTotArea")) for t in titles)
+            arch = arch or sum(num(t.get("archArea")) for t in titles)
+        vl, bc = est / plat * 100, arch / plat * 100
+        return r["aptSeq"], (round(vl, 1) if 30 <= vl <= 1500 else ""), (round(bc, 1) if 3 <= bc <= 100 else "")
+
+    msg, n_area, n_ratio = "", 0, 0
+    try:
+        with ThreadPoolExecutor(workers) as ex:
+            todo = [r for r in ok if not r["platArea"] and not r.get("landSrc")] if vkey else []
+            for i in range(0, len(todo), 30):
+                for seq, plat in ex.map(area, todo[i:i + 30]):
+                    if plat and plat > 500 * num(rows[seq]["hhld"]):
+                        plat = None  # 세대당 땅이 500㎡ 넘으면 대장과 지번 짝이 잘못 맞은 것으로 본다
+                    rows[seq]["platArea"] = plat or ""
+                    rows[seq]["landSrc"] = "면적" if plat else "없음"
+                    n_area += bool(plat)
+                save(list(rows.values()))
+            todo = [r for r in ok if r["platArea"] and (not r["vlRat"] or not r["bcRat"]) and r.get("landSrc", "") in ("", "면적")]
+            for i in range(0, len(todo), 30):
+                for seq, vl, bc in ex.map(ratio, todo[i:i + 30]):
+                    r = rows[seq]
+                    r["vlRat"], r["bcRat"] = r["vlRat"] or vl, r["bcRat"] or bc
+                    r["landSrc"] = "토지대장" if r.get("landSrc") == "면적" else "대장"
+                    n_ratio += bool(vl)
+                save(list(rows.values()))
+    except QuotaExceeded:
+        msg = " (건축물대장 하루 호출 한도로 중단, 다음 실행에 이어서)"
+    save(list(rows.values()))
+    still = sum(1 for r in rows.values() if r["status"] == "ok" and not r["vlRat"])
+    return f"토지 면적으로 채우기: 대지면적 {n_area}곳, 용적률 {n_ratio}곳 채움{msg} · 용적률 빈 단지 {still}"
+
+
 def save(rows):
     df = pd.DataFrame(rows).reindex(columns=COLS).fillna("").astype(str).sort_values("aptSeq")
     df = df.apply(lambda c: c.str.replace(r"\.0$", "", regex=True))  # 정수가 84.0으로 저장되지 않게
@@ -330,5 +414,7 @@ def run(limit=None, budget_s=None, workers=4):
 if __name__ == "__main__":
     if sys.argv[1:] == ["fill"]:
         print(fill())
+    elif sys.argv[1:] == ["land"]:
+        print(fill_land())
     else:
         print(run(int(sys.argv[1]) if len(sys.argv) > 1 else None))
