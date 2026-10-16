@@ -504,7 +504,7 @@ function computeMulti() {
   const hr = H("tr", {}, H("thead", {}, tb));
   const cols = [["단지"], ["수익률", "n"], ["연평균", "n"]];  // 좁은 화면에서도 수익률이 먼저 보이게
   if (ltv) cols.push(["내 돈 수익률", "n"]);
-  cols.push(["산 가격", "n"], ["판 가격", "n"], ["산 때 공포탐욕", "n"]);
+  cols.push(["산 가격", "n m-hide"], ["판 가격", "n m-hide"], ["산 때 공포탐욕", "n m-hide"]);  // 휴대폰: 단지·수익률·연평균만
   cols.forEach(([t, c]) => H("th", c ? { class: c } : {}, hr, t));
   const bd = H("tbody", {}, tb);
   rows.forEach((r) => {
@@ -516,9 +516,10 @@ function computeMulti() {
     H("td", { class: "n " + (r.ret >= 0 ? "gain" : "loss"), style: "font-weight:700" }, tr, pctS(r.ret));
     H("td", { class: "n" }, tr, pctS(r.cagr));
     if (ltv) H("td", { class: "n " + (r.eqRet >= 0 ? "gain" : "loss") }, tr, pctS(r.eqRet));
-    const t1 = H("td", { class: "n" }, tr, won(r.b.v)); if (r.b.est) H("span", { class: "s" }, t1, "추정");
-    const t2 = H("td", { class: "n" }, tr, won(r.e.v)); if (r.e.est) H("span", { class: "s" }, t2, "추정");
-    const tf = H("td", { class: "n" }, tr, `${f0(r.fb.gu)}`); H("span", { class: "s" }, tf, fgName(r.fb.gu));
+    const t1 = H("td", { class: "n m-hide" }, tr, won(r.b.v)); if (r.b.est) H("span", { class: "s" }, t1, "추정");
+    const t2 = H("td", { class: "n m-hide" }, tr, won(r.e.v)); if (r.e.est) H("span", { class: "s" }, t2, "추정");
+    const tf = H("td", { class: "n m-hide" }, tr, `${f0(r.fb.gu)}`); H("span", { class: "s" }, tf, fgName(r.fb.gu));
+    H("span", { class: "s m-only" }, td, `${won(r.b.v)} → ${won(r.e.v)}`);  // 휴대폰: 숨긴 가격을 이름 아래에
   });
   const ref = (k, r, sub) => {
     const tr = H("tr", {}, bd);
@@ -526,7 +527,7 @@ function computeMulti() {
     H("td", { class: "n " + (r >= 0 ? "gain" : "loss") }, tr, pctS(r));
     H("td", { class: "n" }, tr, pctS(Math.pow(1 + r, 1 / yrs) - 1));
     if (ltv) H("td", {}, tr, "");
-    H("td", {}, tr, ""); H("td", {}, tr, ""); H("td", {}, tr, "");
+    H("td", { class: "m-hide" }, tr, ""); H("td", { class: "m-hide" }, tr, ""); H("td", { class: "m-hide" }, tr, "");
   };
   ref("서울 아파트 전체", seoul, "실거래 반복매매지수");
   ref(`예금 (연 ${(dep * 100).toFixed(1)}%)`, Math.pow(1 + dep, yrs) - 1, "연복리");

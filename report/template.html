@@ -211,7 +211,7 @@ code { font-family: var(--mono); font-size: 13px; }
 
 
 
-  <section class="section">
+  <section class="section m-fold" data-fold="엔진 점검과 수정 (v3.1 · v3.2)">
     <header>
       <h2>엔진 점검과 수정 (v3.1 · v3.2)</h2>
       <p>v3를 자동 갱신에 올리기 전에 구조를 다시 점검했어요. 고쳐야 할 오류 3개, 설계상 약점 5개, 경미한 문제 4개를 찾아 모두 반영했어요. 그 결과 성적은 실제 수준으로 내려왔고, 이 보고서의 숫자는 모두 고친 뒤의 값이에요. v3.2에서는 금리와 가계신용을 한국은행 원자료로 바꿨어요.</p>
@@ -219,7 +219,7 @@ code { font-family: var(--mono); font-size: 13px; }
     <div class="panel"><div class="table-wrap"><table id="fix-table" style="min-width:720px"></table></div></div>
   </section>
 
-  <section class="section">
+  <section class="section m-fold" data-fold="5년 구간별 성적">
     <header>
       <h2>5년 구간별 성적</h2>
       <p>세 구간만으로는 구간을 어떻게 자르느냐에 따라 결과가 크게 달라져서, 5년 창을 1년씩 옮겨가며 13번 평가했어요. 숫자는 지수와 이후 12개월 실거래 가격의 순위상관이에요. 단순한 기준 세 가지와 나란히 놓았어요.</p>
@@ -230,7 +230,7 @@ code { font-family: var(--mono); font-size: 13px; }
     </div>
   </section>
 
-  <section class="section">
+  <section class="section m-fold" data-fold="실제 가중치">
     <header>
       <h2>실제 가중치</h2>
       <p>표를 선행·동행·후행 세 그룹으로 나눠 같은 비중으로 평균 내기 때문에, 그룹마다 표 수가 다르면 한 표의 무게도 달라져요. 최신 달 기준 주제별 실제 비중이에요. 비중을 억지로 맞추는 두 방식(그룹 안 주제 균등, 소득연계 통계 합치기)은 최악 구간 성적을 나쁘게 만들어서 채택하지 않고, 대신 숫자를 공개해요.</p>
@@ -241,14 +241,14 @@ code { font-family: var(--mono); font-size: 13px; }
     </div>
   </section>
 
-  <section class="section">
+  <section class="section m-fold" data-fold="실시간 검증">
     <header>
       <h2>실시간 검증</h2>
       <p id="live-cap"></p>
     </header>
   </section>
 
-  <section class="section">
+  <section class="section m-fold" data-fold="시점 의존성 점검 (v3를 정할 때 · 공개 시차 반영 전)">
     <header>
       <h2>시점 의존성 점검 (v3를 정할 때 · 공개 시차 반영 전)</h2>
       <p>2006년과 지금은 데이터가 만들어지는 방식, 정책, 시장 구조가 많이 달라요. 지표마다 추세와 단절이 있는지, 점수가 0이나 100에 오래 붙어 있는지 진단하고, 해결책 후보를 실거래 정답으로 시험했어요.</p>
@@ -271,7 +271,7 @@ code { font-family: var(--mono); font-size: 13px; }
     </div>
   </section>
 
-  <section class="section">
+  <section class="section m-fold" data-fold="눈금 펴기">
     <header>
       <h2>눈금 펴기</h2>
       <p>여러 지표를 평균하면 점수가 가운데로 몰려요. v2는 20년 동안 26~84만 써서 극단적 공포가 한 번도 나오지 않았어요. 그래서 마지막에 50을 중심으로 눈금을 넓혔어요.</p>
@@ -288,7 +288,7 @@ code { font-family: var(--mono); font-size: 13px; }
     </div>
   </section>
 
-  <section class="section">
+  <section class="section m-fold" data-fold="묶는 방식 비교 (v2 분석, 45개 기준)">
     <header>
       <h2>묶는 방식 비교 (v2 분석, 45개 기준)</h2>
       <p>같은 45개 지표를 서로 다른 기준으로 묶었어요. 숫자는 지수 점수와 이후 12개월 실거래 가격 변화의 순위상관이에요(1이면 완벽, 0이면 무관). 7년씩 세 구간으로 나눠 가장 나쁜 구간의 값으로 순위를 매겼어요. 오른쪽 끝 열은 정답을 KB 지수로 바꿨을 때의 최저값이에요.</p>
@@ -299,7 +299,7 @@ code { font-family: var(--mono); font-size: 13px; }
     </div>
   </section>
 
-  <section class="section">
+  <section class="section m-fold" data-fold="가격부담을 빼면 2006–2019년에 안 맞아요 (v2 분석)">
     <header>
       <h2>가격부담을 빼면 2006–2019년에 안 맞아요 (v2 분석)</h2>
       <p>v1은 KB 지수를 정답으로 두 구간만 비교해서 가격부담을 뺐어요. 실거래 정답과 세 구간으로 다시 보니, 빼는 쪽은 최근 구간에서만 좋고 앞의 14년 동안은 약했어요. 그래서 v2는 실시간으로 계산할 수 없는 KB 분양·입주 일정 두 개만 빼고 나머지를 모두 넣었어요.</p>
@@ -307,7 +307,7 @@ code { font-family: var(--mono); font-size: 13px; }
     <div class="panel"><div class="table-wrap"><table id="variant-table" style="min-width:640px"></table></div></div>
   </section>
 
-  <section class="section">
+  <section class="section m-fold" data-fold="주제 그룹은 구간마다 크게 흔들려요 (v2 분석)">
     <header>
       <h2>주제 그룹은 구간마다 크게 흔들려요 (v2 분석)</h2>
       <p>그룹 하나만으로는 어느 구간에서든 꾸준한 게 없었어요. 관심(검색량)과 자금(금리)은 2020년 이후에만 맞았고, 가격부담은 그때만 반대로 움직였어요. 서로 다른 구간에 강한 그룹을 섞었기 때문에 종합지수가 꾸준해진 거예요.</p>
@@ -318,7 +318,7 @@ code { font-family: var(--mono); font-size: 13px; }
     </div>
   </section>
 
-  <section class="section">
+  <section class="section m-fold" data-fold="새로 넣은 지표 (v2 분석)">
     <header>
       <h2>새로 넣은 지표 (v2 분석)</h2>
       <p>API 키로 받은 국토부 실거래, 한국부동산원, 청약홈 자료로 만든 지표예요. 청약 지표는 청약홈 자료가 2020년부터라 마지막 구간만 평가할 수 있어요.</p>
@@ -326,7 +326,7 @@ code { font-family: var(--mono); font-size: 13px; }
     <div class="panel"><div class="table-wrap"><table id="single-table" style="min-width:720px"></table></div></div>
   </section>
 
-  <section class="section">
+  <section class="section m-fold" data-fold="데이터에서 찾은 함정 두 가지">
     <header>
       <h2>데이터에서 찾은 함정 두 가지</h2>
       <p>정답과 지표를 바꾸면서 기존 공개 지수의 문제가 드러났어요.</p>
@@ -345,7 +345,7 @@ code { font-family: var(--mono); font-size: 13px; }
     </div>
   </section>
 
-  <section class="section">
+  <section class="section m-fold" data-fold="점수 구간별 이후 12개월 실거래 가격 (2011년 2월 이후)">
     <header>
       <h2>점수 구간별 이후 12개월 실거래 가격 (2011년 2월 이후)</h2>
       <p id="bucket-cap"></p>
@@ -353,7 +353,7 @@ code { font-family: var(--mono); font-size: 13px; }
     <div class="panel"><div class="chart" id="bucket-chart"></div></div>
   </section>
 
-  <section class="section">
+  <section class="section m-fold" data-fold="과거에 잘 맞은 조합을 고르면 생기는 일 (v2 분석)">
     <header>
       <h2>과거에 잘 맞은 조합을 고르면 생기는 일 (v2 분석)</h2>
       <p>지표 2~4개 조합 19만여 개를 모두 시험했어요. 학습기간 성적이 좋은 조합을 골라도 검증기간에서는 아무 조합이나 고른 것과 차이가 없었어요. 의미 단위로 묶는 게 맞다는 v1의 결론은 그대로예요.</p>
@@ -372,12 +372,12 @@ code { font-family: var(--mono); font-size: 13px; }
     </div>
   </section>
 
-  <section class="section">
+  <section class="section m-fold" data-fold="주요 국면에서 지수가 가리킨 값">
     <header><h2>주요 국면에서 지수가 가리킨 값</h2></header>
     <div class="panel"><div class="table-wrap"><table id="snap-table" style="min-width:520px"></table></div></div>
   </section>
 
-  <section class="section">
+  <section class="section m-fold" data-fold="방법과 한계">
     <header><h2>방법과 한계</h2></header>
     <div class="cols">
       <div class="panel">

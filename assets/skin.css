@@ -146,3 +146,18 @@ body.sk-intro {
 body.sk-intro .sk-hero > .sk-bg, body.sk-intro .sk-hero::after, body.sk-intro .sk-foot > .sk-foot-bg { display: none; }  /* 띠·바닥글 사진은 감춤 */
 body.sk-intro .sk-foot { background: transparent; border-top: 1px solid rgba(255, 255, 255, 0.14); }
 body.sk-intro .panel { backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+
+/* ---------- 휴대폰: 꼭 필요한 정보만 (컴퓨터 화면은 그대로) ----------
+   .m-hide 휴대폰에서 숨김 · .m-only 휴대폰에서만 보임 · .m-fold 휴대폰에서 접혀 있다가 바로 앞 .m-fold-btn으로 펼침 */
+.m-only { display: none !important; }  /* 표 보조 글(td .s) 규칙보다 우선 */
+.m-fold-btn { display: none; }
+@media (max-width: 600px) {
+  .m-hide { display: none !important; }
+  .m-only { display: block !important; }
+  .m-fold-btn { display: block; width: 100%; font: inherit; font-size: 14px; font-weight: 600; color: var(--ink); background: transparent;
+    border: 1px solid var(--line); padding: 10px 12px; cursor: pointer; text-align: center; }
+  .m-fold:not(.m-open) { display: none !important; }
+  .sk-hero .eyebrow { display: none; }  /* 제목 위 작은 분류 글씨 */
+  .sk-foot .sk-in > div:nth-child(3) { display: none; }  /* 바닥글 '자료' 칸 */
+  .sk-foot .sk-in { padding-top: 36px; gap: 22px 24px; }
+}

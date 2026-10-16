@@ -70,6 +70,12 @@ a { color: var(--ink); }
 .gu-row[aria-pressed="true"] { background: var(--hl); font-weight: 600; box-shadow: inset 3px 0 0 var(--ink); }
 .gu-row .bar { height: 8px; background: var(--grid); border-radius: 0 4px 4px 0; position: relative; }
 .gu-row .bar i { position: absolute; inset: 0 auto 0 0; background: var(--greed); border-radius: 0 4px 4px 0; }
+@media (max-width: 600px) {  /* 휴대폰: 구는 위 8개(+서울 전체)만, 표는 단지·거래가·오른 폭만 */
+  .gu-grid:not(.m-open) .gu-row:nth-child(n+10) { display: none; }
+  .hide-m { display: none; }
+  #tbl td { white-space: normal; }  /* 이름 아래 한 줄이 표를 옆으로 밀지 않게 */
+  #tbl td.n { white-space: nowrap; }
+}
 .gu-row .n { text-align: right; font-variant-numeric: tabular-nums; color: var(--ink-2); font-size: 13px; }
 
 /* 목록 */
@@ -120,6 +126,7 @@ td a:hover { text-decoration: underline; }
       <span class="cnt">누르면 그 구 단지만 보여요</span>
     </div>
     <div class="gu-grid" id="gus"></div>
+    <button type="button" class="m-fold-btn" id="gus-more">모든 구 보기 ▾</button>
   </section>
 
   <section class="panel" aria-label="신고가 거래 목록">
@@ -169,7 +176,8 @@ const ymLab = (ym) => `${ym.slice(0, 4)}년 ${+ym.slice(5)}월`;
 const pct = (x) => (x * 100).toFixed(0) + "%";
 
 let D = null, M = null;
-const st = { m: 0, gu: null, q: "", sort: "price", shown: 50 };
+const PAGE = window.matchMedia("(max-width: 600px)").matches ? 20 : 50;  // 휴대폰은 20건씩
+const st = { m: 0, gu: null, q: "", sort: "price", shown: PAGE };
 
 function renderMonths() {
   const box = $("#months");
@@ -178,7 +186,7 @@ function renderMonths() {
     const partial = i === 0 && m.ym === D.asof.slice(0, 7);
     const b = H("button", { type: "button", "aria-pressed": String(i === st.m) }, box, `${+m.ym.slice(5)}월`);
     if (partial) H("small", {}, b, "신고 중");
-    b.addEventListener("click", () => { st.m = i; st.shown = 50; render(); });
+    b.addEventListener("click", () => { st.m = i; st.shown = PAGE; render(); });
   });
 }
 
@@ -224,7 +232,7 @@ function renderTrend() {
     g.addEventListener("mouseenter", show); g.addEventListener("focus", show);
     g.addEventListener("mouseleave", () => (tip.hidden = true)); g.addEventListener("blur", () => (tip.hidden = true));
     const pick = D.months.findIndex((mm) => mm.ym === r[0]);
-    if (pick >= 0) { g.style.cursor = "pointer"; g.addEventListener("click", () => { st.m = pick; st.shown = 50; render(); }); }
+    if (pick >= 0) { g.style.cursor = "pointer"; g.addEventListener("click", () => { st.m = pick; st.shown = PAGE; render(); }); }
   });
 }
 
@@ -237,13 +245,13 @@ function renderGus() {
   H("span", {}, all, "서울 전체");
   const ab = H("span", { class: "bar" }, all); H("i", { style: "width:100%;opacity:.35" }, ab);
   H("span", { class: "n" }, all, `${M.high.toLocaleString("ko-KR")}건`);
-  all.addEventListener("click", () => { st.gu = null; st.shown = 50; render(); });
+  all.addEventListener("click", () => { st.gu = null; st.shown = PAGE; render(); });
   rows.forEach(([c, h, n]) => {
     const b = H("button", { type: "button", class: "gu-row", "aria-pressed": String(st.gu === c), title: `${D.gu_names[c]}: 신고가 ${h}건 / 비교 가능 ${n}건` }, box);
     H("span", {}, b, D.gu_names[c]);
     const bar = H("span", { class: "bar" }, b); H("i", { style: `width:${(h / mx) * 100}%` }, bar);
     H("span", { class: "n" }, b, `${h}건 · ${n ? pct(h / n) : "–"}`);
-    b.addEventListener("click", () => { st.gu = st.gu === c ? null : c; st.shown = 50; render(); });
+    b.addEventListener("click", () => { st.gu = st.gu === c ? null : c; st.shown = PAGE; render(); });
   });
 }
 
@@ -258,7 +266,7 @@ function renderList() {
   const tb = $("#tbl");
   tb.textContent = "";
   const hr = H("tr", {}, H("thead", {}, tb));
-  [["단지"], ["전용", "n"], ["층", "n"], ["계약일"], ["거래가", "n"], ["직전 최고가", "n"], ["오른 폭", "n"]].forEach(([x, c]) => H("th", c ? { class: c } : {}, hr, x));
+  [["단지"], ["전용", "n hide-m"], ["층", "n hide-m"], ["계약일", "hide-m"], ["거래가", "n"], ["직전 최고가", "n hide-m"], ["오른 폭", "n"]].forEach(([x, c]) => H("th", c ? { class: c } : {}, hr, x));
   const bd = H("tbody", {}, tb);
   if (!rows.length) { const tr = H("tr", {}, bd); H("td", { colspan: 7, style: "color:var(--muted);white-space:normal" }, tr, "조건에 맞는 신고가 거래가 없어요."); }
   rows.slice(0, st.shown).forEach((r) => {
@@ -267,16 +275,18 @@ function renderList() {
     const td = H("td", {}, tr);
     H("a", { href: `../apt/#${seq}:${Math.round(area)}`, title: "단지 검색에서 이 평형 보기" }, td, name || seq);
     H("span", { class: "s" }, td, `${D.gu_names[lawd] || ""} ${dong}`);
-    const ta = H("td", { class: "n" }, tr, `${area}㎡`); H("span", { class: "s" }, ta, `약 ${pyeong(area)}평형`);
-    H("td", { class: "n" }, tr, floor != null ? floor + "층" : "–");
-    H("td", {}, tr, date.replaceAll("-", "."));
+    H("span", { class: "s m-only" }, td, `${area}㎡(약 ${pyeong(area)}평형) · ${floor != null ? floor + "층" : "–"} · ${date.slice(5).replace("-", ".")}`);  // 휴대폰: 숨긴 칸을 한 줄로
+    const ta = H("td", { class: "n hide-m" }, tr, `${area}㎡`); H("span", { class: "s" }, ta, `약 ${pyeong(area)}평형`);
+    H("td", { class: "n hide-m" }, tr, floor != null ? floor + "층" : "–");
+    H("td", { class: "hide-m" }, tr, date.replaceAll("-", "."));
     H("td", { class: "n", style: "font-weight:600" }, tr, won(price));
-    const tp = H("td", { class: "n" }, tr, won(prev)); H("span", { class: "s" }, tp, `${prevd.replace("-", ".")} · 이전 거래 ${nprev}건`);
-    H("td", { class: "n up" }, tr, `+${((price / prev - 1) * 100).toFixed(1)}%`);
+    const tp = H("td", { class: "n hide-m" }, tr, won(prev)); H("span", { class: "s" }, tp, `${prevd.replace("-", ".")} · 이전 거래 ${nprev}건`);
+    const tu = H("td", { class: "n up" }, tr, `+${((price / prev - 1) * 100).toFixed(1)}%`);
+    H("span", { class: "s m-only", style: "font-weight:400" }, tu, `직전 ${won(prev)}`);
   });
   const more = $("#more");
   more.hidden = rows.length <= st.shown;
-  more.textContent = `더 보기 (${Math.min(50, rows.length - st.shown)}건)`;
+  more.textContent = `더 보기 (${Math.min(PAGE, rows.length - st.shown)}건)`;
 }
 
 function render() {
@@ -284,9 +294,10 @@ function render() {
   renderMonths(); renderSum(); renderTrend(); renderGus(); renderList();
 }
 
-$("#q").addEventListener("input", (e) => { st.q = e.target.value; st.shown = 50; renderList(); });
-$("#sort").addEventListener("change", (e) => { st.sort = e.target.value; st.shown = 50; renderList(); });
-$("#more").addEventListener("click", () => { st.shown += 50; renderList(); });
+$("#q").addEventListener("input", (e) => { st.q = e.target.value; st.shown = PAGE; renderList(); });
+$("#sort").addEventListener("change", (e) => { st.sort = e.target.value; st.shown = PAGE; renderList(); });
+$("#more").addEventListener("click", () => { st.shown += PAGE; renderList(); });
+$("#gus-more").addEventListener("click", (e) => { const o = $("#gus").classList.toggle("m-open"); e.target.textContent = o ? "구 접기 ▴" : "모든 구 보기 ▾"; });
 let rt;
 new ResizeObserver(() => { clearTimeout(rt); rt = setTimeout(() => D && renderTrend(), 100); }).observe($("#trend"));
 

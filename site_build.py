@@ -128,6 +128,11 @@ def skin(html, base, cur, hero, h1, photo_args, maxw, intro=None):
             ' const sync = () => { m.textContent = "화면: " + N[cur()]; m.setAttribute("aria-label", "화면 밝기 바꾸기, 지금 " + N[cur()]); };'
             ' m.addEventListener("click", () => { const b = t.querySelector(`button[data-m="${ORDER[(ORDER.indexOf(cur()) + 1) % 3]}"]`); if (b) b.click(); sync(); });'
             ' t.addEventListener("click", () => setTimeout(sync)); sync(); })();</script>\n')
+    tail += ('<script>document.querySelectorAll(".m-fold[data-fold]").forEach((el) => { const b = document.createElement("button");'
+             ' b.type = "button"; b.className = "m-fold-btn"; const lab = el.dataset.fold; b.textContent = lab + " ▾";'
+             ' b.addEventListener("click", () => { const o = el.classList.toggle("m-open"); b.textContent = lab + (o ? " ▴" : " ▾");'
+             ' if (o && typeof drawAll === "function") drawAll(); });'  # 접혀 있던 칸의 그래프는 펼칠 때 다시 그린다 (보고서)
+             ' el.before(b); });</script>\n')  # 휴대폰에서 접어 둔 칸 펼치기
     if intro:  # 결과 칸이 보이면 첫 화면 모드를 끈다
         tail += ('<script>(() => { const el = document.querySelector(' + json.dumps(intro) + '); if (!el) return;'
                  ' const f = () => document.body.classList.toggle("sk-intro", el.hidden); f();'
@@ -154,8 +159,8 @@ if __name__ == "__main__":
     shutil.copytree(ROOT / "assets", SITE / "assets", ignore=shutil.ignore_patterns("credits.json"))
     wrap(ROOT / "map" / "index.html", SITE / "index.html",
          "서울 아파트 시장의 공포와 탐욕을 0~100으로. 5대 권역·25개 구 지도와 2006년부터의 추이, 매달 20일 갱신.",
-         inject=[('<footer class="foot">', '<footer class="foot">\n    <p><a href="apt/" style="color:var(--ink)">단지 검색 (최근 실거래 위치) →</a> · <a href="report/" style="color:var(--ink)">백테스트 보고서 보기 →</a></p>'),
-                 ('<p class="hero-now" id="hero-now" aria-live="polite"></p>', '<p class="hero-now" id="hero-now" aria-live="polite"></p>\n    <p style="margin:2px 0 4px"><a class="btn" href="apt/" style="text-decoration:none;display:inline-block">단지 검색 · 최근 실거래가 위치 보기 →</a></p>')],
+         inject=[('<footer class="foot m-fold" data-fold="계산 방법·출처 보기">', '<footer class="foot m-fold" data-fold="계산 방법·출처 보기">\n    <p><a href="apt/" style="color:var(--ink)">단지 검색 (최근 실거래 위치) →</a> · <a href="report/" style="color:var(--ink)">백테스트 보고서 보기 →</a></p>'),
+                 ('<p class="hero-now" id="hero-now" aria-live="polite"></p>', '<p class="hero-now" id="hero-now" aria-live="polite"></p>\n    <p class="m-hide" style="margin:2px 0 4px"><a class="btn" href="apt/" style="text-decoration:none;display:inline-block">단지 검색 · 최근 실거래가 위치 보기 →</a></p>')],
          skin_args=("", "지도", ('<header style="display:grid;gap:6px">', "</header>"),
                     ("<h1>서울 아파트 공포탐욕지도</h1>", '<h1><span class="sk-h1a">서울 아파트</span><span class="sk-h1b">공포탐욕지도</span></h1>'),
                     ("bg-map", "50%"), 1180))
