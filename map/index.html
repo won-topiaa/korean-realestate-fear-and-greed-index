@@ -200,6 +200,20 @@ td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; }
 .hero-now .hn-v { font-size: 56px; line-height: 1; font-weight: 800; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
 .hero-now .hn-z { font-size: 16px; font-weight: 700; padding: 2px 10px; border: 2px solid; }
 .hero-now .hn-m { font-size: 14px; color: var(--ink-2); flex-basis: 100%; }
+.hero-def { font-size: 17px; line-height: 1.7; color: var(--ink); max-width: 680px; }
+.hero-def b { font-weight: 700; }
+/* 0~100 점수 막대: 구간 폭이 점수 범위와 같아서(25·20·10·20·25) 표시가 점수 위치와 맞는다 */
+.hn-scale { flex-basis: 100%; max-width: 560px; display: grid; gap: 6px; margin-top: 4px; }
+.hn-bar { position: relative; display: grid; grid-template-columns: 25fr 20fr 10fr 20fr 25fr; gap: 3px; height: 12px; }
+.hn-bar i { display: block; }
+.hn-bar i:nth-child(1) { background: var(--fear); }
+.hn-bar i:nth-child(2) { background: var(--fear); opacity: 0.55; }
+.hn-bar i:nth-child(3) { background: var(--neutral); opacity: 0.75; }
+.hn-bar i:nth-child(4) { background: var(--greed); opacity: 0.55; }
+.hn-bar i:nth-child(5) { background: var(--greed); }
+.hn-pin { position: absolute; top: -6px; bottom: -6px; width: 4px; background: var(--ink); transform: translateX(-2px); box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.55); }
+.hn-lab { position: relative; height: 18px; font-size: 13px; color: var(--ink-2); }
+.hn-lab span { position: absolute; top: 0; white-space: nowrap; }
 details.readhow summary { cursor: pointer; color: var(--ink-2); font-size: 14px; }
 details.readhow summary b { color: var(--ink); }
 details.readhow[open] summary { margin-bottom: 6px; }
@@ -242,6 +256,7 @@ details.readhow[open] summary { margin-bottom: 6px; }
       <div class="theme-ctl" id="theme-ctl" role="group" aria-label="화면 밝기"><span class="tl" aria-hidden="true">화면</span><button type="button" data-m="auto" aria-pressed="true" title="기기 설정을 따라요">자동</button><button type="button" data-m="light" aria-pressed="false">밝게</button><button type="button" data-m="dark" aria-pressed="false">어둡게</button></div>
     </div>
     <h1>서울 아파트 공포탐욕지도</h1>
+    <p class="hero-def">주식시장의 '공포탐욕지수'처럼, 서울 아파트 시장 분위기를 <b>0(극단적 공포)~100(극단적 탐욕)</b> 점수로 보여주는 지수예요. 집값·거래량·전세·청약·금리·검색량 등 지표 34개로 매달 계산해요.</p>
     <p class="hero-now" id="hero-now" aria-live="polite"></p>
     <p class="sub">권역이나 구를 누르면 그곳의 지수를, 아무 데도 누르지 않으면 서울 전체 지수를 보여줘요. 지도 위 버튼으로 5대 권역과 25개 구를 바꿔 보고, 아래 슬라이더로 2006년부터 달마다 볼 수 있어요.</p>
     <details class="readhow">
@@ -335,6 +350,14 @@ const ym = (s) => s.slice(0, 4) + "년 " + String(+s.slice(5, 7)) + "월";
   H("span", { class: "hn-k" }, el, "지금 서울");
   H("b", { class: "hn-v" }, el, String(Math.round(v)));
   H("span", { class: "hn-z", style: `border-color:${side(v)}` }, el, zoneName(v));
+  const sc = H("span", { class: "hn-scale", role: "img", "aria-label": `0~100 중 ${Math.round(v)}, ${zoneName(v)}` }, el);
+  const bar = H("span", { class: "hn-bar" }, sc);
+  for (let k = 0; k < 5; k++) H("i", {}, bar);
+  H("span", { class: "hn-pin", style: `left:${Math.max(0.5, Math.min(99.5, v))}%` }, bar);
+  const lab = H("span", { class: "hn-lab", "aria-hidden": "true" }, sc);
+  H("span", { style: "left:0" }, lab, "0 극단적 공포");
+  H("span", { style: "left:50%;transform:translateX(-50%)" }, lab, "50 중립");
+  H("span", { style: "right:0" }, lab, "극단적 탐욕 100");
   H("span", { class: "hn-m" }, el, `${ym(D.dates[i])} 기준` + (pv == null ? "" : ` · 지난달 ${Math.round(pv)}에서 ${v >= pv ? "▲" : "▼"} ${Math.abs(Math.round(v - pv))}`));
 })();
 const f2 = (v) => (v == null ? "–" : v.toFixed(2));
