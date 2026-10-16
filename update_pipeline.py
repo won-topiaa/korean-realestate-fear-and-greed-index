@@ -259,9 +259,15 @@ def refresh_molit(back=4):
 
 
 def refresh_bldg():
-    """단지 기본정보(세대수·용적률 등). 받은 만큼 바로 저장하므로 시간 한도 전에 스스로 멈춘다."""
+    """단지 기본정보(세대수·용적률 등). 새 단지만 지번으로 받고, 못 찾은 단지는 이름으로 다시 찾는다.
+    받은 만큼 바로 저장하므로 시간 한도 전에 스스로 멈춘다 (데이터는 data/molit/buildings.csv에 쌓인다)."""
+    import time
     import bldg_fetch
-    return bldg_fetch.run(budget_s=13 * 60)
+    t0 = time.time()
+    a = bldg_fetch.run(budget_s=9 * 60)
+    if "활용신청" in a:
+        return a
+    return a + " / " + bldg_fetch.fill(budget_s=max(60, 13 * 60 - (time.time() - t0)))
 
 
 def refresh_applyhome():

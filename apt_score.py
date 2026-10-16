@@ -113,6 +113,8 @@ def main():
     cx = molit_store.load_complexes().set_index("aptSeq")
     bfile = ROOT / "data" / "molit" / "buildings.csv"
     bld = pd.read_csv(bfile, dtype=str, keep_default_na=False).set_index("aptSeq") if bfile.exists() else pd.DataFrame()
+    # 실거래에선 여러 단지로 나뉘었지만 건축물대장은 한 장부인 경우 (예: 마포래미안푸르지오 1·2·3단지)
+    shared = bld[bld["status"] == "ok"].groupby("lot").size() if len(bld) else pd.Series(dtype=int)
     detail = {g: {} for g in LAWD2GU}
     scored = mixed = types_out = 0
     for a, b in zip(bounds[:-1], bounds[1:]):
@@ -147,7 +149,9 @@ def main():
         info = None
         if len(bld) and s in bld.index and bld.loc[s, "status"] == "ok":
             r = bld.loc[s]
-            info = {k: r[k] for k in bld.columns if r[k] != "" and k not in ("fetched", "status")}
+            info = {k: r[k][:-2] if r[k].endswith(".0") else r[k] for k in bld.columns if r[k] != "" and k not in ("fetched", "status", "lot")}
+            if shared.get(r["lot"], 1) > 1:
+                info["shared"] = int(shared[r["lot"]])
         detail.setdefault(s[:5], {})[s] = {
             "maxfl": None if np.isnan(floor[a:b]).all() else int(np.nanmax(floor[a:b])),
             "n2y": int((t > since.to_datetime64()).sum()),
