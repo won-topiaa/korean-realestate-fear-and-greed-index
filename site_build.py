@@ -4,6 +4,7 @@
 세 페이지에 공통 겉모습(assets/skin.css: 레퍼런스 'Legacy Homes' 스타일)과 머리글·첫 화면 사진·바닥글을 입힌다.
 사진은 위키미디어 공용의 CC0 사진 (출처: assets/img/credits.json).
 """
+import hashlib
 import json
 import re
 import shutil
@@ -27,6 +28,11 @@ TAIL = "\n</body>\n</html>\n"
 FONTS = ('<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@100..125,400..900'
          '&family=Noto+Sans+KR:wght@400;500;600;700;900&family=Poiret+One&family=Work+Sans:wght@400;500;600;700&display=swap">')
 REPO = "https://github.com/won-topiaa/korean-realestate-fear-and-greed-index"
+def ver(rel):
+    """정적 파일 주소에 붙이는 내용 지문 (같은 이름으로 바꿔도 브라우저가 옛 파일을 쓰지 않게)."""
+    return "?v=" + hashlib.md5((ROOT / rel).read_bytes()).hexdigest()[:8]
+
+
 PAGES = [("", "지도"), ("apt/", "단지 검색"), ("highs/", "신고가 단지"), ("sim/", "모의 투자"), ("report/", "보고서")]
 CONTACT = "wontopiaaa@gmail.com"
 MAILTO = f"mailto:{CONTACT}?subject=" + quote("[서울 아파트 공포탐욕지도] 문의")
@@ -42,7 +48,7 @@ def nav(base, cur):
 
 
 def photo(base, name, alt):
-    return (f'<figure class="sk-photo"><img src="{base}assets/img/{name}.jpg" alt="{alt}" width="900" height="1200">'
+    return (f'<figure class="sk-photo"><img src="{base}assets/img/{name}.jpg{ver(f"assets/img/{name}.jpg")}" alt="{alt}" width="1080" height="960">'
             '<i class="sk-dot a" aria-hidden="true"></i><i class="sk-dot b" aria-hidden="true"></i></figure>\n')
 
 
@@ -56,7 +62,7 @@ def footer(base):
     who = ", ".join(who)
     links = "".join(f'<li><a href="{base}{h}">{n}</a></li>' for h, n in
                     [("", "공포탐욕 지도"), ("apt/", "단지 검색"), ("highs/", "신고가 단지"), ("sim/", "모의 투자"), ("report/", "백테스트 보고서")])
-    return (f'\n<footer class="sk-foot" style="--sk-foot-img:url(\'{base}assets/img/footer.jpg\')"><div class="sk-in">'
+    return (f'\n<footer class="sk-foot" style="--sk-foot-img:url(\'{base}assets/img/footer.jpg{ver("assets/img/footer.jpg")}\')"><div class="sk-in">'
             f'<div class="sk-about"><a class="sk-logo" href="{base}">SEOUL FEAR &amp; GREED</a>'
             '<p>서울 아파트 시장의 공포와 탐욕을 0~100으로 보여주는 지수예요. 공공데이터로 매달 20일에 갱신해요. '
             '사고팔 시점을 알려주는 신호가 아니에요.</p></div>'
@@ -70,7 +76,7 @@ def footer(base):
 
 def skin(html, base, cur, hero, h1, photo_args, maxw):
     """페이지 html에 공통 겉모습을 입힌다. hero=(여는 태그, 닫는 태그): 첫 화면 묶음, h1=(원래, 바꿀 것)."""
-    css = f'{FONTS}\n<link rel="stylesheet" href="{base}assets/skin.css">\n<style>:root{{--sk-max:{maxw}px}}</style>\n'
+    css = f'{FONTS}\n<link rel="stylesheet" href="{base}assets/skin.css{ver("assets/skin.css")}">\n<style>:root{{--sk-max:{maxw}px}}</style>\n'
     i = html.index("</style>") + len("</style>")  # 페이지 스타일 바로 뒤 (덮어쓰기)
     html = html[:i] + "\n" + css + html[i:]
     j = html.index('<div class="wrap">')

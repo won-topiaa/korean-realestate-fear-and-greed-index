@@ -8,6 +8,7 @@
   --bg: #f3f4f6; --surface: #fcfcfb; --ink: #111316; --ink-2: #4a4e55; --muted: #7d8189;
   --grid: #e3e5e8; --axis: #c2c5cb; --hair: rgba(17, 19, 22, 0.1); --hl: #eaeef4;
   --fear: #2a78d6; --greed: #e34948; --neutral: #9a9ca1; --up: #c43a39; --down: #2a6fc4;
+  --s1: #eb6834; --s2: #1baf7a; --s3: #6250d6;  /* 비교 단지 1·2·3 (색맹 구분 검사 통과, 파랑=공포와 겹치지 않게) */
   --font: "IBM Plex Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
   --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
 }
@@ -16,12 +17,14 @@
     --bg: #0f1012; --surface: #18191b; --ink: #eef0f2; --ink-2: #c1c5cb; --muted: #8b8f96;
     --grid: #2a2c30; --axis: #3d4046; --hair: rgba(255, 255, 255, 0.1); --hl: #22262d;
     --fear: #3987e5; --greed: #e66767; --neutral: #74777d; --up: #ef7d7c; --down: #6aa5ee; color-scheme: dark;
+    --s1: #d95926; --s2: #199e70; --s3: #9085e9;
   }
 }
 :root[data-theme="dark"] {
   --bg: #0f1012; --surface: #18191b; --ink: #eef0f2; --ink-2: #c1c5cb; --muted: #8b8f96;
   --grid: #2a2c30; --axis: #3d4046; --hair: rgba(255, 255, 255, 0.1); --hl: #22262d;
   --fear: #3987e5; --greed: #e66767; --neutral: #74777d; --up: #ef7d7c; --down: #6aa5ee; color-scheme: dark;
+  --s1: #d95926; --s2: #199e70; --s3: #9085e9;
 }
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
@@ -100,6 +103,16 @@ td .s { display: block; font-size: 11.5px; color: var(--muted); }
 .legend i { display: inline-block; width: 14px; height: 8px; margin-right: 5px; vertical-align: 0; border-radius: 2px; }
 .tip { position: absolute; pointer-events: none; transform: translate(-50%, calc(-100% - 10px)); background: var(--surface); border: 1px solid var(--hair); border-radius: 8px; padding: 5px 10px; font-size: 12px; line-height: 1.5; white-space: nowrap; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12); color: var(--ink-2); z-index: 2; }
 .tip b { color: var(--ink); font-variant-numeric: tabular-nums; }
+.picked { display: flex; gap: 6px; flex-wrap: wrap; }
+.pick { display: inline-flex; align-items: center; gap: 7px; font-size: 14px; font-weight: 600; border: 1px solid var(--ink); padding: 3px 3px 3px 12px; border-radius: 999px; }
+.pick button { font: inherit; font-size: 17px; line-height: 1; border: 0; background: transparent; color: var(--muted); cursor: pointer; padding: 2px 8px; }
+.pick button:hover { color: var(--ink); }
+.dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; flex: none; }
+.hint { font-size: 12.5px; color: var(--muted); }
+#types { display: grid; gap: 12px; }
+.trow { display: grid; gap: 6px; }
+.tname { font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 6px; }
+td .nm { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; }
 .del { font: inherit; font-size: 12px; border: 0; background: transparent; color: var(--muted); cursor: pointer; text-decoration: underline; }
 .foot { font-size: 12.5px; color: var(--muted); display: grid; gap: 6px; max-width: 90ch; }
 .foot b { color: var(--ink-2); }
@@ -113,7 +126,7 @@ td .s { display: block; font-size: 11.5px; color: var(--muted); }
       <div class="theme-ctl" id="theme-ctl" role="group" aria-label="화면 밝기"><span class="tl" aria-hidden="true">화면</span><button type="button" data-m="auto" aria-pressed="true" title="기기 설정을 따라요">자동</button><button type="button" data-m="light" aria-pressed="false">밝게</button><button type="button" data-m="dark" aria-pressed="false">어둡게</button></div>
     </div>
     <h1>모의 투자</h1>
-    <p class="sub">그때 이 단지를 샀다면 지금 얼마가 됐을까요? 2006년부터의 실제 거래 가격으로 계산하는 가상 투자예요. 산 때와 판 때의 공포탐욕지수도 함께 보여 드려요.</p>
+    <p class="sub">그때 이 단지를 샀다면 지금 얼마가 됐을까요? 2006년부터의 실제 거래 가격으로 계산하는 가상 투자예요. 단지를 2~3개 고르면 같은 기간의 가격 변화를 나란히 비교해요. 산 때와 판 때의 공포탐욕지수도 함께 보여 드려요.</p>
   </header>
 
   <section class="panel search" aria-labelledby="s1">
@@ -122,6 +135,9 @@ td .s { display: block; font-size: 11.5px; color: var(--muted); }
     <input id="q" type="search" autocomplete="off" spellcheck="false" placeholder="단지 이름이나 동 (예: 은마, 잠실 엘스, ㅎㄹㅇㅅㅌ)"
            role="combobox" aria-expanded="false" aria-controls="results" aria-autocomplete="list">
     <ul class="results" id="results" role="listbox" aria-label="검색 결과" hidden></ul>
+    <div class="picked" id="picked"></div>
+    <p class="hint" id="pick-hint">단지를 고르면 계산이 시작돼요. 최대 3개까지 골라 같은 기간의 가격 변화를 비교할 수 있어요.</p>
+    <p class="note" id="pick-msg" hidden></p>
     <div class="quick" id="quick" hidden><span>예시</span></div>
   </section>
 
@@ -129,7 +145,7 @@ td .s { display: block; font-size: 11.5px; color: var(--muted); }
     <h2 class="step" id="s2"><b>2</b>조건 정하기 · <span id="cname"></span></h2>
     <div>
       <div class="sec-title" style="margin-bottom:6px">평형 (전용면적 · 거래 수)</div>
-      <div class="seg" id="types" role="group" aria-label="평형"></div>
+      <div id="types"></div>
     </div>
     <div class="cond">
       <div class="ctl">
@@ -167,7 +183,7 @@ td .s { display: block; font-size: 11.5px; color: var(--muted); }
     <div class="cards" id="cards"></div>
     <div class="tbl-wrap"><table id="cmp"></table></div>
     <div>
-      <div class="sec-title" style="margin-bottom:6px">이 평형 가격 흐름 (8~10층 기준) · 아래 띠는 그 구의 공포탐욕지수</div>
+      <div class="sec-title" style="margin-bottom:6px" id="chart-title">이 평형 가격 흐름 (8~10층 기준) · 아래 띠는 그 구의 공포탐욕지수</div>
       <div class="legend" id="legend" style="margin-bottom:6px"></div>
       <div class="chart" id="chart"></div>
     </div>
@@ -288,7 +304,8 @@ async function loadGu(code) {
   return GU[code];
 }
 let LASTQ = 0;  // 다 들어온 마지막 분기
-const st = { it: null, types: [], t: null, buy: 0, sell: 0 };
+const st = { sel: [], it: null, t: null, buy: null, sell: null };  // sel: 고른 단지 [{it, types, t}] 최대 3개
+const MAXSEL = 3, SER = ["var(--s1)", "var(--s2)", "var(--s3)"];
 
 function valueAt(ser, q, idx) {
   // 그 분기 거래가 있으면 중앙값, 없으면 가장 가까운 거래 분기 값 × 그사이 구 지수 변화
@@ -306,42 +323,67 @@ function fgAt(q, code) {
   return { gu: META.fg.gu[code][i], seoul: META.fg.seoul[i], ym: META.fg.dates[i] };
 }
 
-async function choose(seq, typeA) {
+const nTr = (t) => t[2].reduce((a, p) => a + p[2], 0);
+function pickMsg(text) { const m = $("#pick-msg"); m.textContent = text || ""; m.hidden = !text; }
+
+async function choose(seq, typeA, quiet) {
   const it = IDX.find((x) => x.seq === seq);
   if (!it) return;
-  qEl.value = it.name; resEl.hidden = true;
+  qEl.value = ""; resEl.hidden = true; qEl.setAttribute("aria-expanded", "false");
+  if (st.sel.some((x) => x.it.seq === seq)) { pickMsg("이미 고른 단지예요."); return; }
+  if (st.sel.length >= MAXSEL) { pickMsg(`최대 ${MAXSEL}개까지 비교할 수 있어요. 하나를 빼고 추가해 주세요.`); return; }
   let g;
-  try { g = await loadGu(seq.slice(0, 5)); } catch (e) { return; }
-  st.it = it;
-  st.types = g[seq] || [];
-  $("#cond-panel").hidden = false;
-  $("#cname").textContent = it.name;
-  const tb = $("#types");
-  tb.textContent = "";
-  if (!st.types.length) {
-    $("#res-panel").hidden = true;
-    H("p", { class: "note" }, tb, "이 단지는 거래가 너무 적어서 계산할 수 없어요. 다른 단지를 골라 주세요.");
-    return;
-  }
-  const n = (t) => t[2].reduce((a, p) => a + p[2], 0);
-  const def = st.types.find((t) => t[0] === typeA) || st.types.reduce((a, b) => (n(b) > n(a) ? b : a));
-  st.types.forEach((t) => {
-    const b = H("button", { type: "button", "aria-pressed": String(t === def) }, tb, `${t[1]}㎡`);
-    H("small", {}, b, `약 ${pyeong(t[1])}평형 · ${n(t).toLocaleString("ko-KR")}건`);
-    b.addEventListener("click", () => { tb.querySelectorAll("button").forEach((x) => x.setAttribute("aria-pressed", String(x === b))); setType(t); });
-  });
-  setType(def);
-  try { history.replaceState(null, "", "#" + seq + ":" + def[0]); } catch (e) {}
+  try { g = await loadGu(seq.slice(0, 5)); } catch (e) { pickMsg("자료를 불러오지 못했어요. 잠시 뒤 다시 해 주세요."); return; }
+  const types = (g[seq] || []).filter((t) => t[2][0][0] < LASTQ);  // 산 시기를 고를 수 있는 평형만
+  if (!types.length) { pickMsg(`${it.name}은(는) 거래가 너무 적어서 계산할 수 없어요.`); return; }
+  pickMsg("");
+  const t = types.find((x) => x[0] === typeA) || types.reduce((a, b) => (nTr(b) > nTr(a) ? b : a));
+  st.sel.push({ it, types, t });
+  if (!quiet) refresh();
 }
-function setType(t) {
-  st.t = t;
-  const first = t[2][0][0];
+function renderPicked() {
+  const box = $("#picked");
+  box.textContent = "";
+  st.sel.forEach((x, i) => {
+    const c = H("span", { class: "pick" }, box);
+    if (st.sel.length > 1) H("i", { class: "dot", style: `background:${SER[i]}` }, c);
+    c.append(x.it.name);
+    const b = H("button", { type: "button", "aria-label": `${x.it.name} 빼기`, title: "빼기" }, c, "×");
+    b.addEventListener("click", () => { st.sel.splice(i, 1); pickMsg(""); refresh(); });
+  });
+  $("#pick-hint").textContent = !st.sel.length ? "단지를 고르면 계산이 시작돼요. 최대 3개까지 골라 같은 기간의 가격 변화를 비교할 수 있어요."
+    : st.sel.length < MAXSEL ? `비교할 단지를 더 검색해서 추가할 수 있어요 (${st.sel.length}/${MAXSEL}).` : `${MAXSEL}개를 모두 골랐어요. 바꾸려면 ×로 빼 주세요.`;
+}
+function renderTypes() {
+  const box = $("#types");
+  box.textContent = "";
+  st.sel.forEach((x, i) => {
+    const row = H("div", { class: "trow" }, box);
+    if (st.sel.length > 1) { const lab = H("div", { class: "tname" }, row); H("i", { class: "dot", style: `background:${SER[i]}` }, lab); lab.append(x.it.name); }
+    const seg = H("div", { class: "seg", role: "group", "aria-label": `${x.it.name} 평형` }, row);
+    x.types.forEach((t) => {
+      const b = H("button", { type: "button", "aria-pressed": String(t === x.t) }, seg, `${t[1]}㎡`);
+      H("small", {}, b, `약 ${pyeong(t[1])}평형 · ${nTr(t).toLocaleString("ko-KR")}건`);
+      b.addEventListener("click", () => { x.t = t; refresh(); });
+    });
+  });
+}
+function refresh() {
+  renderPicked();
+  const any = st.sel.length > 0;
+  $("#cond-panel").hidden = !any;
+  $("#res-panel").hidden = !any;
+  if (!any) { try { history.replaceState(null, "", location.pathname + location.search); } catch (e) {} return; }
+  $("#cname").textContent = st.sel.map((x) => x.it.name).join(" · ");
+  renderTypes();
+  const first = Math.max(...st.sel.map((x) => x.t[2][0][0]));  // 고른 평형 모두 거래가 시작된 뒤부터
   const buy = $("#buy"), sell = $("#sell");
   buy.min = first; buy.max = LASTQ - 1; sell.min = first + 1; sell.max = LASTQ;
-  // 처음엔 10년 전(없으면 첫 거래)에 사서 마지막 분기에 판 것으로
-  st.buy = Math.max(first, LASTQ - 40); st.sell = LASTQ;
+  if (st.buy == null) { st.buy = Math.max(first, LASTQ - 40); st.sell = LASTQ; }  // 처음엔 10년 전에 사서 마지막 분기에 판 것으로
+  st.buy = Math.min(Math.max(st.buy, first), LASTQ - 1);
+  st.sell = Math.max(Math.min(st.sell, LASTQ), st.buy + 1);
   buy.value = st.buy; sell.value = st.sell;
-  try { history.replaceState(null, "", "#" + st.it.seq + ":" + t[0]); } catch (e) {}
+  try { history.replaceState(null, "", "#" + st.sel.map((x) => x.it.seq + ":" + x.t[0]).join(",")); } catch (e) {}
   compute();
 }
 ["buy", "sell"].forEach((k) => $("#" + k).addEventListener("input", (e) => {
@@ -353,6 +395,13 @@ function setType(t) {
 
 let LAST = null;
 function compute() {
+  if (st.sel.length > 1) return computeMulti();
+  st.it = st.sel[0].it; st.t = st.sel[0].t;
+  $("#cards").hidden = false; $("#to-apt").hidden = false;
+  $("#chart-title").textContent = "이 평형 가격 흐름 (8~10층 기준) · 아래 띠는 그 구의 공포탐욕지수";
+  computeOne();
+}
+function computeOne() {
   const t = st.t, code = st.it.seq.slice(0, 5), idx = META.gu[code].idx;
   const b = valueAt(t[2], st.buy, idx), s = valueAt(t[2], st.sell, idx);
   const yrs = (st.sell - st.buy) / 4;
@@ -414,6 +463,142 @@ function compute() {
   chart();
 }
 
+/* ---------- 여러 단지 비교 ---------- */
+function computeMulti() {
+  const ltv = +$("#ltv").value / 100, rate = Math.max(0, +$("#rate").value || 0) / 100, dep = Math.max(0, +$("#dep").value || 0) / 100;
+  const yrs = (st.sell - st.buy) / 4;
+  const rows = st.sel.map((x, i) => {
+    const code = x.it.seq.slice(0, 5), idx = META.gu[code].idx;
+    const b = valueAt(x.t[2], st.buy, idx), e = valueAt(x.t[2], st.sell, idx);
+    const ret = e.v / b.v - 1, cagr = Math.pow(e.v / b.v, 1 / yrs) - 1;
+    const equity = b.v * (1 - ltv), interest = b.v * ltv * rate * yrs;
+    return { x, i, code, b, e, ret, cagr, eqRet: (e.v - b.v - interest) / equity, fb: fgAt(st.buy, code), fs: fgAt(st.sell, code) };
+  });
+  LAST = rows.map((r) => ({ seq: r.x.it.seq, name: r.x.it.name, a: r.x.t[1], type: r.x.t[0], buy: st.buy, sell: st.sell, bv: r.b.v, sv: r.e.v, ret: r.ret, cagr: r.cagr, ltv, eqRet: r.eqRet, fgb: r.fb.gu }));
+  const seoul = Math.exp(META.seoul_idx[st.sell] - META.seoul_idx[st.buy]) - 1;
+  const fb = fgAt(st.buy, rows[0].code), fs = fgAt(st.sell, rows[0].code);
+  $("#buy-l").textContent = qLab(st.buy);
+  $("#sell-l").textContent = qLab(st.sell);
+  $("#ltv-l").textContent = ltv ? `${ltv * 100}%` : "대출 없음";
+  $("#buy-fg").textContent = `그때 서울 공포탐욕 ${fb.seoul.toFixed(0)} · ${fgName(fb.seoul)}`;
+  $("#sell-fg").textContent = `그때 서울 공포탐욕 ${fs.seoul.toFixed(0)} · ${fgName(fs.seoul)}`;
+
+  const hl = $("#headline");
+  hl.textContent = "";
+  hl.append(`${qLab(st.buy)}에 사서 ${qLab(st.sell)}에 팔았다면 (${yrs.toFixed(yrs % 1 ? 2 : 0)}년) `);
+  [...rows].sort((a, b) => b.ret - a.ret).forEach((r, k) => {
+    if (k) hl.append(" · ");
+    const sp = H("span", { style: "white-space:nowrap" }, hl);
+    H("i", { class: "dot", style: `background:${SER[r.i]};margin-right:5px;vertical-align:1px` }, sp);
+    sp.append(`${r.x.it.name} `);
+    H("b", { class: r.ret >= 0 ? "gain" : "loss" }, sp, pctS(r.ret));
+  });
+  hl.append(` · 서울 전체 ${pctS(seoul)}`);
+  $("#cards").hidden = true;
+  $("#to-apt").hidden = true;
+
+  const tb = $("#cmp");
+  tb.textContent = "";
+  const hr = H("tr", {}, H("thead", {}, tb));
+  const cols = [["단지"], ["수익률", "n"], ["연평균", "n"]];  // 좁은 화면에서도 수익률이 먼저 보이게
+  if (ltv) cols.push(["내 돈 수익률", "n"]);
+  cols.push(["산 가격", "n"], ["판 가격", "n"], ["산 때 공포탐욕", "n"]);
+  cols.forEach(([t, c]) => H("th", c ? { class: c } : {}, hr, t));
+  const bd = H("tbody", {}, tb);
+  rows.forEach((r) => {
+    const tr = H("tr", {}, bd);
+    const td = H("td", {}, tr);
+    const nm = H("a", { class: "nm", href: `../apt/#${r.x.it.seq}:${r.x.t[0]}`, style: "text-decoration:none", title: "단지 검색에서 보기" }, td);
+    H("i", { class: "dot", style: `background:${SER[r.i]}` }, nm); nm.append(r.x.it.name);
+    H("span", { class: "s" }, td, `${r.x.t[1]}㎡ · ${META.gu[r.code].name}`);
+    H("td", { class: "n " + (r.ret >= 0 ? "gain" : "loss"), style: "font-weight:700" }, tr, pctS(r.ret));
+    H("td", { class: "n" }, tr, pctS(r.cagr));
+    if (ltv) H("td", { class: "n " + (r.eqRet >= 0 ? "gain" : "loss") }, tr, pctS(r.eqRet));
+    const t1 = H("td", { class: "n" }, tr, won(r.b.v)); if (r.b.est) H("span", { class: "s" }, t1, "추정");
+    const t2 = H("td", { class: "n" }, tr, won(r.e.v)); if (r.e.est) H("span", { class: "s" }, t2, "추정");
+    const tf = H("td", { class: "n" }, tr, `${r.fb.gu.toFixed(0)}`); H("span", { class: "s" }, tf, fgName(r.fb.gu));
+  });
+  const ref = (k, r, sub) => {
+    const tr = H("tr", {}, bd);
+    const td = H("td", { style: "color:var(--ink-2)" }, tr, k); H("span", { class: "s" }, td, sub);
+    H("td", { class: "n " + (r >= 0 ? "gain" : "loss") }, tr, pctS(r));
+    H("td", { class: "n" }, tr, pctS(Math.pow(1 + r, 1 / yrs) - 1));
+    if (ltv) H("td", {}, tr, "");
+    H("td", {}, tr, ""); H("td", {}, tr, ""); H("td", {}, tr, "");
+  };
+  ref("서울 아파트 전체", seoul, "실거래 반복매매지수");
+  ref(`예금 (연 ${(dep * 100).toFixed(1)}%)`, Math.pow(1 + dep, yrs) - 1, "연복리");
+  const est = rows.filter((r) => r.b.est || r.e.est).map((r) => r.x.it.name);
+  $("#est-note").hidden = !est.length;
+  $("#est-note").textContent = est.length ? `${est.join(", ")}: 산 때나 판 때 그 평형 거래가 없어서 가장 가까운 거래 가격에 그사이 그 구 시세 변화를 곱해 추정했어요.` : "";
+  $("#chart-title").textContent = "산 때 가격을 0%로 놓고 본 가격 변화 (8~10층 기준) · 점선은 서울 아파트 전체";
+  chartMulti();
+}
+
+function chartMulti() {
+  const wrap = $("#chart");
+  lastW = wrap.clientWidth;
+  wrap.textContent = "";
+  const narrow = lastW < 520;
+  const W = Math.max(300, lastW), Hh = narrow ? 240 : 290, m = { l: 48, r: narrow ? 78 : 130, t: 14, b: 26 };
+  const qs = []; for (let q = st.buy; q <= st.sell; q++) qs.push(q);
+  const ser = st.sel.map((x, i) => {
+    const idx = META.gu[x.it.seq.slice(0, 5)].idx, base = valueAt(x.t[2], st.buy, idx).v;
+    return { x, i, pts: qs.map((q) => { const v = valueAt(x.t[2], q, idx); return { q, r: v.v / base - 1, v: v.v, est: v.est }; }) };
+  });
+  const seoul = qs.map((q) => Math.exp(META.seoul_idx[q] - META.seoul_idx[st.buy]) - 1);
+  const all = [0, ...seoul, ...ser.flatMap((s) => s.pts.map((p) => p.r))];
+  let lo = Math.min(...all), hi = Math.max(...all);
+  const span = hi - lo || 0.1;
+  const step = [0.05, 0.1, 0.2, 0.25, 0.5, 1, 2, 5].find((s) => span / s <= 5) || 10;
+  lo = Math.floor(lo / step) * step; hi = Math.ceil(hi / step) * step;
+  const X = (q) => m.l + ((q - st.buy) / Math.max(1, st.sell - st.buy)) * (W - m.l - m.r);
+  const Y = (r) => m.t + (1 - (r - lo) / (hi - lo)) * (Hh - m.t - m.b);
+  const svg = S("svg", { viewBox: `0 0 ${W} ${Hh}`, width: W, height: Hh, role: "img", "aria-label": `${st.sel.map((x) => x.it.name).join(", ")}의 ${qLab(st.buy)}부터 ${qLab(st.sell)}까지 가격 변화 비교` }, wrap);
+  for (let t = lo; t <= hi + 1e-9; t += step) {
+    S("line", { x1: m.l, x2: W - m.r, y1: Y(t), y2: Y(t), stroke: Math.abs(t) < 1e-9 ? "var(--axis)" : "var(--grid)" }, svg);
+    const tx = S("text", { x: m.l - 6, y: Y(t) + 3.5, "text-anchor": "end", class: "axis-t" }, svg); tx.textContent = Math.abs(t) < 1e-9 ? "0%" : pctS(t).replace(".0%", "%");
+  }
+  const yrStep = qs.length / 4 > 12 ? (narrow ? 6 : 3) : qs.length / 4 > 5 ? (narrow ? 2 : 1) : 1;
+  qs.forEach((q) => { const yr = +META.quarters[q].slice(0, 4); if (q % 4 === 0 && yr % yrStep === 0) { const tx = S("text", { x: X(q), y: Hh - 6, "text-anchor": "middle", class: "axis-t" }, svg); tx.textContent = yr; } });
+  const path = (vals) => vals.map((r, k) => (k ? "L" : "M") + X(qs[k]).toFixed(1) + "," + Y(r).toFixed(1)).join("");
+  S("path", { d: path(seoul), fill: "none", stroke: "var(--muted)", "stroke-width": 1.5, "stroke-dasharray": "4 4" }, svg);
+  ser.forEach((s) => S("path", { d: path(s.pts.map((p) => p.r)), fill: "none", stroke: SER[s.i], "stroke-width": 2.5, "stroke-linejoin": "round", "stroke-linecap": "round" }, svg));
+  // 오른쪽 끝 이름표 (겹치면 위아래로 띄움)
+  const labs = [...ser.map((s) => ({ c: SER[s.i], t: s.x.it.name, r: s.pts[s.pts.length - 1].r, dot: true })), { c: "var(--muted)", t: "서울 전체", r: seoul[seoul.length - 1] }]
+    .map((l) => ({ ...l, y: Y(l.r) })).sort((a, b) => a.y - b.y);
+  for (let k = 1; k < labs.length; k++) if (labs[k].y - labs[k - 1].y < 26) labs[k].y = labs[k - 1].y + 26;
+  const over = labs.length ? labs[labs.length - 1].y - (Hh - m.b) : 0;
+  if (over > 0) labs.forEach((l) => (l.y -= over));
+  labs.forEach((l) => {
+    const x = W - m.r + 8;
+    if (l.dot) S("circle", { cx: W - m.r, cy: Y(l.r), r: 4, fill: l.c, stroke: "var(--surface)", "stroke-width": 1.5 }, svg);
+    const t1 = S("text", { x, y: l.y - 1, class: "axis-t", style: "fill:var(--ink);font-family:var(--font);font-size:11.5px;font-weight:600" }, svg);
+    t1.textContent = narrow && l.t.length > 6 ? l.t.slice(0, 6) + "…" : l.t;
+    const t2 = S("text", { x, y: l.y + 12, class: "axis-t", style: "fill:var(--ink-2)" }, svg); t2.textContent = pctS(l.r);
+  });
+  // 마우스: 그 분기 값
+  const tip = H("div", { class: "tip", hidden: "" }, wrap);
+  const cross = S("line", { y1: m.t, y2: Hh - m.b, stroke: "var(--axis)", visibility: "hidden" }, svg);
+  const hit = S("rect", { x: m.l, y: m.t, width: W - m.l - m.r, height: Hh - m.t - m.b, fill: "transparent" }, svg);
+  hit.addEventListener("mousemove", (ev) => {
+    const rr = svg.getBoundingClientRect();
+    const x = ((ev.clientX - rr.left) / rr.width) * W;
+    const k = Math.max(0, Math.min(qs.length - 1, Math.round(((x - m.l) / (W - m.l - m.r)) * (qs.length - 1))));
+    cross.setAttribute("x1", X(qs[k])); cross.setAttribute("x2", X(qs[k])); cross.setAttribute("visibility", "visible");
+    tip.hidden = false; tip.textContent = "";
+    H("div", { style: "font-weight:600" }, tip, qLab(qs[k]));
+    ser.forEach((s) => { const p = s.pts[k]; const d = H("div", {}, tip); H("i", { class: "dot", style: `background:${SER[s.i]};margin-right:5px` }, d); d.append(`${s.x.it.name} `); H("b", {}, d, pctS(p.r)); d.append(` · ${won(p.v)}${p.est ? " (추정)" : ""}`); });
+    const d = H("div", {}, tip, "서울 전체 "); H("b", {}, d, pctS(seoul[k]));
+    tip.style.left = Math.min(Math.max((X(qs[k]) / W) * rr.width, 120), rr.width - 120) + "px"; tip.style.top = (m.t / Hh) * rr.height + 40 + "px";
+  });
+  hit.addEventListener("mouseleave", () => { tip.hidden = true; cross.setAttribute("visibility", "hidden"); });
+  const lg = $("#legend");
+  lg.textContent = "";
+  ser.forEach((s) => { const sp = H("span", {}, lg); H("i", { style: `background:${SER[s.i]};height:3px;vertical-align:3px` }, sp); sp.append(`${s.x.it.name} ${s.x.t[1]}㎡`); });
+  const sp = H("span", {}, lg); H("i", { style: "background:none;border-top:2px dashed var(--muted);height:0;vertical-align:3px" }, sp); sp.append("서울 아파트 전체");
+}
+
 /* ---------- 가격 흐름 그림 + 공포탐욕 띠 ---------- */
 let lastW = 0;
 function chart() {
@@ -473,12 +658,13 @@ function chart() {
   hit.addEventListener("mousemove", move);
   hit.addEventListener("mouseleave", () => (tip.hidden = true));
   const lg = $("#legend");
-  if (!lg.children.length) {
+  lg.textContent = "";
+  {
     [["var(--fear)", "극단적 공포"], ["color-mix(in srgb, var(--fear) 45%, var(--surface))", "공포"], ["color-mix(in srgb, var(--neutral) 45%, var(--surface))", "중립"], ["color-mix(in srgb, var(--greed) 45%, var(--surface))", "탐욕"], ["var(--greed)", "극단적 탐욕"]]
       .forEach(([c, n]) => { const s = H("span", {}, lg); H("i", { style: `background:${c}` }, s); s.append(n); });
   }
 }
-new ResizeObserver(() => { const w = $("#chart").clientWidth; if (st.t && w && w !== lastW) chart(); }).observe($("#chart"));
+new ResizeObserver(() => { const w = $("#chart").clientWidth; if (st.sel.length && w && w !== lastW) (st.sel.length > 1 ? chartMulti() : chart()); }).observe($("#chart"));
 
 /* ---------- 기록 (이 브라우저에만) ---------- */
 const KEY = "fgi-sim-log";
@@ -517,7 +703,7 @@ function renderLog() {
 }
 $("#save").addEventListener("click", () => {
   if (!LAST) return;
-  const l = [...logList(), LAST];
+  const l = [...logList(), ...(Array.isArray(LAST) ? LAST : [LAST])];
   writeLog(l);
   if (JSON.stringify(readLog()) !== JSON.stringify(l.slice(-30))) MEMLOG = l;  // 저장이 안 되면 이 화면에서만
   renderLog();
@@ -547,9 +733,15 @@ Promise.all([fetch("data/meta.json").then((r) => r.json()), fetch("../apt/data/i
   });
   qk.hidden = qk.children.length < 2;
   renderLog();
-  const h = decodeURIComponent(location.hash.slice(1)).split(":");
-  if (h[0]) choose(h[0], h[1] ? +h[1] : undefined);
-  window.addEventListener("hashchange", () => { const k = decodeURIComponent(location.hash.slice(1)).split(":"); if (k[0] && (!st.it || k[0] !== st.it.seq)) choose(k[0], k[1] ? +k[1] : undefined); });
+  const fromHash = async () => {
+    const h = decodeURIComponent(location.hash.slice(1));
+    if (!h || h === st.sel.map((x) => x.it.seq + ":" + x.t[0]).join(",")) return;
+    st.sel = [];
+    for (const part of h.split(",").slice(0, MAXSEL)) { const [seq, ty] = part.split(":"); if (seq) await choose(seq, ty ? +ty : undefined, true); }
+    refresh();
+  };
+  fromHash();
+  window.addEventListener("hashchange", fromHash);
 }).catch(() => { $("#q").placeholder = "자료를 불러오지 못했어요. 새로고침해 주세요."; });
 
 /* ---------- 화면 밝기 (자동 · 밝게 · 어둡게, 다른 페이지와 같은 설정) ---------- */
