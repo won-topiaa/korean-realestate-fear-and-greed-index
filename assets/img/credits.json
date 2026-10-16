@@ -1,20 +1,4 @@
 {
- "hero-map": {
-  "title": "도곡쌍용예가아파트.jpg",
-  "license": "CC0",
-  "licenseUrl": "http://creativecommons.org/publicdomain/zero/1.0/deed.en",
-  "artist": "Seojoohyun",
-  "page": "https://commons.wikimedia.org/wiki/File:%EB%8F%84%EA%B3%A1%EC%8C%8D%EC%9A%A9%EC%98%88%EA%B0%80%EC%95%84%ED%8C%8C%ED%8A%B8.jpg",
-  "orig": "3000x4000"
- },
- "hero-apt": {
-  "title": "Dobong-gu Apartment 1.jpg",
-  "license": "CC0",
-  "licenseUrl": "http://creativecommons.org/publicdomain/zero/1.0/deed.en",
-  "artist": "최광모",
-  "page": "https://commons.wikimedia.org/wiki/File:Dobong-gu_Apartment_1.jpg",
-  "orig": "5472x3648"
- },
  "hero-report": {
   "title": "Seoul Skyline Night 2018.jpg",
   "license": "CC0",
@@ -30,5 +14,37 @@
   "artist": "cmmellow",
   "page": "https://commons.wikimedia.org/wiki/File:Seoul_Songpagu_sunset.jpg",
   "orig": "5472x1986"
+ },
+ "hero-map": {
+  "title": "Han River Seoul skyline Pixabay 1214950.jpg",
+  "license": "CC0",
+  "licenseUrl": "http://creativecommons.org/publicdomain/zero/1.0/deed.en",
+  "artist": "USAGI_POST",
+  "page": "https://commons.wikimedia.org/wiki/File:Han_River_Seoul_skyline_Pixabay_1214950.jpg",
+  "orig": "5964x2912"
+ },
+ "hero-apt": {
+  "title": "Han River and Lotte World Tower.jpg",
+  "license": "CC0",
+  "licenseUrl": "http://creativecommons.org/publicdomain/zero/1.0/deed.en",
+  "artist": "mauveine.kim",
+  "page": "https://commons.wikimedia.org/wiki/File:Han_River_and_Lotte_World_Tower.jpg",
+  "orig": "5218x2935"
+ },
+ "hero-highs": {
+  "title": "Lotte World Tower Fireworks 04.jpg",
+  "license": "Public domain",
+  "licenseUrl": "",
+  "artist": "HyunJae Park",
+  "page": "https://commons.wikimedia.org/wiki/File:Lotte_World_Tower_Fireworks_04.jpg",
+  "orig": "4256x2832"
+ },
+ "hero-sim": {
+  "title": "Olympic Boulevard Expressway Light Trails.jpg",
+  "license": "CC0",
+  "licenseUrl": "http://creativecommons.org/publicdomain/zero/1.0/deed.en",
+  "artist": "mauveine.kim",
+  "page": "https://commons.wikimedia.org/wiki/File:Olympic_Boulevard_Expressway_Light_Trails.jpg",
+  "orig": "2365x4204"
  }
 }

@@ -282,7 +282,7 @@ def refresh_applyhome():
 COMPUTE = ["molit_indicators.py", "rs_vintage.py", "extra_indicators.py", "build_indicators.py", "v3.py",
            "zone_index.py", "zone_v3.py", "export_zone.py", "map/build.py"]
 AFTER_CHECK = ["export_report_v3.py", "report/build.py"]  # 실시간 기록은 점검을 통과한 뒤에
-OPTIONAL = ["apt_score.py"]  # 단지 검색: 실패해도 지도·보고서는 게시 (알림만)
+OPTIONAL = ["apt_score.py", "highs_build.py", "sim_build.py"]  # 단지 검색: 실패해도 지도·보고서는 게시 (알림만)
 FINAL = ["site_build.py"]
 
 

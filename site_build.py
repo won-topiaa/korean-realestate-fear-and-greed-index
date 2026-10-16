@@ -27,15 +27,14 @@ TAIL = "\n</body>\n</html>\n"
 FONTS = ('<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@100..125,400..900'
          '&family=Noto+Sans+KR:wght@400;500;600;700;900&family=Poiret+One&family=Work+Sans:wght@400;500;600;700&display=swap">')
 REPO = "https://github.com/won-topiaa/korean-realestate-fear-and-greed-index"
-PAGES = [("", "지도"), ("apt/", "단지 검색"), ("report/", "보고서")]
+PAGES = [("", "지도"), ("apt/", "단지 검색"), ("highs/", "신고가 단지"), ("sim/", "모의 투자"), ("report/", "보고서")]
 CONTACT = "wontopiaaa@gmail.com"
 MAILTO = f"mailto:{CONTACT}?subject=" + quote("[서울 아파트 공포탐욕지도] 문의")
 
 
 def nav(base, cur):
     links = "".join(f'<a href="{base}{h}"' + (' aria-current="page"' if n == cur else "") + f">{n}</a>"
-                    for h, n in PAGES if n != "보고서")  # 보고서는 바닥글 '둘러보기'에만
-    links += f'<a href="{MAILTO}">문의</a>'
+                    for h, n in PAGES if n != "보고서")  # 보고서·문의는 바닥글에만
     cta = ("", "지도 보기") if cur == "단지 검색" else ("apt/", "단지 검색")
     return (f'<header class="sk-nav"><div class="sk-in"><a class="sk-logo" href="{base}" aria-label="서울 아파트 공포탐욕지도 처음으로">'
             f'SEOUL FEAR &amp; GREED</a><nav class="sk-menu" aria-label="사이트 메뉴">{links}</nav>'
@@ -49,9 +48,14 @@ def photo(base, name, alt):
 
 def footer(base):
     cr = json.loads((ROOT / "assets" / "img" / "credits.json").read_text())
-    who = ", ".join(f'<a href="{v["page"]}">{v["artist"]}</a>' for v in cr.values())
+    seen, who = set(), []
+    for v in cr.values():  # 같은 촬영자는 한 번만
+        if v["artist"] not in seen:
+            seen.add(v["artist"])
+            who.append(f'<a href="{v["page"]}">{v["artist"]}</a>')
+    who = ", ".join(who)
     links = "".join(f'<li><a href="{base}{h}">{n}</a></li>' for h, n in
-                    [("", "공포탐욕 지도"), ("apt/", "단지 검색"), ("report/", "백테스트 보고서")])
+                    [("", "공포탐욕 지도"), ("apt/", "단지 검색"), ("highs/", "신고가 단지"), ("sim/", "모의 투자"), ("report/", "백테스트 보고서")])
     return (f'\n<footer class="sk-foot" style="--sk-foot-img:url(\'{base}assets/img/footer.jpg\')"><div class="sk-in">'
             f'<div class="sk-about"><a class="sk-logo" href="{base}">SEOUL FEAR &amp; GREED</a>'
             '<p>서울 아파트 시장의 공포와 탐욕을 0~100으로 보여주는 지수예요. 공공데이터로 매달 20일에 갱신해요. '
@@ -61,7 +65,7 @@ def footer(base):
             '<li>자세한 출처는 각 페이지 설명에 있어요</li></ul></div>'
             f'<div class="sk-contact"><h4>문의</h4><p>지수나 데이터 오류, 제안, 제휴 문의는 메일로 보내 주세요.</p>'
             f'<a class="sk-mail" href="{MAILTO}">{CONTACT}</a><a class="sk-mailbtn" href="{MAILTO}">메일 보내기 →</a></div>'
-            f'<p class="sk-copy">사진: 위키미디어 공용 CC0 (저작권 없음) — {who}</p></div></footer>\n')
+            f'<p class="sk-copy">사진: 위키미디어 공용 CC0·퍼블릭 도메인 (저작권 없음) — {who}</p></div></footer>\n')
 
 
 def skin(html, base, cur, hero, h1, photo_args, maxw):
@@ -107,18 +111,29 @@ if __name__ == "__main__":
                  ("<h1>서울 아파트 공포탐욕지도</h1>", '<h1>서울 아파트 공포탐욕지도</h1>\n    <p style="margin:6px 0 4px"><a class="btn" href="apt/" style="text-decoration:none;display:inline-block">단지 검색 · 최근 실거래가 위치 보기 →</a></p>')],
          skin_args=("", "지도", ('<header style="display:grid;gap:6px">', "</header>"),
                     ("<h1>서울 아파트 공포탐욕지도</h1>", '<h1><span class="sk-h1a">서울 아파트</span><span class="sk-h1b">공포탐욕지도</span></h1>'),
-                    ("hero-map", "하늘을 배경으로 올려다본 서울 강남구 도곡동의 고층 아파트"), 1180))
+                    ("hero-map", "파란 하늘과 구름 아래 한강 너머로 보이는 여의도 63빌딩"), 1180))
     wrap(ROOT / "apt" / "template.html", SITE / "apt" / "index.html",
          "서울 아파트 단지별 최근 실거래가가 최근 거래 범위 중 어디쯤인지 0~100으로 (층·시장 변화 보정).",
          skin_args=("../", "단지 검색", ('<header style="display:grid;gap:6px">', "</header>"),
                     ("<h1>단지 검색</h1>", '<h1><span class="sk-h1a">최근 실거래가, 비싼 편일까?</span><span class="sk-h1b">단지 검색</span></h1>'),
-                    ("hero-apt", "맑은 날 서울 도봉구의 고층 아파트 단지"), 960))
-    data = ROOT / "results_apt"
-    if (data / "index.json").exists():
-        shutil.rmtree(SITE / "apt" / "data", ignore_errors=True)
-        shutil.copytree(data, SITE / "apt" / "data")
-    else:
-        print("알림: results_apt가 없어 단지 검색 자료 없이 빌드 (python apt_score.py 먼저)")
+                    ("hero-apt", "잔잔한 한강에 비친 낮의 롯데월드타워"), 960))
+    for res, page, script in [("results_apt", "apt", "apt_score.py"), ("results_highs", "highs", "highs_build.py"), ("results_sim", "sim", "sim_build.py")]:
+        data = ROOT / res
+        if data.exists() and any(data.iterdir()):
+            shutil.rmtree(SITE / page / "data", ignore_errors=True)
+            shutil.copytree(data, SITE / page / "data")
+        else:
+            print(f"알림: {res}가 없어 {page} 자료 없이 빌드 (python {script} 먼저)")
+    wrap(ROOT / "highs" / "template.html", SITE / "highs" / "index.html",
+         "서울 아파트 이번 달 신고가 단지: 같은 단지·같은 평형의 지난 모든 거래보다 비싸게 팔린 거래.",
+         skin_args=("../", "신고가 단지", ('<header style="display:grid;gap:6px">', "</header>"),
+                    ("<h1>신고가 단지</h1>", '<h1><span class="sk-h1a">이번 달 가장 비싸게 팔린 집</span><span class="sk-h1b">신고가 단지</span></h1>'),
+                    ("hero-highs", "밤하늘에 불꽃이 터지는 롯데월드타워와 한강"), 1040))
+    wrap(ROOT / "sim" / "template.html", SITE / "sim" / "index.html",
+         "서울 아파트 모의 투자: 그때 이 단지를 샀다면 지금 얼마일까? 실거래로 계산하는 가상 투자.",
+         skin_args=("../", "모의 투자", ('<header style="display:grid;gap:6px">', "</header>"),
+                    ("<h1>모의 투자</h1>", '<h1><span class="sk-h1a">그때 샀다면 지금 얼마?</span><span class="sk-h1b">모의 투자</span></h1>'),
+                    ("hero-sim", "밤의 올림픽대로를 달리는 차들의 빛줄기와 여의도 국회의사당·고층 빌딩"), 960))
     wrap(ROOT / "report" / "index.html", SITE / "report" / "index.html",
          "서울 아파트 공포탐욕지수 v3 백테스트 보고서.",
          skin_args=("../", "보고서", ('<section class="top">', "</section>"),

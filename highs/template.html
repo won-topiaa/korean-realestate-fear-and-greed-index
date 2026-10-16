@@ -1,0 +1,318 @@
+<title>신고가 단지</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: month tabs → summary (counts + 36-month share bars) → by-gu bars (filter) → list of new-high trades. */
+:root {
+  --bg: #f3f4f6; --surface: #fcfcfb; --ink: #111316; --ink-2: #4a4e55; --muted: #7d8189;
+  --grid: #e3e5e8; --axis: #c2c5cb; --hair: rgba(17, 19, 22, 0.1); --hl: #eaeef4;
+  --fear: #2a78d6; --greed: #e34948;
+  --font: "IBM Plex Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f1012; --surface: #18191b; --ink: #eef0f2; --ink-2: #c1c5cb; --muted: #8b8f96;
+    --grid: #2a2c30; --axis: #3d4046; --hair: rgba(255, 255, 255, 0.1); --hl: #22262d;
+    --fear: #3987e5; --greed: #e66767; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f1012; --surface: #18191b; --ink: #eef0f2; --ink-2: #c1c5cb; --muted: #8b8f96;
+  --grid: #2a2c30; --axis: #3d4046; --hair: rgba(255, 255, 255, 0.1); --hl: #22262d;
+  --fear: #3987e5; --greed: #e66767; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font); font-size: 15px; line-height: 1.6; padding-inline: 16px; padding-block: 28px 56px; -webkit-font-smoothing: antialiased; }
+.wrap { max-width: 1040px; margin: 0 auto; display: grid; gap: 18px; }
+.wrap > *, .panel > *, .panel div { min-width: 0; }
+h1, h2 { margin: 0; line-height: 1.3; text-wrap: balance; }
+h1 { font-size: clamp(26px, 3.6vw, 34px); font-weight: 700; letter-spacing: -0.02em; }
+h2 { font-size: 20px; font-weight: 700; }
+p { margin: 0; }
+a { color: var(--ink); }
+.eyebrow { font-family: var(--mono); font-size: 12px; letter-spacing: 0.06em; color: var(--muted); text-transform: uppercase; }
+.topbar { display: flex; justify-content: space-between; align-items: center; gap: 8px 12px; flex-wrap: wrap; }
+.theme-ctl { display: inline-flex; align-items: center; gap: 2px; padding: 2px; border: 1px solid var(--hair); border-radius: 999px; background: var(--surface); }
+.theme-ctl .tl { font-size: 11.5px; color: var(--muted); padding: 0 6px 0 8px; }
+.theme-ctl button { font: inherit; font-size: 12px; border: 0; background: transparent; color: var(--ink-2); padding: 3px 10px; border-radius: 999px; cursor: pointer; }
+.theme-ctl button[aria-pressed="true"] { background: var(--ink); color: var(--surface); font-weight: 600; }
+.theme-ctl button:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.sub { color: var(--ink-2); max-width: 70ch; }
+.panel { background: var(--surface); border: 1px solid var(--hair); border-radius: 12px; padding: 18px 20px; display: grid; gap: 14px; }
+.sec-title { font-size: 12px; color: var(--muted); font-weight: 500; letter-spacing: 0.02em; }
+.seg { display: flex; flex-wrap: wrap; gap: 6px; }
+.seg button { font: inherit; font-size: 13.5px; border: 1px solid var(--hair); background: var(--surface); color: var(--ink-2); padding: 6px 14px; border-radius: 999px; cursor: pointer; }
+.seg button small { font-size: 11px; color: var(--muted); margin-left: 4px; }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--surface); border-color: var(--ink); font-weight: 600; }
+.seg button[aria-pressed="true"] small { color: var(--surface); opacity: 0.75; }
+
+/* 요약 */
+.sum { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+@media (max-width: 640px) { .sum { grid-template-columns: 1fr; } }
+.stat { display: grid; gap: 2px; }
+.stat .k { font-size: 12.5px; color: var(--muted); }
+.stat .v { font-size: 34px; font-weight: 700; line-height: 1.1; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.stat .v small { font-size: 15px; font-weight: 500; color: var(--ink-2); margin-left: 2px; }
+.stat .h { font-size: 12.5px; color: var(--ink-2); }
+.trend { position: relative; }
+.trend svg { display: block; width: 100%; height: auto; overflow: visible; }
+.axis-t { font-family: var(--mono); font-size: 10.5px; fill: var(--muted); }
+.tip { position: absolute; pointer-events: none; transform: translate(-50%, calc(-100% - 8px)); background: var(--surface); border: 1px solid var(--hair); border-radius: 8px; padding: 4px 9px; font-size: 12px; white-space: nowrap; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12); color: var(--ink-2); }
+.tip b { color: var(--ink); font-variant-numeric: tabular-nums; }
+
+/* 구별 */
+.gu-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 4px 22px; }
+.gu-row { display: grid; grid-template-columns: 4.6em minmax(0, 1fr) 6.2em; align-items: center; gap: 10px; font: inherit; font-size: 13px; background: transparent; border: 0; padding: 5px 6px; border-radius: 6px; cursor: pointer; color: var(--ink); text-align: left; }
+.gu-row:hover { background: var(--hl); }
+.gu-row[aria-pressed="true"] { background: var(--hl); font-weight: 600; box-shadow: inset 3px 0 0 var(--ink); }
+.gu-row .bar { height: 8px; background: var(--grid); border-radius: 0 4px 4px 0; position: relative; }
+.gu-row .bar i { position: absolute; inset: 0 auto 0 0; background: var(--greed); border-radius: 0 4px 4px 0; }
+.gu-row .n { text-align: right; font-variant-numeric: tabular-nums; color: var(--ink-2); font-size: 12.5px; }
+
+/* 목록 */
+.tools { display: flex; gap: 8px 12px; flex-wrap: wrap; align-items: center; }
+.tools input { font: inherit; font-size: 14px; padding: 7px 12px; border: 1px solid var(--axis); border-radius: 8px; background: var(--bg); color: var(--ink); flex: 1 1 200px; min-width: 0; }
+.tools select { font: inherit; font-size: 13.5px; padding: 7px 10px; border: 1px solid var(--hair); border-radius: 8px; background: var(--surface); color: var(--ink); }
+.cnt { font-size: 13px; color: var(--muted); }
+.tbl-wrap { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 13.5px; }
+th, td { text-align: left; padding: 9px 8px; border-bottom: 1px solid var(--hair); white-space: nowrap; vertical-align: top; }
+th { color: var(--muted); font-weight: 500; font-size: 12px; }
+td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; }
+td .s { display: block; font-size: 11.5px; color: var(--muted); font-weight: 400; }
+td a { font-weight: 600; text-decoration: none; }
+td a:hover { text-decoration: underline; }
+.up { color: var(--greed); font-weight: 600; }
+.more { justify-self: center; font: inherit; font-size: 13.5px; padding: 8px 18px; border: 1px solid var(--hair); background: var(--surface); color: var(--ink); border-radius: 999px; cursor: pointer; }
+.note { font-size: 12.5px; color: var(--ink-2); background: var(--hl); border-radius: 8px; padding: 10px 12px; }
+.foot { font-size: 12.5px; color: var(--muted); display: grid; gap: 6px; max-width: 90ch; }
+.foot b { color: var(--ink-2); }
+.loading { color: var(--muted); font-size: 13px; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+</style>
+<script>try { const m = localStorage.getItem("fgi-theme"); if (m === "light" || m === "dark") document.documentElement.setAttribute("data-theme", m); } catch (e) {}</script>
+
+<div class="wrap">
+  <header style="display:grid;gap:6px">
+    <div class="topbar">
+      <div class="eyebrow">서울 아파트 · 실거래 신고가</div>
+      <div class="theme-ctl" id="theme-ctl" role="group" aria-label="화면 밝기"><span class="tl" aria-hidden="true">화면</span><button type="button" data-m="auto" aria-pressed="true" title="기기 설정을 따라요">자동</button><button type="button" data-m="light" aria-pressed="false">밝게</button><button type="button" data-m="dark" aria-pressed="false">어둡게</button></div>
+    </div>
+    <h1>신고가 단지</h1>
+    <p class="sub">같은 단지·같은 크기 집의 지난 모든 거래보다 비싸게 팔린 거래예요. 신고가가 많을수록 시장이 뜨거운 쪽이라, 공포탐욕지수에도 '신고가 비중'이 들어가요. 달과 구를 골라 어떤 단지인지 볼 수 있어요.</p>
+  </header>
+
+  <section class="panel" aria-label="달 고르기와 요약">
+    <div class="seg" id="months" role="group" aria-label="계약한 달"></div>
+    <div class="sum" id="sum"><p class="loading">불러오는 중…</p></div>
+    <div>
+      <div class="sec-title" style="margin-bottom:6px">서울 신고가 비중 (비교할 수 있는 거래 중 신고가, 최근 36개월)</div>
+      <div class="trend" id="trend"></div>
+    </div>
+  </section>
+
+  <section class="panel" aria-label="구별 신고가">
+    <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap">
+      <h2>구별 신고가</h2>
+      <span class="cnt">누르면 그 구 단지만 보여요</span>
+    </div>
+    <div class="gu-grid" id="gus"></div>
+  </section>
+
+  <section class="panel" aria-label="신고가 거래 목록">
+    <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap">
+      <h2 id="list-title">신고가 거래</h2>
+      <span class="cnt" id="cnt"></span>
+    </div>
+    <div class="tools">
+      <label class="sr-only" for="q">단지 이름으로 찾기</label>
+      <input id="q" type="search" placeholder="단지 이름으로 찾기 (예: 래미안, 자이)" autocomplete="off">
+      <label class="sr-only" for="sort">정렬</label>
+      <select id="sort">
+        <option value="price">거래가 높은 순</option>
+        <option value="up">직전 최고가보다 많이 오른 순</option>
+        <option value="date">최근 계약 순</option>
+      </select>
+    </div>
+    <div class="tbl-wrap"><table id="tbl"></table></div>
+    <button type="button" class="more" id="more" hidden>더 보기</button>
+  </section>
+
+  <footer class="foot">
+    <p><b>신고가</b> · 같은 단지에서 전용면적이 0.01㎡까지 같은 집(같은 평형)의 2006년 이후 신고된 모든 매매가보다 비싸게 계약된 거래예요. 그 크기의 첫 거래처럼 비교할 이전 거래가 없으면 세지 않아요. 해제된 거래와 직거래는 빼요.</p>
+    <p><b>오른 폭</b> · 직전 최고가 대비예요. 직전 최고가가 오래전 거래면 그사이 시세 상승이 한꺼번에 반영돼 크게 보일 수 있어요(직전 최고가 날짜를 함께 보세요). 직전 최고가의 2배가 넘는 거래는 입력 오류일 수 있어 목록에서 뺐어요. 층은 맞추지 않은 실제 거래가예요.</p>
+    <p><b>자료</b> · 국토교통부 아파트 매매 실거래가. 실거래는 계약 후 30일 안에 신고되므로 최근 달은 아직 덜 들어왔어요. <span id="asof"></span> 매달 20일에 갱신해요. 신고가는 지난 거래 가격과의 비교일 뿐, 사고팔 시점을 알려주는 신호가 아니에요.</p>
+  </footer>
+</div>
+
+<script>
+const $ = (s) => document.querySelector(s);
+const NS = "http://www.w3.org/2000/svg";
+function H(tag, attrs, parent, text) {
+  const e = document.createElement(tag);
+  for (const k in attrs || {}) { if (k === "style") e.style.cssText = attrs[k]; else e.setAttribute(k, attrs[k]); }
+  if (text != null) e.textContent = text;
+  if (parent) parent.appendChild(e);
+  return e;
+}
+function S(tag, attrs, parent) { const e = document.createElementNS(NS, tag); for (const k in attrs || {}) e.setAttribute(k, attrs[k]); if (parent) parent.appendChild(e); return e; }
+function won(v) {  // 만원 → '36억 5,000만'
+  const e = Math.floor(v / 10000), r = Math.round(v % 10000);
+  if (!e) return r.toLocaleString("ko-KR") + "만";
+  return e + "억" + (r ? " " + r.toLocaleString("ko-KR") + "만" : "");
+}
+const pyeong = (m2) => Math.round((m2 * 1.33) / 3.3058);  // 흔히 말하는 'N평형' (어림값)
+const ymLab = (ym) => `${ym.slice(0, 4)}년 ${+ym.slice(5)}월`;
+const pct = (x) => (x * 100).toFixed(0) + "%";
+
+let D = null, M = null;
+const st = { m: 0, gu: null, q: "", sort: "price", shown: 50 };
+
+function renderMonths() {
+  const box = $("#months");
+  box.textContent = "";
+  D.months.forEach((m, i) => {
+    const partial = i === 0 && m.ym === D.asof.slice(0, 7);
+    const b = H("button", { type: "button", "aria-pressed": String(i === st.m) }, box, `${+m.ym.slice(5)}월`);
+    if (partial) H("small", {}, b, "신고 중");
+    b.addEventListener("click", () => { st.m = i; st.shown = 50; render(); });
+  });
+}
+
+function renderSum() {
+  const box = $("#sum");
+  box.textContent = "";
+  const stat = (k, v, unit, h) => { const s = H("div", { class: "stat" }, box); H("span", { class: "k" }, s, k); const vv = H("span", { class: "v" }, s, v); if (unit) H("small", {}, vv, unit); if (h) H("span", { class: "h" }, s, h); };
+  const m = M;
+  stat(`${ymLab(m.ym)} 신고가 거래`, m.high.toLocaleString("ko-KR"), "건", `그달 거래 ${m.n.toLocaleString("ko-KR")}건 중`);
+  stat("신고가 비중", pct(m.high / m.cmp), "", `비교할 이전 거래가 있는 ${m.cmp.toLocaleString("ko-KR")}건 중`);
+  stat("신고가가 나온 단지", m.complexes.toLocaleString("ko-KR"), "곳", m.jump ? `입력 오류 의심 ${m.jump}건은 뺐어요` : "");
+}
+
+function renderTrend() {
+  const wrap = $("#trend");
+  wrap.textContent = "";
+  const T = D.trend, W = Math.max(300, wrap.clientWidth), Hh = 130, m = { l: 34, r: 6, t: 8, b: 20 };
+  const svg = S("svg", { viewBox: `0 0 ${W} ${Hh}`, width: W, height: Hh, role: "img", "aria-label": "최근 36개월 서울 신고가 비중 막대그래프" }, wrap);
+  const mx = Math.max(0.1, ...T.map((r) => r[1] / r[2]));
+  const top = Math.ceil(mx * 10) / 10;
+  const bw = (W - m.l - m.r) / T.length;
+  const Y = (v) => m.t + (1 - v / top) * (Hh - m.t - m.b);
+  [0, top / 2, top].forEach((v) => {
+    S("line", { x1: m.l, x2: W - m.r, y1: Y(v), y2: Y(v), stroke: "var(--grid)" }, svg);
+    const t = S("text", { x: m.l - 6, y: Y(v) + 3.5, "text-anchor": "end", class: "axis-t" }, svg); t.textContent = pct(v);
+  });
+  const tip = H("div", { class: "tip", hidden: "" }, wrap);
+  T.forEach((r, i) => {
+    const v = r[1] / r[2], sel = r[0] === M.ym, partial = r[0] === D.asof.slice(0, 7);
+    const x = m.l + i * bw;
+    const g = S("g", { tabindex: 0, role: "img", "aria-label": `${ymLab(r[0])} 신고가 비중 ${pct(v)} (${r[1]}건 / ${r[2]}건)` }, svg);
+    S("rect", { x: x + 1, y: Y(v), width: Math.max(1, bw - 2), height: Math.max(0.5, Y(0) - Y(v)), rx: 2, fill: sel ? "var(--greed)" : "var(--axis)", opacity: partial ? 0.45 : 1 }, g);
+    S("rect", { x, y: m.t, width: bw, height: Hh - m.t - m.b, fill: "transparent" }, g);
+    const jan = T.findIndex((rr) => rr[0].endsWith("-01"));  // 첫 1월이 3칸 안이면 맨 앞 연도는 생략
+    if (r[0].endsWith("-01") || (i === 0 && (jan < 0 || jan > 3))) { const t = S("text", { x: x + bw / 2, y: Hh - 5, "text-anchor": i === 0 ? "start" : "middle", class: "axis-t" }, svg); t.textContent = r[0].slice(0, 4); }
+    const show = () => {
+      tip.hidden = false; tip.textContent = "";
+      H("div", {}, tip, ymLab(r[0]) + (partial ? " (신고 중)" : ""));
+      const a = H("div", {}, tip, "신고가 "); H("b", {}, a, `${pct(v)}`); a.append(` · ${r[1].toLocaleString("ko-KR")}건`);
+      const rr = svg.getBoundingClientRect();
+      tip.style.left = ((x + bw / 2) / W) * rr.width + "px"; tip.style.top = (Y(v) / Hh) * rr.height + "px";
+    };
+    g.addEventListener("mouseenter", show); g.addEventListener("focus", show);
+    g.addEventListener("mouseleave", () => (tip.hidden = true)); g.addEventListener("blur", () => (tip.hidden = true));
+    const pick = D.months.findIndex((mm) => mm.ym === r[0]);
+    if (pick >= 0) { g.style.cursor = "pointer"; g.addEventListener("click", () => { st.m = pick; st.shown = 50; render(); }); }
+  });
+}
+
+function renderGus() {
+  const box = $("#gus");
+  box.textContent = "";
+  const rows = Object.entries(M.gu).map(([c, [h, n]]) => [c, h, n]).sort((a, b) => b[1] - a[1]);
+  const mx = Math.max(1, ...rows.map((r) => r[1]));
+  const all = H("button", { type: "button", class: "gu-row", "aria-pressed": String(!st.gu) }, box);
+  H("span", {}, all, "서울 전체");
+  const ab = H("span", { class: "bar" }, all); H("i", { style: "width:100%;opacity:.35" }, ab);
+  H("span", { class: "n" }, all, `${M.high.toLocaleString("ko-KR")}건`);
+  all.addEventListener("click", () => { st.gu = null; st.shown = 50; render(); });
+  rows.forEach(([c, h, n]) => {
+    const b = H("button", { type: "button", class: "gu-row", "aria-pressed": String(st.gu === c), title: `${D.gu_names[c]}: 신고가 ${h}건 / 비교 가능 ${n}건` }, box);
+    H("span", {}, b, D.gu_names[c]);
+    const bar = H("span", { class: "bar" }, b); H("i", { style: `width:${(h / mx) * 100}%` }, bar);
+    H("span", { class: "n" }, b, `${h}건 · ${n ? pct(h / n) : "–"}`);
+    b.addEventListener("click", () => { st.gu = st.gu === c ? null : c; st.shown = 50; render(); });
+  });
+}
+
+function renderList() {
+  const q = st.q.replace(/\s/g, "").toLowerCase();
+  let rows = M.rows.filter((r) => (!st.gu || r[2] === st.gu) && (!q || r[1].replace(/\s/g, "").toLowerCase().includes(q)));
+  const up = (r) => r[7] / r[8] - 1;
+  if (st.sort === "up") rows = [...rows].sort((a, b) => up(b) - up(a));
+  else if (st.sort === "date") rows = [...rows].sort((a, b) => (b[6] > a[6] ? 1 : b[6] < a[6] ? -1 : b[7] - a[7]));
+  $("#list-title").textContent = `${st.gu ? D.gu_names[st.gu] + " " : ""}신고가 거래 · ${ymLab(M.ym)}`;
+  $("#cnt").textContent = `${rows.length.toLocaleString("ko-KR")}건`;
+  const tb = $("#tbl");
+  tb.textContent = "";
+  const hr = H("tr", {}, H("thead", {}, tb));
+  [["단지"], ["전용", "n"], ["층", "n"], ["계약일"], ["거래가", "n"], ["직전 최고가", "n"], ["오른 폭", "n"]].forEach(([x, c]) => H("th", c ? { class: c } : {}, hr, x));
+  const bd = H("tbody", {}, tb);
+  if (!rows.length) { const tr = H("tr", {}, bd); H("td", { colspan: 7, style: "color:var(--muted);white-space:normal" }, tr, "조건에 맞는 신고가 거래가 없어요."); }
+  rows.slice(0, st.shown).forEach((r) => {
+    const [seq, name, lawd, dong, area, floor, date, price, prev, prevd, nprev] = r;
+    const tr = H("tr", {}, bd);
+    const td = H("td", {}, tr);
+    H("a", { href: `../apt/#${seq}:${Math.round(area)}`, title: "단지 검색에서 이 평형 보기" }, td, name || seq);
+    H("span", { class: "s" }, td, `${D.gu_names[lawd] || ""} ${dong}`);
+    const ta = H("td", { class: "n" }, tr, `${area}㎡`); H("span", { class: "s" }, ta, `약 ${pyeong(area)}평형`);
+    H("td", { class: "n" }, tr, floor != null ? floor + "층" : "–");
+    H("td", {}, tr, date.replaceAll("-", "."));
+    H("td", { class: "n", style: "font-weight:600" }, tr, won(price));
+    const tp = H("td", { class: "n" }, tr, won(prev)); H("span", { class: "s" }, tp, `${prevd.replace("-", ".")} · 이전 거래 ${nprev}건`);
+    H("td", { class: "n up" }, tr, `+${((price / prev - 1) * 100).toFixed(1)}%`);
+  });
+  const more = $("#more");
+  more.hidden = rows.length <= st.shown;
+  more.textContent = `더 보기 (${Math.min(50, rows.length - st.shown)}건)`;
+}
+
+function render() {
+  M = D.months[st.m];
+  renderMonths(); renderSum(); renderTrend(); renderGus(); renderList();
+}
+
+$("#q").addEventListener("input", (e) => { st.q = e.target.value; st.shown = 50; renderList(); });
+$("#sort").addEventListener("change", (e) => { st.sort = e.target.value; st.shown = 50; renderList(); });
+$("#more").addEventListener("click", () => { st.shown += 50; renderList(); });
+let rt;
+new ResizeObserver(() => { clearTimeout(rt); rt = setTimeout(() => D && renderTrend(), 100); }).observe($("#trend"));
+
+fetch("data/highs.json").then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); }).then((j) => {
+  D = j;
+  st.m = D.months.length > 1 && D.months[0].ym === D.asof.slice(0, 7) ? 1 : 0;  // 아직 신고 중인 이번 달 말고 지난달부터
+  $("#asof").textContent = `지금은 ${D.asof.replaceAll("-", ".")} 계약분까지 들어 있어요.`;
+  render();
+}).catch(() => { $("#sum").textContent = "자료를 불러오지 못했어요. 잠시 뒤 새로고침해 주세요."; });
+
+/* ---------- 화면 밝기 (자동 · 밝게 · 어둡게, 다른 페이지와 같은 설정) ---------- */
+(() => {
+  const ctl = document.getElementById("theme-ctl"), root = document.documentElement, KEY = "fgi-theme";
+  if (!ctl) return;
+  const apply = (m) => {
+    if (m === "light" || m === "dark") root.setAttribute("data-theme", m); else root.removeAttribute("data-theme");
+    ctl.querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.m === (m === "light" || m === "dark" ? m : "auto"))));
+  };
+  let saved = "auto";
+  try { saved = localStorage.getItem(KEY) || "auto"; } catch (e) {}
+  apply(saved);
+  ctl.addEventListener("click", (e) => {
+    const b = e.target.closest("button");
+    if (!b) return;
+    apply(b.dataset.m);
+    try { if (b.dataset.m === "auto") localStorage.removeItem(KEY); else localStorage.setItem(KEY, b.dataset.m); } catch (e2) {}
+  });
+})();
+</script>

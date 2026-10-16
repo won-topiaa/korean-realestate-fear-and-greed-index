@@ -24,3 +24,5 @@ results_v2/*/
 report/index_v1.html
 report/template_v1.html
 *.tmp
+results_highs/
+results_sim/

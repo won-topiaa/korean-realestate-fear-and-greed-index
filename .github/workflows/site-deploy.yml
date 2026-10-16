@@ -15,6 +15,10 @@ on:
       - "apt/template.html"
       - "apt_score.py"
       - "assets/**"
+      - "highs/**"
+      - "sim/**"
+      - "highs_build.py"
+      - "sim_build.py"
   workflow_dispatch:
 
 permissions:
@@ -48,6 +52,8 @@ jobs:
           python map/build.py
           python report/build.py
           python apt_score.py
+          python highs_build.py
+          python sim_build.py
           python site_build.py
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
