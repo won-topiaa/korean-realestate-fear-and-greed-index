@@ -246,6 +246,18 @@ details.readhow[open] summary { margin-bottom: 6px; }
 .relbox { padding: 10px 12px; }
 .timebar { padding: 10px 16px; gap: 8px; }
 .time-now { font-size: 18px; }
+/* 휴대폰·좁은 화면: 한 칸으로. 위 '한눈에 보기' 규칙이 원래의 좁은 화면 규칙을 덮어쓰지 않도록 반드시 그 뒤에 둔다 */
+@media (max-width: 880px) {
+  .main, .gauges { grid-template-columns: minmax(0, 1fr); }
+  .mapbox { max-width: none; }
+  #g-big { max-width: 300px; }
+}
+@media (max-width: 560px) {
+  .g-main { grid-template-columns: minmax(0, 1fr); }
+  .mini-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  .g-mini svg { max-width: 110px; }
+  .g-mini .nm { font-size: 13px; }
+}
 </style>
 <script>try { const m = localStorage.getItem("fgi-theme"); if (m === "light" || m === "dark") document.documentElement.setAttribute("data-theme", m); } catch (e) {}</script>
 
