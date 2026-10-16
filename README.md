@@ -2,13 +2,15 @@
 
 주식시장의 공포탐욕지수(CNN Fear & Greed Index)를 서울 아파트 시장에 옮긴 지수예요. 시장 심리를 0~100으로 나타내고(0 극단적 공포, 50 중립, 100 극단적 탐욕), 서울 전체·5대 권역·25개 구로 나눠 볼 수 있어요.
 
+**사이트 주소: https://won-topiaa.github.io/korean-realestate-fear-and-greed-index/**
+
 | 페이지 | 주소 | 하는 일 |
 |---|---|---|
-| 지도 | [/](https://won-topiaa.github.io/korean-realestate-fear-and-greed-index/) | 지금 서울 점수와 0~100 막대, 5대 권역·25개 구 지도, 2006년부터의 추이, 서울 안 상대 강도 |
-| 단지 검색 | [/apt/](https://won-topiaa.github.io/korean-realestate-fear-and-greed-index/apt/) | 단지의 최근 실거래가가 최근 거래 중 비싼 편인지 싼 편인지(0~100), 세대수·용적률 등 단지 정보 |
-| 신고가 단지 | [/highs/](https://won-topiaa.github.io/korean-realestate-fear-and-greed-index/highs/) | 이번 달 같은 단지·같은 평형의 역대 최고가를 넘은 거래, 구별 비중 |
-| 모의 투자 | [/sim/](https://won-topiaa.github.io/korean-realestate-fear-and-greed-index/sim/) | 그때 샀다면 지금 얼마? 실거래로 계산하는 가상 투자, 단지 2~3개 비교 |
-| 백테스트 보고서 | [/report/](https://won-topiaa.github.io/korean-realestate-fear-and-greed-index/report/) | 지수를 실거래 141만 건으로 검증한 정확도와 한계 |
+| 지도 | https://won-topiaa.github.io/korean-realestate-fear-and-greed-index/ | 지금 서울 점수와 0~100 막대, 5대 권역·25개 구 지도, 2006년부터의 추이, 서울 안 상대 강도 |
+| 단지 검색 | https://won-topiaa.github.io/korean-realestate-fear-and-greed-index/apt/ | 단지의 최근 실거래가가 최근 거래 중 비싼 편인지 싼 편인지(0~100), 세대수·용적률 등 단지 정보 |
+| 신고가 단지 | https://won-topiaa.github.io/korean-realestate-fear-and-greed-index/highs/ | 이번 달 같은 단지·같은 평형의 역대 최고가를 넘은 거래, 구별 비중 |
+| 모의 투자 | https://won-topiaa.github.io/korean-realestate-fear-and-greed-index/sim/ | 그때 샀다면 지금 얼마? 실거래로 계산하는 가상 투자, 단지 2~3개 비교 |
+| 백테스트 보고서 | https://won-topiaa.github.io/korean-realestate-fear-and-greed-index/report/ | 지수를 실거래 141만 건으로 검증한 정확도와 한계 |
 
 - **갱신**: 매달 20일 09:17(한국 시간) GitHub Actions가 자료를 새로 받아 다시 계산하고 배포해요.
 - **문의**: wontopiaaa@gmail.com
