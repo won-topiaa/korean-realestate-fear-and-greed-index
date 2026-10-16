@@ -252,8 +252,9 @@ details.readhow[open] summary { margin-bottom: 6px; }
   .mapbox { max-width: none; }
   #g-big { max-width: 300px; }
 }
-@media (max-width: 600px) {  /* 휴대폰: 아래 설명 칸의 큰 숫자·막대는 바로 위 게이지와 같아서 뺀다 */
-  #read > .row, #read > .gauge { display: none; }
+@media (max-width: 600px) {  /* 휴대폰: 막대는 위 게이지와 같아서 빼고, 고른 달 점수는 남긴다 (추이를 누른 뒤 바로 아래에서 확인) */
+  #read > .gauge { display: none; }
+  #read .hero-num { font-size: 38px; }
 }
 @media (max-width: 560px) {
   .g-main { grid-template-columns: minmax(0, 1fr); }
@@ -559,10 +560,10 @@ function renderRead() {
 
   const kv = H("dl", { class: "kv" }, el);
   const add = (k, x) => { H("dt", {}, kv, k); H("dd", {}, kv, x); };
-  if (t >= 12 && R.score[t - 12] != null) add("1년 전", `${Math.round(R.score[t - 12])} · ${zoneName(R.score[t - 12])}`);
+  if (t >= 12 && R.score[t - 12] != null) add("1년 전 지수", `${Math.round(R.score[t - 12])} · ${zoneName(R.score[t - 12])} (${ym(D.dates[t - 12])})`);
   const [rsNow, ri] = lastValid(R.rs, t);
-  if (rsNow != null && ri >= 12 && R.rs[ri - 12] != null) add("직전 1년 실거래 가격", `${pct(rsNow / R.rs[ri - 12] - 1)} (${ym(D.dates[ri])}까지)`);
-  add("이후 1년 실거래 가격", R.fwd12[t] == null ? "아직 모름" : pct(Math.expm1(R.fwd12[t])));
+  if (rsNow != null && ri >= 12 && R.rs[ri - 12] != null) add("직전 1년 실거래가 변화", `${pct(rsNow / R.rs[ri - 12] - 1)} (${ym(D.dates[ri])}까지)`);
+  add("이후 1년 실거래가 변화", R.fwd12[t] == null ? "아직 모름" : pct(Math.expm1(R.fwd12[t])));
   if (!isSeoul) add("서울 전체에서 거래 비중", `${Math.round(R.weight * 100)}%`);
   if (R.rel) {
     const rk = R.rel.rank[t], hi = R.rel.hi[t], shi = D.regions["서울"].hi ? D.regions["서울"].hi[t] : null, C = D.gu_cs.rel;
