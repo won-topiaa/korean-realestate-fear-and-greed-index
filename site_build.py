@@ -22,7 +22,7 @@ HEAD = """<!doctype html>
 {title}
 <style>[hidden]{{display:none!important}} body{{margin:0}}</style>
 </head>
-<body>
+<body{body_attr}>
 """
 TAIL = "\n</body>\n</html>\n"
 FONTS = ('<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@100..125,400..900'
@@ -76,13 +76,18 @@ def footer(base):
             f'<p class="sk-copy">사진: 위키미디어 공용 CC0·퍼블릭 도메인 (저작권 없음) — {who}</p></div></footer>\n')
 
 
-def skin(html, base, cur, hero, h1, photo_args, maxw):
+def skin(html, base, cur, hero, h1, photo_args, maxw, intro=None):
     """페이지 html에 공통 겉모습을 입힌다. hero=(여는 태그, 닫는 태그): 첫 화면 묶음, h1=(원래, 바꿀 것)."""
     css = f'{FONTS}\n<link rel="stylesheet" href="{base}assets/skin.css{ver("assets/skin.css")}">\n<style>:root{{--sk-max:{maxw}px}}</style>\n'
     i = html.index("</style>") + len("</style>")  # 페이지 스타일 바로 뒤 (덮어쓰기)
     html = html[:i] + "\n" + css + html[i:]
     j = html.index('<div class="wrap">')
-    html = html[:j] + nav(base, cur) + html[j:]
+    pagebg = ""
+    if intro:  # 검색 전에는 사진 한 장을 화면 전체 배경으로 (결과가 나오면 위 띠·아래 바닥글 사진으로)
+        name = photo_args[0]
+        pagebg = (f'<div class="sk-pagebg" aria-hidden="true" style="background-image:url(\'{base}assets/img/{name}.jpg'
+                  f'{ver(f"assets/img/{name}.jpg")}\')"></div>\n')
+    html = html[:j] + pagebg + nav(base, cur) + html[j:]
     op, cl = hero
     assert html.count(op) == 1, op
     a = html.index(op)
@@ -93,11 +98,16 @@ def skin(html, base, cur, hero, h1, photo_args, maxw):
     block = block.replace(h1[0], h1[1])
     html = html[:a] + block + html[b:]
     # 화면 밝기 버튼을 머리글로 옮긴다 (기능은 그대로)
-    return html + footer(base) + ('<script>(() => { const t = document.getElementById("theme-ctl"), r = document.getElementById("sk-right");'
-                                  ' if (t && r) r.prepend(t); })();</script>\n')
+    tail = ('<script>(() => { const t = document.getElementById("theme-ctl"), r = document.getElementById("sk-right");'
+            ' if (t && r) r.prepend(t); })();</script>\n')
+    if intro:  # 결과 칸이 보이면 첫 화면 모드를 끈다
+        tail += ('<script>(() => { const el = document.querySelector(' + json.dumps(intro) + '); if (!el) return;'
+                 ' const f = () => document.body.classList.toggle("sk-intro", el.hidden); f();'
+                 ' new MutationObserver(f).observe(el, { attributes: true, attributeFilter: ["hidden"] }); })();</script>\n')
+    return html + footer(base) + tail
 
 
-def wrap(src, dst, desc, inject=None, skin_args=None):
+def wrap(src, dst, desc, inject=None, skin_args=None, intro=None):
     html = src.read_text()
     m = re.search(r"<title>.*?</title>", html)
     title = m.group(0) if m else ""
@@ -106,9 +116,9 @@ def wrap(src, dst, desc, inject=None, skin_args=None):
         assert html.count(a) == 1, a
         html = html.replace(a, b)
     if skin_args:
-        html = skin(html, *skin_args)
+        html = skin(html, *skin_args, intro=intro)
     dst.parent.mkdir(parents=True, exist_ok=True)
-    dst.write_text(HEAD.format(desc=desc, title=title) + html + TAIL)
+    dst.write_text(HEAD.format(desc=desc, title=title, body_attr=' class="sk-intro"' if intro else "") + html + TAIL)
 
 
 if __name__ == "__main__":
@@ -125,7 +135,7 @@ if __name__ == "__main__":
          "서울 아파트 단지별 최근 실거래가가 최근 거래 범위 중 어디쯤인지 0~100으로 (층·시장 변화 보정).",
          skin_args=("../", "단지 검색", ('<header style="display:grid;gap:6px">', "</header>"),
                     ("<h1>단지 검색</h1>", '<h1><span class="sk-h1a">최근 실거래가, 비싼 편일까?</span><span class="sk-h1b">단지 검색</span></h1>'),
-                    ("bg-apt", "40%"), 960))
+                    ("bg-apt", "40%"), 960), intro="#detail")
     for res, page, script in [("results_apt", "apt", "apt_score.py"), ("results_highs", "highs", "highs_build.py"), ("results_sim", "sim", "sim_build.py")]:
         data = ROOT / res
         if data.exists() and any(data.iterdir()):
@@ -142,7 +152,7 @@ if __name__ == "__main__":
          "서울 아파트 모의 투자: 그때 이 단지를 샀다면 지금 얼마일까? 실거래로 계산하는 가상 투자.",
          skin_args=("../", "모의 투자", ('<header style="display:grid;gap:6px">', "</header>"),
                     ("<h1>모의 투자</h1>", '<h1><span class="sk-h1a">그때 샀다면 지금 얼마?</span><span class="sk-h1b">모의 투자</span></h1>'),
-                    ("bg-sim", "38%"), 960))
+                    ("bg-sim", "38%"), 960), intro="#res-panel")
     wrap(ROOT / "report" / "index.html", SITE / "report" / "index.html",
          "서울 아파트 공포탐욕지수 v3 백테스트 보고서.",
          skin_args=("../", "보고서", ('<section class="top">', "</section>"),

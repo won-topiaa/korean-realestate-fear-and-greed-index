@@ -124,3 +124,17 @@ a.btn { background: var(--ink) !important; color: var(--on-ink) !important; bord
 .sk-foot .sk-mailbtn:hover { background: #fff; color: #1d1d1d; text-decoration: none; }
 .sk-foot .sk-copy { grid-column: 1 / -1; border-top: 1px solid rgba(255, 255, 255, 0.15); padding-top: 16px; font-size: 11.5px; color: #a8a8a8; max-width: none; margin: 0; }
 @media print { .sk-nav, .sk-foot, .sk-photo { display: none; } }
+
+/* ---------- 검색 전 첫 화면 (단지 검색·모의 투자): 사진 한 장을 화면 전체 배경으로 은은하게 ---------- */
+.sk-pagebg { display: none; }
+body.sk-intro .sk-pagebg { display: block; position: fixed; inset: 0; z-index: -1; background-color: #141414; background-size: cover; background-position: center; background-repeat: no-repeat; }
+body.sk-intro .sk-pagebg::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(14, 14, 14, 0.62) 0%, rgba(14, 14, 14, 0.72) 55%, rgba(14, 14, 14, 0.84) 100%); }
+body.sk-intro {
+  --bg: transparent; --surface: rgba(24, 24, 24, 0.72); --ink: #ffffff; --ink-2: #dcdcdc; --muted: #ababab; --on-ink: #1d1d1d;
+  --hair: rgba(255, 255, 255, 0.18); --hl: rgba(255, 255, 255, 0.09); --line: rgba(255, 255, 255, 0.45);
+  --grid: rgba(255, 255, 255, 0.12); --axis: rgba(255, 255, 255, 0.35); --shadow: none;
+  background: #141414; color: var(--ink); color-scheme: dark;
+}
+body.sk-intro .sk-hero > .sk-bg, body.sk-intro .sk-hero::after, body.sk-intro .sk-foot > .sk-foot-bg { display: none; }  /* 띠·바닥글 사진은 감춤 */
+body.sk-intro .sk-foot { background: transparent; border-top: 1px solid rgba(255, 255, 255, 0.14); }
+body.sk-intro .panel { backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
