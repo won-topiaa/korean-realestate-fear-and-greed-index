@@ -1,5 +1,5 @@
 {
- "hero-report": {
+ "bg-report": {
   "title": "Seoul Skyline Night 2018.jpg",
   "license": "CC0",
   "licenseUrl": "http://creativecommons.org/publicdomain/zero/1.0/deed.en",
@@ -15,7 +15,7 @@
   "page": "https://commons.wikimedia.org/wiki/File:Seoul_Songpagu_sunset.jpg",
   "orig": "5472x1986"
  },
- "hero-map": {
+ "bg-map": {
   "title": "Han River Seoul skyline Pixabay 1214950.jpg",
   "license": "CC0",
   "licenseUrl": "http://creativecommons.org/publicdomain/zero/1.0/deed.en",
@@ -23,7 +23,7 @@
   "page": "https://commons.wikimedia.org/wiki/File:Han_River_Seoul_skyline_Pixabay_1214950.jpg",
   "orig": "5964x2912"
  },
- "hero-apt": {
+ "bg-apt": {
   "title": "Han River and Lotte World Tower.jpg",
   "license": "CC0",
   "licenseUrl": "http://creativecommons.org/publicdomain/zero/1.0/deed.en",
@@ -31,7 +31,7 @@
   "page": "https://commons.wikimedia.org/wiki/File:Han_River_and_Lotte_World_Tower.jpg",
   "orig": "5218x2935"
  },
- "hero-highs": {
+ "bg-highs": {
   "title": "Lotte World Tower Fireworks 04.jpg",
   "license": "Public domain",
   "licenseUrl": "",
@@ -39,7 +39,7 @@
   "page": "https://commons.wikimedia.org/wiki/File:Lotte_World_Tower_Fireworks_04.jpg",
   "orig": "4256x2832"
  },
- "hero-sim": {
+ "bg-sim": {
   "title": "Olympic Boulevard Expressway Light Trails.jpg",
   "license": "CC0",
   "licenseUrl": "http://creativecommons.org/publicdomain/zero/1.0/deed.en",

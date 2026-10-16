@@ -49,29 +49,32 @@ body { background: var(--bg); font-family: var(--font); padding-block: 0 !import
 .theme-ctl button[aria-pressed="true"] { background: var(--ink) !important; color: var(--on-ink) !important; }
 .sk-nav .theme-ctl .tl { display: none; }
 
-/* ---------- 첫 화면: 두 단 제목 + 오른쪽 세로 사진 + 검정 원 ---------- */
-.sk-hero { display: grid !important; grid-template-columns: minmax(0, 1fr) minmax(0, 420px); column-gap: 56px !important; row-gap: 14px !important; align-items: start; position: relative; }
-.sk-hero > * { grid-column: 1; min-width: 0; }
-.wrap > .sk-hero { min-width: 0; }
-.sk-hero > .sk-photo { grid-column: 2; grid-row: 1 / span 12; }
-.sk-hero .topbar { min-height: 0; }
+/* ---------- 첫 화면: 페이지 사진을 어둡게 깐 띠 위에 두 단 제목 (바닥글과 같은 느낌) ---------- */
+body { overflow-x: clip; }  /* 화면 폭 띠가 가로 스크롤을 만들지 않게 */
+.sk-hero { display: grid !important; grid-template-columns: minmax(0, 1fr); row-gap: 14px !important; position: relative; isolation: isolate;
+  padding-block: 40px 46px; margin-block: 0 8px;
+  /* 띠 안에서는 글자·버튼 색을 뒤집는다 (밝게·어둡게 모드 모두 어두운 띠) */
+  --ink: #ffffff; --ink-2: #dcdcdc; --muted: #ababab; --surface: #1d1d1d; --on-ink: #1d1d1d; --hl: rgba(255, 255, 255, 0.1);
+  --hair: rgba(255, 255, 255, 0.22); --line: rgba(255, 255, 255, 0.55); color: var(--ink); }
+/* 사진은 실제 요소(.sk-bg)의 인라인 배경으로: CSS 변수로 넘기면 주소가 스타일 파일 기준이 돼 최상위 페이지에서 틀어진다 */
+.sk-hero > .sk-bg, .sk-hero::after { position: absolute; top: 0; bottom: 0; left: calc(50% - 50vw); width: 100vw; max-width: none; }
+.sk-hero > .sk-bg { z-index: -2; background-color: #1d1d1d; background-size: cover; background-repeat: no-repeat; }
+.sk-hero::after { content: ""; z-index: -1; background: linear-gradient(90deg, rgba(18, 18, 18, 0.9) 0%, rgba(18, 18, 18, 0.74) 45%, rgba(18, 18, 18, 0.45) 100%); }
+.sk-hero > :not(.sk-bg):not(.sk-dot) { min-width: 0; max-width: 820px; }
 .topbar .back { display: none; }  /* 머리글 메뉴가 대신한다 */
-.sk-hero h1 { display: grid; gap: 2px; margin-top: 18px; }
-.sk-h1a { font-family: var(--font); font-size: clamp(24px, 3.3vw, 40px); font-weight: 600; letter-spacing: -0.02em; line-height: 1.15; }
-.sk-h1b { font-family: var(--display); font-size: clamp(42px, 6.6vw, 84px); font-weight: 900; font-stretch: 112%; letter-spacing: -0.025em; line-height: 1.02; }
-.sk-hero .sub, .sk-hero .lede { color: var(--ink-2); line-height: 1.75; }
-.sk-photo { position: relative; margin: 0; aspect-ratio: 9 / 8; align-self: start; min-width: 0; }
-.sk-photo img { display: block; width: 100%; height: 100%; max-width: 100%; object-fit: cover; position: relative; z-index: 1; }
-.sk-photo figcaption { position: absolute; z-index: 2; right: 0; bottom: 0; font-size: 10.5px; color: #fff; background: rgba(0, 0, 0, 0.45); padding: 2px 8px; }
-.sk-dot { position: absolute; display: block; border-radius: 50%; background: var(--ink); pointer-events: none; }
-.sk-photo .sk-dot.a { width: 76px; height: 76px; right: -38px; top: 22%; z-index: 2; }
-.sk-photo .sk-dot.b { width: 48px; height: 48px; left: -24px; bottom: 16%; z-index: 0; }
-@media (max-width: 860px) {
-  .sk-hero { grid-template-columns: minmax(0, 1fr); }
-  .sk-hero > .sk-photo { grid-column: 1; grid-row: auto; aspect-ratio: 16 / 9; max-height: 240px; width: 100%; order: 99; }
-  .sk-photo .sk-dot.a { width: 52px; height: 52px; right: 14px; top: -20px; }
-  .sk-photo .sk-dot.b { display: none; }
-}
+.wrap > .sk-hero { min-width: 0; }
+.sk-hero .topbar { min-height: 0; }
+.sk-hero h1 { display: grid; gap: 2px; margin-top: 6px; }
+.sk-h1a { font-family: var(--font); font-size: clamp(22px, 3vw, 36px); font-weight: 600; letter-spacing: -0.02em; line-height: 1.15; }
+.sk-h1b { font-family: var(--display); font-size: clamp(40px, 6vw, 78px); font-weight: 900; font-stretch: 112%; letter-spacing: -0.025em; line-height: 1.02; }
+.sk-hero .sub, .sk-hero .lede, .sk-hero .change { color: var(--ink-2); line-height: 1.75; }
+.sk-hero .change { background: rgba(255, 255, 255, 0.08); }
+.sk-hero b { color: var(--ink); }
+.sk-hero .sk-dot { position: absolute; z-index: -1; display: block; border-radius: 50%; border: 2px solid rgba(255, 255, 255, 0.5); pointer-events: none; }
+.sk-hero .sk-dot.a { width: 120px; height: 120px; right: calc(50% - 50vw + 56px); top: 34px; }  /* 화면 오른쪽 끝 기준 (글과 겹치지 않게) */
+.sk-hero .sk-dot.b { width: 52px; height: 52px; right: calc(50% - 50vw + 210px); bottom: 36px; background: rgba(255, 255, 255, 0.85); border: 0; }
+@media (max-width: 1240px) { .sk-hero .sk-dot.b { display: none; } }
+@media (max-width: 760px) { .sk-hero { padding-block: 28px 32px; } .sk-hero .sk-dot { display: none; } }
 .eyebrow { font-family: var(--font) !important; font-size: 12px; letter-spacing: 0.12em; color: var(--muted); }
 
 /* ---------- 제목 ---------- */
@@ -106,7 +109,7 @@ a.btn { background: var(--ink) !important; color: var(--on-ink) !important; bord
 
 /* ---------- 바닥글: 어두운 띠 + 사진 ---------- */
 .sk-foot { margin-inline: -16px; color: #e9e9e9; background: #1d1d1d; position: relative; overflow: hidden; }
-.sk-foot::before { content: ""; position: absolute; inset: 0; background: var(--sk-foot-img) center / cover no-repeat; opacity: 0.28; filter: grayscale(0.35); }
+.sk-foot > .sk-foot-bg { position: absolute; inset: 0; background-size: cover; background-position: center; background-repeat: no-repeat; opacity: 0.28; filter: grayscale(0.35); }
 .sk-foot .sk-in { position: relative; max-width: var(--sk-max, 1180px); margin: 0 auto; padding: 56px 16px 28px; display: grid; grid-template-columns: minmax(0, 1.5fr) repeat(2, minmax(0, 1fr)) minmax(0, 1.3fr); gap: 32px 40px; }
 @media (max-width: 760px) { .sk-foot .sk-in { grid-template-columns: 1fr 1fr; } .sk-foot .sk-about, .sk-foot .sk-contact { grid-column: 1 / -1; } }
 .sk-foot .sk-logo { color: #fff; font-size: 26px; white-space: normal; line-height: 1.2; }
