@@ -3,7 +3,7 @@
    각 페이지(map·apt·report 템플릿)의 스타일 뒤에 붙어서 덮어쓴다. 데이터 색(공포 파랑·탐욕 빨강)은 그대로 둔다. */
 
 :root {
-  --bg: #f0f0f0; --surface: #ffffff; --ink: #1d1d1d; --ink-2: #4f4f4f; --muted: #7c7c7c;
+  --bg: #f0f0f0; --surface: #ffffff; --ink: #1d1d1d; --ink-2: #474747; --muted: #636363;  /* 흐린 글도 대비 4.5:1 이상 */
   --grid: #e3e3e3; --axis: #bdbdbd; --hair: rgba(29, 29, 29, 0.14); --hl: #e9e9e9;
   --line: #9a9a9a; --shadow: 0 14px 36px rgba(0, 0, 0, 0.08); --on-ink: #ffffff;
   --font: "Work Sans", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
@@ -28,7 +28,8 @@ body { background: var(--bg); font-family: var(--font); padding-block: 0 !import
 /* ---------- 머리글 (로고 · 메뉴 · 화면 밝기 · 검정 버튼) ---------- */
 .sk-nav { margin-inline: -16px; padding: 18px 16px; }
 .sk-nav .sk-in { max-width: var(--sk-max, 1180px); margin: 0 auto; display: flex; align-items: center; gap: 12px 28px; flex-wrap: wrap; }
-.sk-logo { font-family: "Poiret One", var(--font); font-size: 22px; letter-spacing: 0.04em; color: var(--ink); text-decoration: none; white-space: nowrap; font-weight: 400; }
+.sk-logo { font-family: "Poiret One", var(--font); font-size: 22px; letter-spacing: 0.04em; color: var(--ink); text-decoration: none; white-space: nowrap; font-weight: 400; display: inline-grid; line-height: 1.15; }
+.sk-logo .ko { font-family: var(--font); font-size: 13px; letter-spacing: 0; font-weight: 600; color: var(--ink-2); }
 .sk-logo b { font-weight: 400; }
 .sk-menu { display: flex; gap: 6px 30px; flex: 1 1 auto; justify-content: center; flex-wrap: wrap; }
 .sk-menu a { font-size: 14px; color: var(--ink-2); text-decoration: none; padding: 4px 0; border-bottom: 2px solid transparent; white-space: nowrap; }
@@ -38,16 +39,23 @@ body { background: var(--bg); font-family: var(--font); padding-block: 0 !import
 .sk-cta { font-size: 13px; font-weight: 600; color: var(--on-ink) !important; background: var(--ink); padding: 10px 18px; text-decoration: none; white-space: nowrap; letter-spacing: 0.02em; }
 .sk-cta:hover { opacity: 0.86; }
 .sk-cta:focus-visible, .sk-menu a:focus-visible, .sk-logo:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
-@media (max-width: 760px) {
-  .sk-nav .sk-in { gap: 10px 14px; }
-  .sk-menu { order: 3; flex-basis: 100%; justify-content: flex-start; gap: 4px 22px; }
-  .sk-right { margin-left: auto; }
-  .sk-logo { font-size: 19px; }
+@media (max-width: 760px) {  /* 휴대폰: 1줄 로고·화면 밝기·버튼, 2줄 메뉴 */
+  .sk-nav { padding-block: 12px 10px; }
+  .sk-nav .sk-in { gap: 10px 10px; flex-wrap: wrap; }
+  .sk-menu { order: 3; flex-basis: 100%; justify-content: flex-start; gap: 4px 20px; }
+  .sk-right { margin-left: auto; gap: 8px; }
+  .sk-logo { font-size: 17px; }
+  .sk-logo .ko { font-size: 12px; }
+  .sk-right .theme-ctl { display: none !important; }
+  .sk-right .sk-theme-m { display: inline-block; }  /* 뒤쪽의 숨김 규칙보다 우선 */
+  .sk-cta { padding: 9px 12px; }
 }
 .theme-ctl { border-radius: 0 !important; border-color: var(--line) !important; background: transparent !important; }
 .theme-ctl button { border-radius: 0 !important; }
 .theme-ctl button[aria-pressed="true"] { background: var(--ink) !important; color: var(--on-ink) !important; }
-.sk-nav .theme-ctl .tl { display: none; }
+.sk-nav .theme-ctl .tl { font-size: 13px; color: var(--ink-2); padding: 0 8px 0 10px; }
+.theme-ctl button { font-size: 13px !important; padding: 4px 10px !important; }
+.sk-theme-m { display: none; font: inherit; font-size: 13px; font-weight: 600; color: var(--ink); background: transparent; border: 1px solid var(--line); padding: 8px 10px; cursor: pointer; white-space: nowrap; }
 
 /* ---------- 첫 화면: 페이지 사진을 어둡게 깐 띠 위에 두 단 제목 (바닥글과 같은 느낌) ---------- */
 body { overflow-x: clip; }  /* 화면 폭 띠가 가로 스크롤을 만들지 않게 */
@@ -59,14 +67,14 @@ body { overflow-x: clip; }  /* 화면 폭 띠가 가로 스크롤을 만들지 �
 /* 사진은 실제 요소(.sk-bg)의 인라인 배경으로: CSS 변수로 넘기면 주소가 스타일 파일 기준이 돼 최상위 페이지에서 틀어진다 */
 .sk-hero > .sk-bg, .sk-hero::after { position: absolute; top: 0; bottom: 0; left: calc(50% - 50vw); width: 100vw; max-width: none; }
 .sk-hero > .sk-bg { z-index: -2; background-color: #1d1d1d; background-size: cover; background-repeat: no-repeat; }
-.sk-hero::after { content: ""; z-index: -1; background: linear-gradient(90deg, rgba(18, 18, 18, 0.9) 0%, rgba(18, 18, 18, 0.74) 45%, rgba(18, 18, 18, 0.45) 100%); }
-.sk-hero > :not(.sk-bg):not(.sk-dot) { min-width: 0; max-width: 820px; }
+.sk-hero::after { content: ""; z-index: -1; background: linear-gradient(90deg, rgba(18, 18, 18, 0.9) 0%, rgba(18, 18, 18, 0.78) 45%, rgba(18, 18, 18, 0.62) 100%); }
+.sk-hero > :not(.sk-bg):not(.sk-dot) { min-width: 0; max-width: 760px; }
 .topbar .back { display: none; }  /* 머리글 메뉴가 대신한다 */
 .wrap > .sk-hero { min-width: 0; }
 .sk-hero .topbar { min-height: 0; }
 .sk-hero h1 { display: grid; gap: 2px; margin-top: 6px; }
-.sk-h1a { font-family: var(--font); font-size: clamp(22px, 3vw, 36px); font-weight: 600; letter-spacing: -0.02em; line-height: 1.15; }
-.sk-h1b { font-family: var(--display); font-size: clamp(40px, 6vw, 78px); font-weight: 900; font-stretch: 112%; letter-spacing: -0.025em; line-height: 1.02; }
+.sk-h1a { font-family: var(--font); font-size: clamp(20px, 2.6vw, 30px); font-weight: 600; letter-spacing: -0.02em; line-height: 1.15; }
+.sk-h1b { font-family: var(--display); font-size: clamp(36px, 5vw, 60px); font-weight: 900; font-stretch: 112%; letter-spacing: -0.025em; line-height: 1.02; }
 .sk-hero .sub, .sk-hero .lede, .sk-hero .change { color: var(--ink-2); line-height: 1.75; }
 .sk-hero .change { background: rgba(255, 255, 255, 0.08); }
 .sk-hero b { color: var(--ink); }
@@ -75,7 +83,7 @@ body { overflow-x: clip; }  /* 화면 폭 띠가 가로 스크롤을 만들지 �
 .sk-hero .sk-dot.b { width: 52px; height: 52px; right: calc(50% - 50vw + 210px); bottom: 36px; background: rgba(255, 255, 255, 0.85); border: 0; }
 @media (max-width: 1240px) { .sk-hero .sk-dot.b { display: none; } }
 @media (max-width: 760px) { .sk-hero { padding-block: 28px 32px; } .sk-hero .sk-dot { display: none; } }
-.eyebrow { font-family: var(--font) !important; font-size: 12px; letter-spacing: 0.12em; color: var(--muted); }
+.eyebrow { font-family: var(--font) !important; font-size: 13px; letter-spacing: 0.12em; color: var(--muted); }
 
 /* ---------- 제목 ---------- */
 h2 { font-family: var(--display); font-weight: 900; font-stretch: 108%; letter-spacing: -0.02em; }
@@ -122,7 +130,7 @@ a.btn { background: var(--ink) !important; color: var(--on-ink) !important; bord
 .sk-foot .sk-mail { display: block; color: #fff; font-size: 15px; font-weight: 600; word-break: break-all; }
 .sk-foot .sk-mailbtn { display: inline-block; margin-top: 14px; padding: 9px 16px; border: 1px solid rgba(255, 255, 255, 0.7); color: #fff; font-size: 13px; font-weight: 600; }
 .sk-foot .sk-mailbtn:hover { background: #fff; color: #1d1d1d; text-decoration: none; }
-.sk-foot .sk-copy { grid-column: 1 / -1; border-top: 1px solid rgba(255, 255, 255, 0.15); padding-top: 16px; font-size: 11.5px; color: #a8a8a8; max-width: none; margin: 0; }
+.sk-foot .sk-copy { grid-column: 1 / -1; border-top: 1px solid rgba(255, 255, 255, 0.15); padding-top: 16px; font-size: 13px; color: #b5b5b5; max-width: none; margin: 0; }
 @media print { .sk-nav, .sk-foot, .sk-photo { display: none; } }
 
 /* ---------- 검색 전 첫 화면 (단지 검색·모의 투자): 사진 한 장을 화면 전체 배경으로 은은하게 ---------- */

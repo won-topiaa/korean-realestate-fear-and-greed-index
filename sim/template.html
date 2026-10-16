@@ -36,20 +36,20 @@ h1 { font-size: clamp(26px, 3.6vw, 34px); font-weight: 700; letter-spacing: -0.0
 h2 { font-size: 19px; font-weight: 700; }
 p { margin: 0; }
 a { color: var(--ink); }
-.eyebrow { font-family: var(--mono); font-size: 12px; letter-spacing: 0.06em; color: var(--muted); text-transform: uppercase; }
+.eyebrow { font-family: var(--mono); font-size: 13px; letter-spacing: 0.06em; color: var(--muted); text-transform: uppercase; }
 .topbar { display: flex; justify-content: space-between; align-items: center; gap: 8px 12px; flex-wrap: wrap; }
 .theme-ctl { display: inline-flex; align-items: center; gap: 2px; padding: 2px; border: 1px solid var(--hair); border-radius: 999px; background: var(--surface); }
-.theme-ctl .tl { font-size: 11.5px; color: var(--muted); padding: 0 6px 0 8px; }
-.theme-ctl button { font: inherit; font-size: 12px; border: 0; background: transparent; color: var(--ink-2); padding: 3px 10px; border-radius: 999px; cursor: pointer; }
+.theme-ctl .tl { font-size: 13px; color: var(--muted); padding: 0 6px 0 8px; }
+.theme-ctl button { font: inherit; font-size: 13px; border: 0; background: transparent; color: var(--ink-2); padding: 3px 10px; border-radius: 999px; cursor: pointer; }
 .theme-ctl button[aria-pressed="true"] { background: var(--ink); color: var(--surface); font-weight: 600; }
 button:focus-visible, input:focus-visible, a:focus-visible, [tabindex]:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
 .sub { color: var(--ink-2); max-width: 70ch; }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 .panel { background: var(--surface); border: 1px solid var(--hair); border-radius: 12px; padding: 18px 20px; display: grid; gap: 14px; position: relative; }
 .step { display: flex; align-items: center; gap: 8px; }
-.step b { display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--ink); color: var(--surface); font-size: 12px; }
-.sec-title { font-size: 12px; color: var(--muted); font-weight: 500; letter-spacing: 0.02em; }
-.note { font-size: 12.5px; color: var(--ink-2); background: var(--hl); border-radius: 8px; padding: 10px 12px; }
+.step b { display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--ink); color: var(--surface); font-size: 13px; }
+.sec-title { font-size: 13px; color: var(--muted); font-weight: 500; letter-spacing: 0.02em; }
+.note { font-size: 13px; color: var(--ink-2); background: var(--hl); border-radius: 8px; padding: 10px 12px; }
 
 /* 검색 */
 .search input { font: inherit; font-size: 17px; width: 100%; padding: 11px 14px; border: 1px solid var(--axis); border-radius: 10px; background: var(--bg); color: var(--ink); }
@@ -57,12 +57,12 @@ button:focus-visible, input:focus-visible, a:focus-visible, [tabindex]:focus-vis
 .results li { padding: 8px 10px; border-radius: 8px; cursor: pointer; display: flex; justify-content: space-between; gap: 12px; }
 .results li:hover, .results li[aria-selected="true"] { background: var(--hl); }
 .results .nm { font-weight: 600; }
-.results .ad { font-size: 12.5px; color: var(--ink-2); }
+.results .ad { font-size: 13px; color: var(--ink-2); }
 .results .none { color: var(--muted); cursor: default; }
-.quick { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; font-size: 12.5px; color: var(--muted); }
+.quick { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; font-size: 13px; color: var(--muted); }
 .quick button, .seg button, .btn { font: inherit; font-size: 13px; border: 1px solid var(--hair); background: var(--surface); color: var(--ink-2); padding: 5px 12px; border-radius: 999px; cursor: pointer; }
 .seg { display: flex; flex-wrap: wrap; gap: 6px; }
-.seg button small { font-size: 11px; color: var(--muted); margin-left: 3px; }
+.seg button small { font-size: 12px; color: var(--muted); margin-left: 3px; }
 .seg button[aria-pressed="true"] { background: var(--ink); color: var(--surface); border-color: var(--ink); font-weight: 600; }
 .seg button[aria-pressed="true"] small { color: var(--surface); opacity: 0.75; }
 .btn.primary { background: var(--ink); color: var(--surface); border-color: var(--ink); font-weight: 600; }
@@ -74,7 +74,7 @@ button:focus-visible, input:focus-visible, a:focus-visible, [tabindex]:focus-vis
 .ctl .lab { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; color: var(--ink-2); }
 .ctl .lab b { color: var(--ink); font-variant-numeric: tabular-nums; }
 .ctl input[type="range"] { width: 100%; accent-color: var(--ink); }
-.ctl .fg { font-size: 12px; color: var(--muted); }
+.ctl .fg { font-size: 13px; color: var(--muted); }
 .ctl input[type="number"] { font: inherit; font-size: 14px; width: 6em; padding: 4px 8px; border: 1px solid var(--axis); border-radius: 6px; background: var(--bg); color: var(--ink); }
 details.opt summary { cursor: pointer; font-size: 13.5px; color: var(--ink-2); }
 details.opt[open] summary { margin-bottom: 12px; }
@@ -87,34 +87,34 @@ details.opt[open] summary { margin-bottom: 12px; }
 .cards { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
 @media (max-width: 720px) { .cards { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .card { border: 1px solid var(--hair); border-radius: 10px; padding: 10px 12px; display: grid; gap: 2px; }
-.card .k { font-size: 12px; color: var(--muted); }
+.card .k { font-size: 13px; color: var(--muted); }
 .card .v { font-size: 19px; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.3; }
-.card .h { font-size: 12px; color: var(--ink-2); }
+.card .h { font-size: 13px; color: var(--ink-2); }
 table { border-collapse: collapse; width: 100%; font-size: 13.5px; }
 th, td { text-align: left; padding: 8px; border-bottom: 1px solid var(--hair); white-space: nowrap; }
-th { color: var(--muted); font-weight: 500; font-size: 12px; }
+th { color: var(--muted); font-weight: 500; font-size: 13px; }
 td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; }
-td .s { display: block; font-size: 11.5px; color: var(--muted); }
+td .s { display: block; font-size: 13px; color: var(--muted); }
 .tbl-wrap { overflow-x: auto; }
 .chart { position: relative; }
 .chart svg { display: block; width: 100%; height: auto; overflow: visible; }
-.axis-t { font-family: var(--mono); font-size: 10.5px; fill: var(--muted); }
-.legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; color: var(--ink-2); align-items: center; }
+.axis-t { font-family: var(--mono); font-size: 11.5px; fill: var(--muted); }
+.legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 13px; color: var(--ink-2); align-items: center; }
 .legend i { display: inline-block; width: 14px; height: 8px; margin-right: 5px; vertical-align: 0; border-radius: 2px; }
-.tip { position: absolute; pointer-events: none; transform: translate(-50%, calc(-100% - 10px)); background: var(--surface); border: 1px solid var(--hair); border-radius: 8px; padding: 5px 10px; font-size: 12px; line-height: 1.5; white-space: nowrap; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12); color: var(--ink-2); z-index: 2; }
+.tip { position: absolute; pointer-events: none; transform: translate(-50%, calc(-100% - 10px)); background: var(--surface); border: 1px solid var(--hair); border-radius: 8px; padding: 5px 10px; font-size: 13px; line-height: 1.5; white-space: nowrap; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12); color: var(--ink-2); z-index: 2; }
 .tip b { color: var(--ink); font-variant-numeric: tabular-nums; }
 .picked { display: flex; gap: 6px; flex-wrap: wrap; }
 .pick { display: inline-flex; align-items: center; gap: 7px; font-size: 14px; font-weight: 600; border: 1px solid var(--ink); padding: 3px 3px 3px 12px; border-radius: 999px; }
 .pick button { font: inherit; font-size: 17px; line-height: 1; border: 0; background: transparent; color: var(--muted); cursor: pointer; padding: 2px 8px; }
 .pick button:hover { color: var(--ink); }
 .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; flex: none; }
-.hint { font-size: 12.5px; color: var(--muted); }
+.hint { font-size: 13px; color: var(--muted); }
 #types { display: grid; gap: 12px; }
 .trow { display: grid; gap: 6px; }
 .tname { font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 6px; }
 td .nm { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; }
-.del { font: inherit; font-size: 12px; border: 0; background: transparent; color: var(--muted); cursor: pointer; text-decoration: underline; }
-.foot { font-size: 12.5px; color: var(--muted); display: grid; gap: 6px; max-width: 90ch; }
+.del { font: inherit; font-size: 13px; border: 0; background: transparent; color: var(--muted); cursor: pointer; text-decoration: underline; }
+.foot { font-size: 13px; color: var(--muted); display: grid; gap: 6px; max-width: 90ch; }
 .foot b { color: var(--ink-2); }
 </style>
 <script>try { const m = localStorage.getItem("fgi-theme"); if (m === "light" || m === "dark") document.documentElement.setAttribute("data-theme", m); } catch (e) {}</script>
@@ -188,6 +188,7 @@ td .nm { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; 
       <div class="chart" id="chart"></div>
     </div>
     <p class="note" id="est-note" hidden></p>
+    <p class="hint">지난 거래 가격으로 해 보는 가상 계산이에요(세금·수수료 제외). 사고팔 시점을 알려주는 신호가 아니에요.</p>
     <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
       <button type="button" class="btn primary" id="save">기록에 담기</button>
       <a class="btn" id="to-apt" href="../apt/" style="text-decoration:none">이 단지 최근 거래 위치 보기 →</a>
@@ -206,7 +207,7 @@ td .nm { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; 
   <footer class="foot">
     <p><b>가격</b> · 단지·평형(전용 1㎡ 단위)마다 분기별 실거래가의 중앙값이에요. 층 차이는 8~10층 기준으로 맞췄어요(1층은 약 9% 싸고 30층 이상은 약 3% 비싸요). 그 분기에 거래가 없으면 가장 가까운 거래 분기 가격에 그사이 그 구 아파트 실거래지수 변화를 곱해서 추정해요.</p>
     <p><b>계산</b> · 취득세·양도세·중개수수료·보유세와 전세 보증금은 넣지 않았어요. 대출 이자는 대출금 × 금리 × 보유 기간으로 단순하게 셌어요. 예금은 자기 돈(집값 − 대출)을 연복리로 넣었다고 봤어요. 서울·구 전체 비교는 국토교통부 실거래로 만든 반복매매지수예요.</p>
-    <p><b>공포탐욕</b> · 그 분기 마지막 달의 구 공포탐욕지수(지도와 같은 값)예요. 지난 숫자로 해 보는 계산일 뿐, 사고팔 시점을 알려주는 신호가 아니에요. <span id="asof"></span></p>
+    <p><b>공포탐욕</b> · 그 분기 마지막 달의 구 공포탐욕지수(지도와 같은 값)예요. <span id="asof"></span></p>
   </footer>
 </div>
 

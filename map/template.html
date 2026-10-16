@@ -54,11 +54,11 @@ h1, h2, h3 { margin: 0; line-height: 1.3; text-wrap: balance; }
 h1 { font-size: clamp(26px, 3.6vw, 34px); font-weight: 700; letter-spacing: -0.02em; }
 h3 { font-size: 14px; font-weight: 600; }
 p { margin: 0; }
-.eyebrow { font-family: var(--mono); font-size: 12px; letter-spacing: 0.06em; color: var(--muted); text-transform: uppercase; }
+.eyebrow { font-family: var(--mono); font-size: 13px; letter-spacing: 0.06em; color: var(--muted); text-transform: uppercase; }
 .topbar { display: flex; justify-content: space-between; align-items: center; gap: 8px 12px; flex-wrap: wrap; }
 .theme-ctl { display: inline-flex; align-items: center; gap: 2px; padding: 2px; border: 1px solid var(--hair); border-radius: 999px; background: var(--surface); }
-.theme-ctl .tl { font-size: 11.5px; color: var(--muted); padding: 0 6px 0 8px; }
-.theme-ctl button { font: inherit; font-size: 12px; border: 0; background: transparent; color: var(--ink-2); padding: 3px 10px; border-radius: 999px; cursor: pointer; }
+.theme-ctl .tl { font-size: 13px; color: var(--muted); padding: 0 6px 0 8px; }
+.theme-ctl button { font: inherit; font-size: 13px; border: 0; background: transparent; color: var(--ink-2); padding: 3px 10px; border-radius: 999px; cursor: pointer; }
 .theme-ctl button:hover { color: var(--ink); }
 .theme-ctl button[aria-pressed="true"] { background: var(--ink); color: var(--surface); font-weight: 600; }
 .theme-ctl button:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
@@ -91,12 +91,12 @@ p { margin: 0; }
 .hist-head { display: flex; justify-content: space-between; align-items: baseline; gap: 4px 12px; flex-wrap: wrap; }
 .hist-title { font-size: 15px; font-weight: 600; }
 .hist { position: relative; }
-.hist-tip { position: absolute; pointer-events: none; transform: translate(-50%, -100%); background: var(--surface); border: 1px solid var(--hair); border-radius: 8px; padding: 4px 9px; font-size: 12px; line-height: 1.45; white-space: nowrap; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1); color: var(--ink-2); }
+.hist-tip { position: absolute; pointer-events: none; transform: translate(-50%, -100%); background: var(--surface); border: 1px solid var(--hair); border-radius: 8px; padding: 4px 9px; font-size: 13px; line-height: 1.45; white-space: nowrap; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1); color: var(--ink-2); }
 .hist-tip b { color: var(--ink); font-variant-numeric: tabular-nums; }
 .chips { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
 .maptop { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
 .seg { display: inline-flex; border: 1px solid var(--hair); border-radius: 999px; padding: 2px; background: var(--hl); }
-.seg button { font: inherit; font-size: 12.5px; border: 0; background: transparent; color: var(--ink-2); padding: 3px 12px; border-radius: 999px; cursor: pointer; }
+.seg button { font: inherit; font-size: 13px; border: 0; background: transparent; color: var(--ink-2); padding: 3px 12px; border-radius: 999px; cursor: pointer; }
 .seg button[aria-pressed="true"] { background: var(--surface); color: var(--ink); font-weight: 600; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12); }
 .seg button:focus-visible, .gu-select:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
 .gu-select { font: inherit; font-size: 13px; color: var(--ink); background: var(--surface); border: 1px solid var(--hair); border-radius: 999px; padding: 4px 10px; cursor: pointer; }
@@ -112,17 +112,17 @@ p { margin: 0; }
 .pin { z-index: 2; position: absolute; transform: translate(-50%, -50%); pointer-events: none; display: grid; justify-items: center; gap: 0; background: var(--surface); border: 1px solid var(--hair); border-radius: 10px; padding: 3px 9px 4px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08); }
 .pin .n { font-size: 12px; color: var(--ink-2); font-weight: 500; white-space: nowrap; }
 .pin .v { font-size: 19px; font-weight: 700; line-height: 1.1; font-variant-numeric: tabular-nums; }
-.pin .d { font-size: 10.5px; font-family: var(--mono); color: var(--muted); white-space: nowrap; }
+.pin .d { font-size: 11.5px; font-family: var(--mono); color: var(--muted); white-space: nowrap; }
 .pin.gu { padding: 1px 5px 2px; border-radius: 7px; }
-.pin.gu .n { font-size: 10px; }
+.pin.gu .n { font-size: 10.5px; }
 .pin.gu .v { font-size: 14px; }
 .pin.sel { border-color: var(--ink); box-shadow: 0 0 0 1px var(--ink), 0 2px 8px rgba(0, 0, 0, 0.12); }
-.gu-name { position: absolute; transform: translate(-50%, -50%); font-size: 10.5px; color: var(--ink-2); pointer-events: none; white-space: nowrap; text-shadow: 0 0 3px var(--surface), 0 0 3px var(--surface); }
+.gu-name { position: absolute; transform: translate(-50%, -50%); font-size: 11.5px; color: var(--ink-2); pointer-events: none; white-space: nowrap; text-shadow: 0 0 3px var(--surface), 0 0 3px var(--surface); }
 .mapbox.compact .pin.gu .n { display: none; }
 .mapbox.compact .pin.gu .v { font-size: 12px; }
 .mapbox.compact .pin.gu { padding: 1px 5px; }
-@media (max-width: 560px) { .pin.gu .n { display: none; } .pin.gu .v { font-size: 11.5px; } .pin { padding: 2px 6px 3px; } .pin .v { font-size: 15px; } .pin .n { font-size: 10.5px; } .pin .d, .gu-name { display: none; } }
-.scale { display: grid; gap: 4px; font-size: 11.5px; color: var(--muted); }
+@media (max-width: 560px) { .pin.gu .n { display: none; } .pin.gu .v { font-size: 12px; } .pin { padding: 2px 6px 3px; } .pin .v { font-size: 15px; } .pin .n { font-size: 11.5px; } .pin .d, .gu-name { display: none; } }
+.scale { display: grid; gap: 4px; font-size: 13px; color: var(--muted); }
 .scale-bar { height: 8px; border-radius: 4px; }
 .scale-labels { display: flex; justify-content: space-between; font-family: var(--mono); }
 
@@ -143,7 +143,7 @@ p { margin: 0; }
 .kv dd { margin: 0; font-variant-numeric: tabular-nums; }
 .bars { display: grid; gap: 8px; }
 .bar-row { display: grid; grid-template-columns: minmax(0, 7.5rem) minmax(0, 1fr) 2.2rem; gap: 10px; align-items: center; font-size: 13px; }
-.bar-row .lab small { display: block; color: var(--muted); font-size: 11px; line-height: 1.3; }
+.bar-row .lab small { display: block; color: var(--muted); font-size: 13px; line-height: 1.3; }
 .bar-row.click { cursor: pointer; border-radius: 6px; }
 .bar-row.click:hover { background: var(--hl); }
 .bar-track { position: relative; height: 10px; }
@@ -154,17 +154,17 @@ p { margin: 0; }
 .relbox { display: grid; gap: 6px; padding: 12px 14px; border: 1px solid var(--hair); border-radius: 10px; }
 .relbox .row { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
 .rel-rank { font-size: 28px; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; }
-.relbox p { font-size: 12.5px; color: var(--ink-2); }
-.sec-title { font-size: 12px; color: var(--muted); font-weight: 500; letter-spacing: 0.02em; }
+.relbox p { font-size: 13px; color: var(--ink-2); }
+.sec-title { font-size: 13px; color: var(--muted); font-weight: 500; letter-spacing: 0.02em; }
 .hist svg { display: block; overflow: visible; }
-.tick { font-family: var(--mono); font-size: 10.5px; fill: var(--muted); }
-.note { font-size: 12.5px; color: var(--ink-2); background: var(--hl); border-radius: 8px; padding: 10px 12px; }
+.tick { font-family: var(--mono); font-size: 11.5px; fill: var(--muted); }
+.note { font-size: 13px; color: var(--ink-2); background: var(--hl); border-radius: 8px; padding: 10px 12px; }
 .note b { color: var(--ink); font-weight: 600; }
-.foot { font-size: 12.5px; color: var(--muted); display: grid; gap: 6px; max-width: 90ch; }
+.foot { font-size: 13px; color: var(--muted); display: grid; gap: 6px; max-width: 90ch; }
 details summary { cursor: pointer; color: var(--ink-2); font-size: 13px; }
 table { border-collapse: collapse; width: 100%; font-size: 13px; }
 th, td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--hair); }
-th { color: var(--muted); font-weight: 500; font-size: 12px; }
+th { color: var(--muted); font-weight: 500; font-size: 13px; }
 td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; }
 
 /* gauges (CNN 공포탐욕지수식 반원 계기판) */
@@ -181,34 +181,44 @@ td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; }
 .g-cmp .row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: center; padding-block: 8px; border-top: 1px solid var(--hair); font-size: 13px; }
 .g-cmp .row:first-child { border-top: 0; }
 .g-cmp .k { color: var(--muted); }
-.g-cmp .k small { display: block; font-size: 11px; }
+.g-cmp .k small { display: block; font-size: 13px; }
 .g-cmp .v { display: flex; align-items: center; gap: 8px; }
 .g-cmp .v b { font-size: 18px; font-variant-numeric: tabular-nums; min-width: 2ch; text-align: right; }
-.g-chip { font-size: 11.5px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--hair); white-space: nowrap; }
+.g-chip { font-size: 12px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--hair); white-space: nowrap; }
 .mini-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
 .g-mini { font: inherit; color: inherit; background: var(--surface); border: 1px solid var(--hair); border-radius: 10px; padding: 8px 8px 6px; cursor: pointer; display: grid; gap: 0; text-align: center; }
 .g-mini:hover { background: var(--hl); }
 .g-mini[aria-pressed="true"] { border-color: var(--ink); box-shadow: 0 0 0 1px var(--ink); }
 .g-mini:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
 .g-mini .nm { font-size: 12.5px; font-weight: 600; }
-.g-mini .zn { font-size: 11px; color: var(--muted); }
+.g-mini .zn { font-size: 11.5px; color: var(--muted); }
 @media (prefers-reduced-motion: reduce) { .zone-path, .gauge-marker, .bar-fill, .g-needle, .g-arc { transition: none; } }
+
+/* 첫 화면: 지금 서울 점수를 먼저 */
+.hero-now { display: flex; align-items: baseline; gap: 6px 12px; flex-wrap: wrap; margin-top: 2px; }
+.hero-now .hn-k { font-size: 16px; font-weight: 600; color: var(--ink-2); }
+.hero-now .hn-v { font-size: 56px; line-height: 1; font-weight: 800; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+.hero-now .hn-z { font-size: 16px; font-weight: 700; padding: 2px 10px; border: 2px solid; }
+.hero-now .hn-m { font-size: 14px; color: var(--ink-2); flex-basis: 100%; }
+details.readhow summary { cursor: pointer; color: var(--ink-2); font-size: 14px; }
+details.readhow summary b { color: var(--ink); }
+details.readhow[open] summary { margin-bottom: 6px; }
 
 /* 한눈에 보기: 게이지 줄은 낮게(권역 게이지 6개를 한 줄로), 지도·숫자는 한 화면에 들어오게 */
 .gauges { padding: 12px 16px; gap: 16px; grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.25fr); }
 .g-main { gap: 12px; }
-#g-big { max-width: 220px; margin-inline: auto; }
-.g-title { font-size: 12.5px; }
-.g-cmp .row { padding-block: 5px; font-size: 12.5px; }
+#g-big { max-width: 250px; margin-inline: auto; }
+.g-title { font-size: 13px; }
+.g-cmp .row { padding-block: 5px; font-size: 13px; }
 .g-cmp .v b { font-size: 16px; }
 .mini-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px; }
 @media (max-width: 960px) { .mini-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
-.pin.gu .n { font-size: 9.5px; }
+.pin.gu .n { font-size: 10.5px; }
 .pin.gu .v { font-size: 13px; }
 .g-mini { padding: 6px 4px 5px; }
 .g-mini svg { max-width: 92px; margin-inline: auto; }
-.g-mini .nm { font-size: 11.5px; white-space: nowrap; }
-.g-mini .zn { font-size: 10.5px; }
+.g-mini .nm { font-size: 12px; white-space: nowrap; }
+.g-mini .zn { font-size: 11.5px; }
 .main { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 16px; }
 .col-left { gap: 16px; }
 .col-right { display: grid; gap: 16px; min-width: 0; align-content: start; }
@@ -218,7 +228,7 @@ td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; }
 .read { padding: 14px 16px; gap: 12px; }
 .hero-num { font-size: 46px; }
 .bars { gap: 4px; }
-.bar-row { font-size: 12.5px; }
+.bar-row { font-size: 13px; }
 .relbox { padding: 10px 12px; }
 .timebar { padding: 10px 16px; gap: 8px; }
 .time-now { font-size: 18px; }
@@ -232,8 +242,12 @@ td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; }
       <div class="theme-ctl" id="theme-ctl" role="group" aria-label="화면 밝기"><span class="tl" aria-hidden="true">화면</span><button type="button" data-m="auto" aria-pressed="true" title="기기 설정을 따라요">자동</button><button type="button" data-m="light" aria-pressed="false">밝게</button><button type="button" data-m="dark" aria-pressed="false">어둡게</button></div>
     </div>
     <h1>서울 아파트 공포탐욕지도</h1>
-    <p class="sub">권역이나 구를 누르면 그곳의 지수를 보여주고, 아무 데도 누르지 않으면 서울 전체 지수를 보여줘요. 지도 위 버튼으로 5대 권역과 25개 구를 바꿔 볼 수 있어요. 위의 슬라이더로 2006년부터 지금까지 달마다 볼 수 있어요.</p>
-    <p class="sub" style="font-size:13.5px"><b style="color:var(--ink)">읽는 법</b> · 이 지수는 추세를 재는 온도계예요. 탐욕 구간 뒤에는 상승이 이어진 경우가 많았고, 극단적 공포 구간 뒤에는 오히려 반등한 경우가 많았어요(바닥 근처였던 <span id="fear-years">2008년, 2012년, 2022~23년</span>, 표본이 적어요). 사고팔 시점을 알려주는 신호로 쓰지 마세요.</p>
+    <p class="hero-now" id="hero-now" aria-live="polite"></p>
+    <p class="sub">권역이나 구를 누르면 그곳의 지수를, 아무 데도 누르지 않으면 서울 전체 지수를 보여줘요. 지도 위 버튼으로 5대 권역과 25개 구를 바꿔 보고, 아래 슬라이더로 2006년부터 달마다 볼 수 있어요.</p>
+    <details class="readhow">
+      <summary><b>읽는 법</b> · 추세를 재는 온도계예요. 사고팔 시점을 알려주는 신호는 아니에요.</summary>
+      <p class="sub">탐욕 구간 뒤에는 상승이 이어진 경우가 많았고, 극단적 공포 구간 뒤에는 오히려 반등한 경우가 많았어요(바닥 근처였던 <span id="fear-years">2008년, 2012년, 2022~23년</span>, 표본이 적어요).</p>
+    </details>
   </header>
 
   <section class="panel timebar" aria-label="기준 월">
@@ -315,6 +329,14 @@ const LABEL_POS = { 도심권: [450, 372], 서북권: [296, 258], 동북권: [56
 const zoneName = (v) => (v < 25 ? "극단적 공포" : v < 45 ? "공포" : v < 55 ? "중립" : v < 75 ? "탐욕" : "극단적 탐욕");
 const side = (v) => (v < 45 ? "var(--fear)" : v < 55 ? "var(--neutral)" : "var(--greed)");
 const ym = (s) => s.slice(0, 4) + "년 " + String(+s.slice(5, 7)) + "월";
+(() => {  // 첫 화면: 가장 최근 달 서울 점수
+  const el = document.getElementById("hero-now"), R = D.regions["서울"], i = D.dates.length - 1, v = R.score[i], pv = R.score[i - 1];
+  if (!el || v == null) return;
+  H("span", { class: "hn-k" }, el, "지금 서울");
+  H("b", { class: "hn-v" }, el, String(Math.round(v)));
+  H("span", { class: "hn-z", style: `border-color:${side(v)}` }, el, zoneName(v));
+  H("span", { class: "hn-m" }, el, `${ym(D.dates[i])} 기준` + (pv == null ? "" : ` · 지난달 ${Math.round(pv)}에서 ${v >= pv ? "▲" : "▼"} ${Math.abs(Math.round(v - pv))}`));
+})();
 const f2 = (v) => (v == null ? "–" : v.toFixed(2));
 const pct = (v) => (v == null ? "–" : (v >= 0 ? "+" : "−") + Math.abs(v * 100).toFixed(1) + "%");
 function fill(v) {
@@ -667,22 +689,22 @@ function arcPath(cx, cy, r, a, b) {
 }
 function buildGauge(box, big) {
   const W = 300, H = big ? 236 : 206, cx = 150, cy = big ? 150 : 132, r = big ? 112 : 112, sw = big ? 26 : 30;
-  const svg = S("svg", { viewBox: big ? `-18 -8 ${W + 36} ${H}` : `0 0 ${W} ${H}`, role: "img" }, box);
+  const svg = S("svg", { viewBox: big ? `-34 -14 ${W + 68} ${H + 6}` : `0 0 ${W} ${H}`, role: "img" }, box);  // 큰 게이지: 눈금 글씨 자리
   const arcs = BANDS.map(([a, b], i) => S("path", { d: arcPath(cx, cy, r, a + (a ? 0.7 : 0), b - (b < 100 ? 0.7 : 0)), class: "g-arc",
     style: `stroke:${BAND_STYLE[i][0]};stroke-width:${sw}` }, svg));
   let ticks = null;
   if (big) {
     ticks = [0, 25, 50, 75, 100].map((v) => {
       const [x, y] = toXY(cx, cy, r - sw / 2 - 12, v);
-      const tx = S("text", { x, y: y + 4, "text-anchor": v === 50 ? "middle" : v < 50 ? "start" : "end", class: "tick g-tick", style: "font-size:10px" }, svg);
+      const tx = S("text", { x, y: y + 4, "text-anchor": v === 50 ? "middle" : v < 50 ? "start" : "end", class: "tick g-tick", style: "font-size:15px" }, svg);
       tx.textContent = v;
       return [v, tx];
     });
     BANDS.forEach(([a, b, lab]) => {
       const m = (a + b) / 2, [x, y] = toXY(cx, cy, r + sw / 2 + 14, m);
-      const tx = S("text", { x, y: y + 3, "text-anchor": m < 40 ? "end" : m > 60 ? "start" : "middle", style: "font-size:10.5px;fill:var(--muted)" }, svg);
+      const tx = S("text", { x, y: y + 3, "text-anchor": m < 40 ? "end" : m > 60 ? "start" : "middle", style: "font-size:16px;fill:var(--muted)" }, svg);
       const parts = lab.startsWith("극단적") ? ["극단적", lab.slice(4)] : [lab];  // 양 끝 글자는 두 줄로
-      parts.forEach((p, k) => (S("tspan", { x, dy: k ? 13 : parts.length > 1 ? -6 : 0 }, tx).textContent = p));
+      parts.forEach((p, k) => (S("tspan", { x, dy: k ? 18 : parts.length > 1 ? -8 : 0 }, tx).textContent = p));
     });
   }
   const needle = S("g", { class: "g-needle", style: `transform-origin:${cx}px ${cy}px` }, svg);
@@ -690,7 +712,7 @@ function buildGauge(box, big) {
   S("circle", { cx, cy, r: big ? 9 : 10, style: "fill:var(--ink)" }, svg);
   S("circle", { cx, cy, r: big ? 3.5 : 4, style: "fill:var(--surface)" }, svg);
   const num = S("text", { x: cx, y: cy + (big ? 50 : 62), "text-anchor": "middle", style: `font-size:${big ? 42 : 54}px;font-weight:700;fill:var(--ink);font-variant-numeric:tabular-nums` }, svg);
-  const zl = big ? S("text", { x: cx, y: cy + 72, "text-anchor": "middle", style: "font-size:14px;font-weight:600;fill:var(--ink-2)" }, svg) : null;
+  const zl = big ? S("text", { x: cx, y: cy + 76, "text-anchor": "middle", style: "font-size:18px;font-weight:600;fill:var(--ink-2)" }, svg) : null;
   return { svg, arcs, needle, num, zl, ticks };
 }
 function setGauge(g, v, label) {

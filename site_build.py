@@ -43,8 +43,9 @@ def nav(base, cur):
                     for h, n in PAGES if n != "보고서")  # 보고서·문의는 바닥글에만
     cta = ("", "지도 보기") if cur == "단지 검색" else ("apt/", "단지 검색")
     return (f'<header class="sk-nav"><div class="sk-in"><a class="sk-logo" href="{base}" aria-label="서울 아파트 공포탐욕지도 처음으로">'
-            f'SEOUL FEAR &amp; GREED</a><nav class="sk-menu" aria-label="사이트 메뉴">{links}</nav>'
-            f'<div class="sk-right" id="sk-right"><a class="sk-cta" href="{base}{cta[0]}">{cta[1]}</a></div></div></header>\n')
+            f'<span>SEOUL FEAR &amp; GREED</span><span class="ko">서울 아파트 공포탐욕지도</span></a><nav class="sk-menu" aria-label="사이트 메뉴">{links}</nav>'
+            f'<div class="sk-right" id="sk-right"><button type="button" class="sk-theme-m" id="sk-theme-m">화면: 자동</button>'
+            f'<a class="sk-cta" href="{base}{cta[0]}">{cta[1]}</a></div></div></header>\n')
 
 
 def hero_bg(base, name, y):
@@ -66,8 +67,7 @@ def footer(base):
                     [("", "공포탐욕 지도"), ("apt/", "단지 검색"), ("highs/", "신고가 단지"), ("sim/", "모의 투자"), ("report/", "백테스트 보고서")])
     return (f'\n<footer class="sk-foot"><div class="sk-foot-bg" aria-hidden="true" style="background-image:url(\'{base}assets/img/footer.jpg{ver("assets/img/footer.jpg")}\')"></div><div class="sk-in">'
             f'<div class="sk-about"><a class="sk-logo" href="{base}">SEOUL FEAR &amp; GREED</a>'
-            '<p>서울 아파트 시장의 공포와 탐욕을 0~100으로 보여주는 지수예요. 공공데이터로 매달 20일에 갱신해요. '
-            '사고팔 시점을 알려주는 신호가 아니에요.</p></div>'
+            '<p>서울 아파트 시장의 공포와 탐욕을 0~100으로 보여주는 지수예요. 공공데이터로 매달 20일에 갱신해요.</p></div>'
             f'<div><h4>둘러보기</h4><ul>{links}<li><a href="{REPO}">소스 코드 (GitHub)</a></li></ul></div>'
             '<div><h4>자료</h4><ul><li>국토교통부 실거래가 · 건축물대장</li><li>한국부동산원 · 청약홈 · 한국은행</li>'
             '<li>자세한 출처는 각 페이지 설명에 있어요</li></ul></div>'
@@ -98,8 +98,14 @@ def skin(html, base, cur, hero, h1, photo_args, maxw, intro=None):
     block = block.replace(h1[0], h1[1])
     html = html[:a] + block + html[b:]
     # 화면 밝기 버튼을 머리글로 옮긴다 (기능은 그대로)
-    tail = ('<script>(() => { const t = document.getElementById("theme-ctl"), r = document.getElementById("sk-right");'
-            ' if (t && r) r.prepend(t); })();</script>\n')
+    # 화면 밝기 버튼을 머리글로 옮기고, 휴대폰용 버튼 하나(누를 때마다 자동→밝게→어둡게)를 같은 설정에 잇는다
+    tail = ('<script>(() => { const t = document.getElementById("theme-ctl"), r = document.getElementById("sk-right"), m = document.getElementById("sk-theme-m");'
+            ' if (!t || !r) return; r.prepend(t); const lab = t.querySelector(".tl"); if (lab) lab.textContent = "화면 밝기";'
+            ' const N = { auto: "자동", light: "밝게", dark: "어둡게" }, ORDER = ["auto", "light", "dark"];'
+            ' const cur = () => (t.querySelector("button[aria-pressed=true]") || {}).dataset?.m || "auto";'
+            ' const sync = () => { m.textContent = "화면: " + N[cur()]; m.setAttribute("aria-label", "화면 밝기 바꾸기, 지금 " + N[cur()]); };'
+            ' m.addEventListener("click", () => { const b = t.querySelector(`button[data-m="${ORDER[(ORDER.indexOf(cur()) + 1) % 3]}"]`); if (b) b.click(); sync(); });'
+            ' t.addEventListener("click", () => setTimeout(sync)); sync(); })();</script>\n')
     if intro:  # 결과 칸이 보이면 첫 화면 모드를 끈다
         tail += ('<script>(() => { const el = document.querySelector(' + json.dumps(intro) + '); if (!el) return;'
                  ' const f = () => document.body.classList.toggle("sk-intro", el.hidden); f();'
@@ -127,7 +133,7 @@ if __name__ == "__main__":
     wrap(ROOT / "map" / "index.html", SITE / "index.html",
          "서울 5대 권역별 아파트 공포탐욕지수 지도. 매달 자동 갱신.",
          inject=[('<footer class="foot">', '<footer class="foot">\n    <p><a href="apt/" style="color:var(--ink)">단지 검색 (최근 실거래 위치) →</a> · <a href="report/" style="color:var(--ink)">백테스트 보고서 보기 →</a></p>'),
-                 ("<h1>서울 아파트 공포탐욕지도</h1>", '<h1>서울 아파트 공포탐욕지도</h1>\n    <p style="margin:6px 0 4px"><a class="btn" href="apt/" style="text-decoration:none;display:inline-block">단지 검색 · 최근 실거래가 위치 보기 →</a></p>')],
+                 ('<p class="hero-now" id="hero-now" aria-live="polite"></p>', '<p class="hero-now" id="hero-now" aria-live="polite"></p>\n    <p style="margin:2px 0 4px"><a class="btn" href="apt/" style="text-decoration:none;display:inline-block">단지 검색 · 최근 실거래가 위치 보기 →</a></p>')],
          skin_args=("", "지도", ('<header style="display:grid;gap:6px">', "</header>"),
                     ("<h1>서울 아파트 공포탐욕지도</h1>", '<h1><span class="sk-h1a">서울 아파트</span><span class="sk-h1b">공포탐욕지도</span></h1>'),
                     ("bg-map", "50%"), 1180))
