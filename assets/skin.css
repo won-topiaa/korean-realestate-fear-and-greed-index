@@ -107,13 +107,17 @@ a.btn { background: var(--ink) !important; color: var(--on-ink) !important; bord
 /* ---------- 바닥글: 어두운 띠 + 사진 ---------- */
 .sk-foot { margin-inline: -16px; color: #e9e9e9; background: #1d1d1d; position: relative; overflow: hidden; }
 .sk-foot::before { content: ""; position: absolute; inset: 0; background: var(--sk-foot-img) center / cover no-repeat; opacity: 0.28; filter: grayscale(0.35); }
-.sk-foot .sk-in { position: relative; max-width: var(--sk-max, 1180px); margin: 0 auto; padding: 56px 16px 28px; display: grid; grid-template-columns: minmax(0, 1.6fr) repeat(2, minmax(0, 1fr)); gap: 32px 40px; }
-@media (max-width: 760px) { .sk-foot .sk-in { grid-template-columns: 1fr 1fr; } .sk-foot .sk-about { grid-column: 1 / -1; } }
-.sk-foot .sk-logo { color: #fff; font-size: 30px; }
+.sk-foot .sk-in { position: relative; max-width: var(--sk-max, 1180px); margin: 0 auto; padding: 56px 16px 28px; display: grid; grid-template-columns: minmax(0, 1.5fr) repeat(2, minmax(0, 1fr)) minmax(0, 1.3fr); gap: 32px 40px; }
+@media (max-width: 760px) { .sk-foot .sk-in { grid-template-columns: 1fr 1fr; } .sk-foot .sk-about, .sk-foot .sk-contact { grid-column: 1 / -1; } }
+.sk-foot .sk-logo { color: #fff; font-size: 26px; white-space: normal; line-height: 1.2; }
 .sk-foot p { color: #cfcfcf; font-size: 13px; line-height: 1.7; max-width: 46ch; margin-top: 12px; }
 .sk-foot h4 { margin: 0 0 14px; font-size: 16px; font-weight: 700; color: #fff; }
 .sk-foot ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; font-size: 13.5px; }
 .sk-foot a { color: #d6d6d6; text-decoration: none; }
 .sk-foot a:hover { color: #fff; text-decoration: underline; }
+.sk-foot .sk-contact p { margin: 0 0 12px; }
+.sk-foot .sk-mail { display: block; color: #fff; font-size: 15px; font-weight: 600; word-break: break-all; }
+.sk-foot .sk-mailbtn { display: inline-block; margin-top: 14px; padding: 9px 16px; border: 1px solid rgba(255, 255, 255, 0.7); color: #fff; font-size: 13px; font-weight: 600; }
+.sk-foot .sk-mailbtn:hover { background: #fff; color: #1d1d1d; text-decoration: none; }
 .sk-foot .sk-copy { grid-column: 1 / -1; border-top: 1px solid rgba(255, 255, 255, 0.15); padding-top: 16px; font-size: 11.5px; color: #a8a8a8; max-width: none; margin: 0; }
 @media print { .sk-nav, .sk-foot, .sk-photo { display: none; } }

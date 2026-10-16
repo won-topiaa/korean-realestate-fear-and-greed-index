@@ -8,6 +8,7 @@ import json
 import re
 import shutil
 from pathlib import Path
+from urllib.parse import quote
 
 ROOT = Path(__file__).parent
 SITE = ROOT / "site"
@@ -27,10 +28,14 @@ FONTS = ('<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=
          '&family=Noto+Sans+KR:wght@400;500;600;700;900&family=Poiret+One&family=Work+Sans:wght@400;500;600;700&display=swap">')
 REPO = "https://github.com/won-topiaa/korean-realestate-fear-and-greed-index"
 PAGES = [("", "지도"), ("apt/", "단지 검색"), ("report/", "보고서")]
+CONTACT = "wontopiaaa@gmail.com"
+MAILTO = f"mailto:{CONTACT}?subject=" + quote("[서울 아파트 공포탐욕지도] 문의")
 
 
 def nav(base, cur):
-    links = "".join(f'<a href="{base}{h}"' + (' aria-current="page"' if n == cur else "") + f">{n}</a>" for h, n in PAGES)
+    links = "".join(f'<a href="{base}{h}"' + (' aria-current="page"' if n == cur else "") + f">{n}</a>"
+                    for h, n in PAGES if n != "보고서")  # 보고서는 바닥글 '둘러보기'에만
+    links += f'<a href="{MAILTO}">문의</a>'
     cta = ("", "지도 보기") if cur == "단지 검색" else ("apt/", "단지 검색")
     return (f'<header class="sk-nav"><div class="sk-in"><a class="sk-logo" href="{base}" aria-label="서울 아파트 공포탐욕지도 처음으로">'
             f'SEOUL FEAR &amp; GREED</a><nav class="sk-menu" aria-label="사이트 메뉴">{links}</nav>'
@@ -54,6 +59,8 @@ def footer(base):
             f'<div><h4>둘러보기</h4><ul>{links}<li><a href="{REPO}">소스 코드 (GitHub)</a></li></ul></div>'
             '<div><h4>자료</h4><ul><li>국토교통부 실거래가 · 건축물대장</li><li>한국부동산원 · 청약홈 · 한국은행</li>'
             '<li>자세한 출처는 각 페이지 설명에 있어요</li></ul></div>'
+            f'<div class="sk-contact"><h4>문의</h4><p>지수나 데이터 오류, 제안, 제휴 문의는 메일로 보내 주세요.</p>'
+            f'<a class="sk-mail" href="{MAILTO}">{CONTACT}</a><a class="sk-mailbtn" href="{MAILTO}">메일 보내기 →</a></div>'
             f'<p class="sk-copy">사진: 위키미디어 공용 CC0 (저작권 없음) — {who}</p></div></footer>\n')
 
 

@@ -301,7 +301,8 @@ def fill_land(workers=3):
     1단계: 대지 = 대표 지번 + 대장의 부속지번 토지대장 면적 합 (대지면적이 있는 단지 80곳으로 시험: 99%가 ±5% 안).
            지번 중 하나라도 토지대장에 없으면 채우지 않는다.
     2단계: 용적률 = 용적률 산정 연면적 ÷ 대지, 건폐율 = 건축면적 ÷ 대지 (연면적·건축면적은 대장 값).
-    landSrc: '' 아직 · '없음' 토지대장에 없음 · '면적' 대지만 채움(비율은 다음에) · '토지대장' 비율까지 · '대장' 대장 대지로 비율만 계산."""
+    landSrc: '' 아직 · '없음' 토지대장에 없음 · '면적' 대지만 채움(비율은 다음에) · '토지대장' 비율까지 · '대장' 대장 대지로 비율만 계산.
+    '·층별'이 붙으면 대장 하루 한도로 층별개요 합을 쓴 어림값 (다음 실행에 대장 값으로 다시 계산)."""
     vkey = _env().get("VWORLD_KEY", "").strip()  # 없으면(자동 갱신 등) 1단계는 건너뛰고 2단계만
     key = _key()
     old = pd.read_csv(OUT, dtype=str, keep_default_na=False)
@@ -317,16 +318,31 @@ def fill_land(workers=3):
         return r["aptSeq"], None if any(a is None for a in areas) else int(round(sum(areas)))
 
     def ratio(r):
+        """(단지, 용적률, 건폐율, landSrc). 연면적·건축면적은 총괄표제부 → 표제부 합 → (하루 한도면) 층별개요 합 순.
+        층별개요: 지상층 면적 합 ≈ 용적률 산정 연면적, 1층 면적 합 ≈ 건축면적 (은마: 485,684 vs 488,473㎡, 48,105 = 48,105㎡)."""
         p, plat = params(r), num(r["platArea"])
-        recap = call("getBrRecapTitleInfo", p, key)
-        c = max(recap, key=lambda x: num(x.get("hhldCnt"))) if recap else {}
-        est, arch = num(c.get("vlRatEstmTotArea")), num(c.get("archArea"))
-        if not est or not arch:  # 총괄표제부가 없거나 비었으면 그 지번의 동별 표제부를 모두 더한다
-            titles = call("getBrTitleInfo", p, key)
-            est = est or sum(num(t.get("vlRatEstmTotArea")) for t in titles)
-            arch = arch or sum(num(t.get("archArea")) for t in titles)
+        src = r.get("landSrc", "")
+        base = "대장" if src in ("", "대장", "대장·층별") else "토지대장"
+        how = base
+        try:
+            recap = call("getBrRecapTitleInfo", p, key)
+            c = max(recap, key=lambda x: num(x.get("hhldCnt"))) if recap else {}
+            est, arch = num(c.get("vlRatEstmTotArea")), num(c.get("archArea"))
+            if not est or not arch:  # 총괄표제부가 없거나 비었으면 그 지번의 동별 표제부를 모두 더한다
+                titles = call("getBrTitleInfo", p, key)
+                est = est or sum(num(t.get("vlRatEstmTotArea")) for t in titles)
+                arch = arch or sum(num(t.get("archArea")) for t in titles)
+        except QuotaExceeded:
+            if src.endswith("·층별"):
+                return r["aptSeq"], None, None, None  # 이미 어림값이 있다: 다음에 대장 값으로 다시
+            up = [x for x in call("getBrFlrOulnInfo", p, key, maxpage=60) if x.get("flrGbCdNm") == "지상"]
+            est = sum(num(x.get("area")) for x in up)
+            arch = sum(num(x.get("area")) for x in up if str(x.get("flrNo")) == "1")
+            how = base + "·층별"
         vl, bc = est / plat * 100, arch / plat * 100
-        return r["aptSeq"], (round(vl, 1) if 30 <= vl <= 1500 else ""), (round(bc, 1) if 3 <= bc <= 100 else "")
+        if not (60 <= vl <= 1000 and bc <= 90):  # 이런 값이면 지번 짝이 일부만 맞은 것 (대지나 연면적이 일부만 잡힘)
+            return r["aptSeq"], "", "", "없음" if base == "토지대장" else base
+        return r["aptSeq"], (round(vl, 1) if 30 <= vl <= 1500 else ""), (round(bc, 1) if 3 <= bc <= 100 else ""), how
 
     msg, n_area, n_ratio = "", 0, 0
     try:
@@ -340,12 +356,20 @@ def fill_land(workers=3):
                     rows[seq]["landSrc"] = "면적" if plat else "없음"
                     n_area += bool(plat)
                 save(list(rows.values()))
-            todo = [r for r in ok if r["platArea"] and (not r["vlRat"] or not r["bcRat"]) and r.get("landSrc", "") in ("", "면적")]
+            todo = [r for r in ok if r["platArea"] and (((not r["vlRat"] or not r["bcRat"]) and r.get("landSrc", "") in ("", "면적"))
+                                                        or r.get("landSrc", "").endswith("·층별"))]  # 층별 어림값은 대장 값으로 다시
             for i in range(0, len(todo), 30):
-                for seq, vl, bc in ex.map(ratio, todo[i:i + 30]):
+                for seq, vl, bc, how in ex.map(ratio, todo[i:i + 30]):
+                    if how is None:
+                        continue
                     r = rows[seq]
-                    r["vlRat"], r["bcRat"] = r["vlRat"] or vl, r["bcRat"] or bc
-                    r["landSrc"] = "토지대장" if r.get("landSrc") == "면적" else "대장"
+                    if how == "없음":
+                        r.update(platArea="", vlRat="", bcRat="", landSrc="없음")
+                        continue
+                    redo = r.get("landSrc", "").endswith("·층별")
+                    r["vlRat"] = vl if redo and vl != "" else r["vlRat"] or vl
+                    r["bcRat"] = bc if redo and bc != "" else r["bcRat"] or bc
+                    r["landSrc"] = how
                     n_ratio += bool(vl)
                 save(list(rows.values()))
     except QuotaExceeded:
