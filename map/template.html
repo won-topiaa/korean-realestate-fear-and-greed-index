@@ -211,6 +211,8 @@ td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; }
 .g-mini .zn { font-size: 10.5px; }
 .main { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 16px; }
 .col-left { gap: 16px; }
+.col-right { display: grid; gap: 16px; min-width: 0; align-content: start; }
+.histcard { padding: 12px 14px; gap: 8px; }
 .mapcard { padding: 12px; gap: 8px; }
 .mapbox { max-width: 560px; margin-inline: auto; }
 .read { padding: 14px 16px; gap: 12px; }
@@ -272,9 +274,11 @@ td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; }
         <div class="scale-labels"><span>0 극단적 공포</span><span>50 중립</span><span>극단적 탐욕 100</span></div>
       </div>
     </div>
-    <div class="panel histcard" id="histcard"></div>
     </div>
-    <div class="panel read" id="read"></div>
+    <div class="col-right">  <!-- 지도 옆에 지수 추이를 두어 한눈에 -->
+      <div class="panel histcard" id="histcard"></div>
+      <div class="panel read" id="read"></div>
+    </div>
     <p class="sr-only" id="live-summary" aria-live="polite"></p>
   </section>
 
