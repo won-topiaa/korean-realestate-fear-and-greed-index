@@ -731,7 +731,7 @@ function buildGauge(box, big) {
   if (big) {
     ticks = [0, 25, 50, 75, 100].map((v) => {
       const [x, y] = toXY(cx, cy, r - sw / 2 - 12, v);
-      const tx = S("text", { x, y: y + 4, "text-anchor": v === 50 ? "middle" : v < 50 ? "start" : "end", class: "tick g-tick", style: "font-size:15px" }, svg);
+      const tx = S("text", { x, y: y + 4, "text-anchor": v === 50 ? "middle" : v < 50 ? "start" : "end", class: "tick g-tick", style: "font-size:17px" }, svg);
       tx.textContent = v;
       return [v, tx];
     });
