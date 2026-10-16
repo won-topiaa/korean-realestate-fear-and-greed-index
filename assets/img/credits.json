@@ -1,0 +1,34 @@
+{
+ "hero-map": {
+  "title": "도곡쌍용예가아파트.jpg",
+  "license": "CC0",
+  "licenseUrl": "http://creativecommons.org/publicdomain/zero/1.0/deed.en",
+  "artist": "Seojoohyun",
+  "page": "https://commons.wikimedia.org/wiki/File:%EB%8F%84%EA%B3%A1%EC%8C%8D%EC%9A%A9%EC%98%88%EA%B0%80%EC%95%84%ED%8C%8C%ED%8A%B8.jpg",
+  "orig": "3000x4000"
+ },
+ "hero-apt": {
+  "title": "Dobong-gu Apartment 1.jpg",
+  "license": "CC0",
+  "licenseUrl": "http://creativecommons.org/publicdomain/zero/1.0/deed.en",
+  "artist": "최광모",
+  "page": "https://commons.wikimedia.org/wiki/File:Dobong-gu_Apartment_1.jpg",
+  "orig": "5472x3648"
+ },
+ "hero-report": {
+  "title": "Seoul Skyline Night 2018.jpg",
+  "license": "CC0",
+  "licenseUrl": "http://creativecommons.org/publicdomain/zero/1.0/deed.en",
+  "artist": "mauveine.kim",
+  "page": "https://commons.wikimedia.org/wiki/File:Seoul_Skyline_Night_2018.jpg",
+  "orig": "3818x5992"
+ },
+ "footer": {
+  "title": "Seoul Songpagu sunset.jpg",
+  "license": "CC0",
+  "licenseUrl": "http://creativecommons.org/publicdomain/zero/1.0/deed.en",
+  "artist": "cmmellow",
+  "page": "https://commons.wikimedia.org/wiki/File:Seoul_Songpagu_sunset.jpg",
+  "orig": "5472x1986"
+ }
+}
