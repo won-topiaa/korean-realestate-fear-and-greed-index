@@ -142,7 +142,7 @@ if __name__ == "__main__":
          "서울 아파트 모의 투자: 그때 이 단지를 샀다면 지금 얼마일까? 실거래로 계산하는 가상 투자.",
          skin_args=("../", "모의 투자", ('<header style="display:grid;gap:6px">', "</header>"),
                     ("<h1>모의 투자</h1>", '<h1><span class="sk-h1a">그때 샀다면 지금 얼마?</span><span class="sk-h1b">모의 투자</span></h1>'),
-                    ("bg-sim", "55%"), 960))
+                    ("bg-sim", "38%"), 960))
     wrap(ROOT / "report" / "index.html", SITE / "report" / "index.html",
          "서울 아파트 공포탐욕지수 v3 백테스트 보고서.",
          skin_args=("../", "보고서", ('<section class="top">', "</section>"),
