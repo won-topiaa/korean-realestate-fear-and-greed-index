@@ -68,8 +68,8 @@ def main():
                        "complexes": int(h[~jump]["aptSeq"].nunique()), "gu": gu, "rows": rows})
     out = {"asof": df["date"].max().strftime("%Y-%m-%d"), "gu_names": LAWD2GU, "months": months, "trend": trend}
     (OUT / "highs.json").write_text(json.dumps(out, ensure_ascii=False, separators=(",", ":")))
-    m = months[1]
-    print(f"신고가: {m['ym']} 신고가 {m['high']:,}건 (비교 가능 {m['cmp']:,}건의 {m['high'] / m['cmp']:.0%}, 단지 {m['complexes']:,}곳, "
+    m = months[1] if len(months) > 1 else months[0]  # 다 들어온 지난달 (없으면 이번 달)
+    print(f"신고가: {m['ym']} 신고가 {m['high']:,}건 (비교 가능 {m['cmp']:,}건의 {m['high'] / max(1, m['cmp']):.0%}, 단지 {m['complexes']:,}곳, "
           f"2배 초과 제외 {m['jump']}) · {(OUT / 'highs.json').stat().st_size / 1e3:.0f} KB")
 
 

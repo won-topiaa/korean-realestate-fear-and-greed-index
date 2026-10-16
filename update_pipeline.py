@@ -264,11 +264,19 @@ def refresh_bldg():
     import time
     import bldg_fetch
     t0 = time.time()
-    a = bldg_fetch.run(budget_s=9 * 60)
-    if "활용신청" in a:
-        return a
-    b = bldg_fetch.fill(budget_s=max(60, 12 * 60 - (time.time() - t0)))
-    return " / ".join([a, b, bldg_fetch.fill_land()])  # 토지대장 면적으로 채운 단지의 용적률·건폐율
+    left = lambda end: max(30, end * 60 - (time.time() - t0))  # 전체 한도(15분) 안에서 단계별 마감(분)
+    out = []
+    for name, fn in [("새 단지", lambda: bldg_fetch.run(budget_s=left(8))),
+                     ("다시 찾기", lambda: bldg_fetch.fill(budget_s=left(11))),
+                     ("용적률", lambda: bldg_fetch.fill_land(budget_s=left(13.5)))]:  # 토지대장 면적으로 채운 단지의 용적률·건폐율
+        try:
+            r = fn()
+        except Exception as e:  # noqa: BLE001  (한 단계가 실패해도 받은 만큼은 저장돼 있고, 다음 단계는 돈다)
+            r = f"{name} 실패: {e!r}"
+        out.append(r)
+        if "활용신청" in r:
+            break
+    return " / ".join(out)
 
 
 def refresh_applyhome():

@@ -231,8 +231,9 @@ function won(v) {  // 만원 → '36억 5,000만'
 const eok = (v) => (v >= 10000 ? (+(v / 10000).toFixed(v >= 100000 ? 1 : 2)) + "억" : Math.round(v).toLocaleString("ko-KR") + "만");
 const pctS = (x) => (x >= 0 ? "+" : "−") + Math.abs(x * 100).toFixed(1) + "%";
 const pyeong = (m2) => Math.round((m2 * 1.33) / 3.3058);
-const fgName = (v) => (v < 25 ? "극단적 공포" : v < 45 ? "공포" : v < 55 ? "중립" : v < 75 ? "탐욕" : "극단적 탐욕");
-const fgColor = (v) => (v < 25 ? "var(--fear)" : v < 45 ? "color-mix(in srgb, var(--fear) 45%, var(--surface))" : v < 55 ? "color-mix(in srgb, var(--neutral) 45%, var(--surface))" : v < 75 ? "color-mix(in srgb, var(--greed) 45%, var(--surface))" : "var(--greed)");
+const f0 = (v) => (v == null ? "–" : v.toFixed(0));  // 빈 달이면 '–'
+const fgName = (v) => (v == null ? "자료 없음" : v < 25 ? "극단적 공포" : v < 45 ? "공포" : v < 55 ? "중립" : v < 75 ? "탐욕" : "극단적 탐욕");
+const fgColor = (v) => (v == null ? "var(--grid)" : v < 25 ? "var(--fear)" : v < 45 ? "color-mix(in srgb, var(--fear) 45%, var(--surface))" : v < 55 ? "color-mix(in srgb, var(--neutral) 45%, var(--surface))" : v < 75 ? "color-mix(in srgb, var(--greed) 45%, var(--surface))" : "var(--greed)");
 
 /* ---------- 검색 (단지 검색과 같은 방식) ---------- */
 const CHO = "ㄱㄲㄴㄷㄸㄹㅁㅂㅃㅅㅆㅇㅈㅉㅊㅋㅌㅍㅎ";
@@ -420,8 +421,8 @@ function computeOne() {
   $("#sell-l").textContent = qLab(st.sell);
   $("#ltv-l").textContent = ltv ? `${ltv * 100}% · 대출 ${won(loan)}` : "대출 없음";
   const gname = META.gu[code].name;
-  $("#buy-fg").textContent = `그때 ${gname} 공포탐욕 ${fb.gu.toFixed(0)} · ${fgName(fb.gu)} (서울 ${fb.seoul.toFixed(0)})`;
-  $("#sell-fg").textContent = `그때 ${gname} 공포탐욕 ${fs.gu.toFixed(0)} · ${fgName(fs.gu)} (서울 ${fs.seoul.toFixed(0)})`;
+  $("#buy-fg").textContent = `그때 ${gname} 공포탐욕 ${f0(fb.gu)} · ${fgName(fb.gu)} (서울 ${f0(fb.seoul)})`;
+  $("#sell-fg").textContent = `그때 ${gname} 공포탐욕 ${f0(fs.gu)} · ${fgName(fs.gu)} (서울 ${f0(fs.seoul)})`;
 
   $("#res-panel").hidden = false;
   const hl = $("#headline");
@@ -441,7 +442,7 @@ function computeOne() {
   card("판 가격", won(s.v), s.est ? "거래 없어 추정" : `그 분기 거래 ${s.n}건 중앙값`);
   card("집값 수익률", pctS(ret), `연평균 ${pctS(cagr)}`, ret >= 0 ? "gain" : "loss");
   if (ltv) card("내 돈 수익률", pctS(eqRet), `내 돈 ${won(equity)} · 이자 ${won(interest)}`, eqRet >= 0 ? "gain" : "loss");
-  else card("그때 공포탐욕", `${fb.gu.toFixed(0)} → ${fs.gu.toFixed(0)}`, `${fgName(fb.gu)} → ${fgName(fs.gu)}`);
+  else card("그때 공포탐욕", `${f0(fb.gu)} → ${f0(fs.gu)}`, `${fgName(fb.gu)} → ${fgName(fs.gu)}`);
 
   const tb = $("#cmp");
   tb.textContent = "";
@@ -481,8 +482,8 @@ function computeMulti() {
   $("#buy-l").textContent = qLab(st.buy);
   $("#sell-l").textContent = qLab(st.sell);
   $("#ltv-l").textContent = ltv ? `${ltv * 100}%` : "대출 없음";
-  $("#buy-fg").textContent = `그때 서울 공포탐욕 ${fb.seoul.toFixed(0)} · ${fgName(fb.seoul)}`;
-  $("#sell-fg").textContent = `그때 서울 공포탐욕 ${fs.seoul.toFixed(0)} · ${fgName(fs.seoul)}`;
+  $("#buy-fg").textContent = `그때 서울 공포탐욕 ${f0(fb.seoul)} · ${fgName(fb.seoul)}`;
+  $("#sell-fg").textContent = `그때 서울 공포탐욕 ${f0(fs.seoul)} · ${fgName(fs.seoul)}`;
 
   const hl = $("#headline");
   hl.textContent = "";
@@ -517,7 +518,7 @@ function computeMulti() {
     if (ltv) H("td", { class: "n " + (r.eqRet >= 0 ? "gain" : "loss") }, tr, pctS(r.eqRet));
     const t1 = H("td", { class: "n" }, tr, won(r.b.v)); if (r.b.est) H("span", { class: "s" }, t1, "추정");
     const t2 = H("td", { class: "n" }, tr, won(r.e.v)); if (r.e.est) H("span", { class: "s" }, t2, "추정");
-    const tf = H("td", { class: "n" }, tr, `${r.fb.gu.toFixed(0)}`); H("span", { class: "s" }, tf, fgName(r.fb.gu));
+    const tf = H("td", { class: "n" }, tr, `${f0(r.fb.gu)}`); H("span", { class: "s" }, tf, fgName(r.fb.gu));
   });
   const ref = (k, r, sub) => {
     const tr = H("tr", {}, bd);
@@ -653,7 +654,7 @@ function chart() {
     tip.hidden = false; tip.textContent = "";
     H("div", {}, tip, qLab(q));
     const a = H("div", {}, tip, "가격 "); H("b", {}, a, won(v.v)); a.append(v.est ? " (추정)" : ` (${v.n}건)`);
-    const c = H("div", {}, tip, "공포탐욕 "); H("b", {}, c, f.toFixed(0)); c.append(" " + fgName(f));
+    const c = H("div", {}, tip, "공포탐욕 "); H("b", {}, c, f0(f)); c.append(" " + fgName(f));
     tip.style.left = (X(q) / W) * r.width + "px"; tip.style.top = (Y(v.v) / Hh) * r.height + "px";
   };
   hit.addEventListener("mousemove", move);
@@ -691,7 +692,7 @@ function renderLog() {
     H("td", { class: "n" }, tr, won(r.bv));
     H("td", { class: "n" }, tr, won(r.sv));
     const tr2 = H("td", { class: "n " + (r.ret >= 0 ? "gain" : "loss") }, tr, pctS(r.ret)); H("span", { class: "s" }, tr2, `연 ${pctS(r.cagr)}`);
-    H("td", { class: "n" }, tr, `${r.fgb.toFixed(0)} · ${fgName(r.fgb)}`);
+    H("td", { class: "n" }, tr, `${f0(r.fgb)} · ${fgName(r.fgb)}`);
     const dl = H("td", {}, tr); const x = H("button", { type: "button", class: "del" }, dl, "빼기");
     x.addEventListener("click", () => { const n = logList().filter((_, j) => j !== i); if (MEMLOG) MEMLOG = n; else writeLog(n); renderLog(); });
   });

@@ -71,9 +71,11 @@ def call(op, params, key, page=1, rows=100, maxpage=10, _try=0):
             raise NotRegistered
         if code == "22":
             raise QuotaExceeded
-        if "PER_SECOND" in str(err.get("errMsg", "")) and _try < 10:  # 초당 한도: 잠깐 쉬고 다시
-            time.sleep(1 + _try)
-            return call(op, params, key, page, rows, maxpage, _try + 1)
+        if "PER_SECOND" in str(err.get("errMsg", "")):
+            if _try < 5:  # 초당 한도: 잠깐 쉬고 다시 (1+2+3+4+5초)
+                time.sleep(1 + _try)
+                return call(op, params, key, page, rows, maxpage, _try + 1)
+            raise QuotaExceeded  # 계속이면 하루 한도가 찬 것 (서버가 하루 한도도 초당 한도로 답할 때가 있다) → 다음 실행에
         raise RuntimeError(f"{op}: {err.get('errMsg')}")
     resp = d.get("response", {})
     code = str(resp.get("header", {}).get("resultCode", ""))
@@ -232,6 +234,12 @@ def fill(workers=2, budget_s=None, retry_days=90):
         return cache[k]
 
     def one(seq):
+        try:
+            return one_(seq)
+        except RuntimeError:  # 한 단지의 이상한 응답 때문에 전체를 멈추지 않는다 (다음 실행에 다시)
+            return seq, None, "error"
+
+    def one_(seq):
         c = cx.loc[seq]
         bj = c["umdCd"] or umd.get((seq[:5], c["umdNm"]), "")
         if not bj:
@@ -296,7 +304,7 @@ def land_area(lot, vkey):
     raise RuntimeError(f"토지 면적: 응답 해석 실패 · {out.replace(vkey, '***')[:120]}")
 
 
-def fill_land(workers=3):
+def fill_land(workers=3, budget_s=None):
     """오래된 단지(구대장)는 대장에 대지면적·용적률·건폐율이 0이다. 토지대장 면적으로 채운다.
     1단계: 대지 = 대표 지번 + 대장의 부속지번 토지대장 면적 합 (대지면적이 있는 단지 80곳으로 시험: 99%가 ±5% 안).
            지번 중 하나라도 토지대장에 없으면 채우지 않는다.
@@ -311,6 +319,12 @@ def fill_land(workers=3):
     params = lambda r: dict(zip(("sigunguCd", "bjdongCd", "platGbCd", "bun", "ji"), r["lot"].split("-")))
 
     def area(r):
+        try:
+            return area_(r)
+        except RuntimeError:
+            return r["aptSeq"], "skip"  # 이번엔 건너뛰고 다음 실행에
+
+    def area_(r):
         p = params(r)
         lots = {tuple(p.values())} | {(x["atchSigunguCd"], x["atchBjdongCd"], str(x["atchPlatGbCd"]), x["atchBun"], x["atchJi"])
                                       for x in call("getBrAtchJibunInfo", p, key, maxpage=30)}
@@ -318,6 +332,12 @@ def fill_land(workers=3):
         return r["aptSeq"], None if any(a is None for a in areas) else int(round(sum(areas)))
 
     def ratio(r):
+        try:
+            return ratio_(r)
+        except RuntimeError:
+            return r["aptSeq"], None, None, None  # 이번엔 건너뛰고 다음 실행에
+
+    def ratio_(r):
         """(단지, 용적률, 건폐율, landSrc). 연면적·건축면적은 총괄표제부 → 표제부 합 → (하루 한도면) 층별개요 합 순.
         층별개요: 지상층 면적 합 ≈ 용적률 산정 연면적, 1층 면적 합 ≈ 건축면적 (은마: 485,684 vs 488,473㎡, 48,105 = 48,105㎡)."""
         p, plat = params(r), num(r["platArea"])
@@ -334,11 +354,13 @@ def fill_land(workers=3):
                 arch = arch or sum(num(t.get("archArea")) for t in titles)
         except QuotaExceeded:
             if src.endswith("·층별"):
-                return r["aptSeq"], None, None, None  # 이미 어림값이 있다: 다음에 대장 값으로 다시
+                raise  # 이미 어림값이 있는 단지들: 한도가 찼으면 이 단계를 멈추고 다음 실행에 대장 값으로 다시
             up = [x for x in call("getBrFlrOulnInfo", p, key, maxpage=60) if x.get("flrGbCdNm") == "지상"]
             est = sum(num(x.get("area")) for x in up)
             arch = sum(num(x.get("area")) for x in up if str(x.get("flrNo")) == "1")
             how = base + "·층별"
+        if not est:  # 건물 면적을 못 받으면 대지는 그대로 두고 비율만 비운다
+            return r["aptSeq"], "", "", how
         vl, bc = est / plat * 100, arch / plat * 100
         if not (60 <= vl <= 1000 and bc <= 90):  # 이런 값이면 지번 짝이 일부만 맞은 것 (대지나 연면적이 일부만 잡힘)
             return r["aptSeq"], "", "", "없음" if base == "토지대장" else base
@@ -347,9 +369,15 @@ def fill_land(workers=3):
     msg, n_area, n_ratio = "", 0, 0
     try:
         with ThreadPoolExecutor(workers) as ex:
+            t0 = time.time()
+            over = lambda: budget_s and time.time() - t0 > budget_s
             todo = [r for r in ok if not r["platArea"] and not r.get("landSrc")] if vkey else []
             for i in range(0, len(todo), 30):
+                if over():
+                    break
                 for seq, plat in ex.map(area, todo[i:i + 30]):
+                    if plat == "skip":
+                        continue
                     if plat and plat > 500 * num(rows[seq]["hhld"]):
                         plat = None  # 세대당 땅이 500㎡ 넘으면 대장과 지번 짝이 잘못 맞은 것으로 본다
                     rows[seq]["platArea"] = plat or ""
@@ -359,6 +387,9 @@ def fill_land(workers=3):
             todo = [r for r in ok if r["platArea"] and (((not r["vlRat"] or not r["bcRat"]) and r.get("landSrc", "") in ("", "면적"))
                                                         or r.get("landSrc", "").endswith("·층별"))]  # 층별 어림값은 대장 값으로 다시
             for i in range(0, len(todo), 30):
+                if over():
+                    msg = " (시간 한도로 중단, 다음 실행에 이어서)"
+                    break
                 for seq, vl, bc, how in ex.map(ratio, todo[i:i + 30]):
                     if how is None:
                         continue

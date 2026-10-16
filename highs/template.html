@@ -188,7 +188,7 @@ function renderSum() {
   const stat = (k, v, unit, h) => { const s = H("div", { class: "stat" }, box); H("span", { class: "k" }, s, k); const vv = H("span", { class: "v" }, s, v); if (unit) H("small", {}, vv, unit); if (h) H("span", { class: "h" }, s, h); };
   const m = M;
   stat(`${ymLab(m.ym)} 신고가 거래`, m.high.toLocaleString("ko-KR"), "건", `그달 거래 ${m.n.toLocaleString("ko-KR")}건 중`);
-  stat("신고가 비중", pct(m.high / m.cmp), "", `비교할 이전 거래가 있는 ${m.cmp.toLocaleString("ko-KR")}건 중`);
+  stat("신고가 비중", m.cmp ? pct(m.high / m.cmp) : "–", "", `비교할 이전 거래가 있는 ${m.cmp.toLocaleString("ko-KR")}건 중`);
   stat("신고가가 나온 단지", m.complexes.toLocaleString("ko-KR"), "곳", m.jump ? `입력 오류 의심 ${m.jump}건은 뺐어요` : "");
 }
 
