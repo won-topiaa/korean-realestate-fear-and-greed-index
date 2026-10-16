@@ -60,7 +60,7 @@ def call(op, params, key, page=1, rows=100, maxpage=10, _try=0):
             if "SERVICE_KEY_IS_NOT_REGISTERED" in out:
                 raise NotRegistered
             if "LIMITED_NUMBER_OF_SERVICE_REQUESTS" in out:
-                raise QuotaExceeded
+                raise QuotaExceeded(f"{op}: LIMITED_NUMBER_OF_SERVICE_REQUESTS")
             time.sleep(2 * 2 ** attempt)
     else:
         raise RuntimeError(f"{op}: 응답 해석 실패 · {out.replace(key, '***')[:120]}")
@@ -70,18 +70,18 @@ def call(op, params, key, page=1, rows=100, maxpage=10, _try=0):
         if code == "30" or "NOT_REGISTERED" in str(err.get("errMsg", "")):
             raise NotRegistered
         if code == "22":
-            raise QuotaExceeded
+            raise QuotaExceeded(f"{op}: {err.get('errMsg')}")
         if "PER_SECOND" in str(err.get("errMsg", "")):
             if _try < 5:  # 초당 한도: 잠깐 쉬고 다시 (1+2+3+4+5초)
                 time.sleep(1 + _try)
                 return call(op, params, key, page, rows, maxpage, _try + 1)
-            raise QuotaExceeded  # 계속이면 하루 한도가 찬 것 (서버가 하루 한도도 초당 한도로 답할 때가 있다) → 다음 실행에
+            raise QuotaExceeded(f"{op}: {err.get('errMsg')} (6번 연속)")  # 계속이면 하루 한도가 찬 것 (서버가 하루 한도도 초당 한도로 답할 때가 있다) → 다음 실행에
         raise RuntimeError(f"{op}: {err.get('errMsg')}")
     resp = d.get("response", {})
     code = str(resp.get("header", {}).get("resultCode", ""))
     if code not in ("00", "000"):
         if code == "22":
-            raise QuotaExceeded
+            raise QuotaExceeded(f"{op}: code 22")
         raise RuntimeError(f"{op}: code {code} {resp.get('header', {}).get('resultMsg')}")
     body = resp.get("body", {}) or {}
     items = body.get("items") or {}
@@ -338,33 +338,45 @@ def fill_land(workers=3, budget_s=None):
             return r["aptSeq"], None, None, None  # 이번엔 건너뛰고 다음 실행에
 
     def ratio_(r):
-        """(단지, 용적률, 건폐율, landSrc). 연면적·건축면적은 총괄표제부 → 표제부 합 → (하루 한도면) 층별개요 합 순.
-        층별개요: 지상층 면적 합 ≈ 용적률 산정 연면적, 1층 면적 합 ≈ 건축면적 (은마: 485,684 vs 488,473㎡, 48,105 = 48,105㎡)."""
+        """(단지, 용적률, 건폐율, landSrc). 연면적·건축면적은 총괄표제부 → 동별 표제부 합 → 층별개요 합 순으로,
+        용적률과 건폐율을 따로 처음 말이 되는 값(용적률 60~1,000%, 건폐율 3~90%)에서 고른다.
+        오래된 대장은 건축면적에 연면적을 적는 등 한 칸만 틀린 경우가 있다 (자양동 한양: 총괄 건축면적 66,577㎡ → 동별 합 6,178㎡).
+        층별개요: 지상층 면적 합 ≈ 용적률 산정 연면적, 1층 면적 합 ≈ 건축면적 (은마: 485,684 vs 488,473㎡, 48,105 = 48,105㎡).
+        landSrc 끝 '·층별' = 하루 한도로 층별 합을 쓴 어림값(다음 실행에 대장 값으로 다시), '·층별확인' = 대장 값이 맞지 않아 층별 합을 쓴 값(그대로 둠)."""
         p, plat = params(r), num(r["platArea"])
         src = r.get("landSrc", "")
-        base = "대장" if src in ("", "대장", "대장·층별") else "토지대장"
-        how = base
+        base = "대장" if src.split("·")[0] in ("", "대장") else "토지대장"
+        ok_vl = lambda e: 60 <= e / plat * 100 <= 1000
+        ok_bc = lambda a: 3 <= a / plat * 100 <= 90
+        cands, quota = [], False
         try:
             recap = call("getBrRecapTitleInfo", p, key)
             c = max(recap, key=lambda x: num(x.get("hhldCnt"))) if recap else {}
-            est, arch = num(c.get("vlRatEstmTotArea")), num(c.get("archArea"))
-            if not est or not arch:  # 총괄표제부가 없거나 비었으면 그 지번의 동별 표제부를 모두 더한다
+            cands.append((num(c.get("vlRatEstmTotArea")), num(c.get("archArea"))))
+            if not (ok_vl(cands[0][0]) and ok_bc(cands[0][1])):  # 총괄표제부가 없거나 한 칸이라도 맞지 않으면 동별 표제부 합
                 titles = call("getBrTitleInfo", p, key)
-                est = est or sum(num(t.get("vlRatEstmTotArea")) for t in titles)
-                arch = arch or sum(num(t.get("archArea")) for t in titles)
+                cands.append((sum(num(t.get("vlRatEstmTotArea")) for t in titles), sum(num(t.get("archArea")) for t in titles)))
         except QuotaExceeded:
             if src.endswith("·층별"):
                 raise  # 이미 어림값이 있는 단지들: 한도가 찼으면 이 단계를 멈추고 다음 실행에 대장 값으로 다시
+            quota = True
+        est = next((e for e, _ in cands if ok_vl(e)), 0)
+        arch = next((a for _, a in cands if ok_bc(a)), 0)
+        how = base
+        if not est or not arch:
             up = [x for x in call("getBrFlrOulnInfo", p, key, maxpage=60) if x.get("flrGbCdNm") == "지상"]
-            est = sum(num(x.get("area")) for x in up)
-            arch = sum(num(x.get("area")) for x in up if str(x.get("flrNo")) == "1")
-            how = base + "·층별"
-        if not est:  # 건물 면적을 못 받으면 대지는 그대로 두고 비율만 비운다
+            fe = sum(num(x.get("area")) for x in up)
+            fa = sum(num(x.get("area")) for x in up if str(x.get("flrNo")) == "1")
+            cands.append((fe, fa))
+            if (not est and ok_vl(fe)) or (not arch and ok_bc(fa)):
+                how = base + ("·층별" if quota else "·층별확인")
+            est = est or (fe if ok_vl(fe) else 0)
+            arch = arch or (fa if ok_bc(fa) else 0)
+        if not any(e for e, _ in cands):  # 건물 면적을 못 받으면 대지는 그대로 두고 비율만 비운다
             return r["aptSeq"], "", "", how
-        vl, bc = est / plat * 100, arch / plat * 100
-        if not (60 <= vl <= 1000 and bc <= 90):  # 이런 값이면 지번 짝이 일부만 맞은 것 (대지나 연면적이 일부만 잡힘)
+        if not est:  # 어느 값으로도 용적률이 말이 안 되면 지번 짝이 일부만 맞은 것 (대지나 연면적이 일부만 잡힘)
             return r["aptSeq"], "", "", "없음" if base == "토지대장" else base
-        return r["aptSeq"], (round(vl, 1) if 30 <= vl <= 1500 else ""), (round(bc, 1) if 3 <= bc <= 100 else ""), how
+        return r["aptSeq"], round(est / plat * 100, 1), (round(arch / plat * 100, 1) if arch else ""), how
 
     msg, n_area, n_ratio = "", 0, 0
     try:
@@ -403,8 +415,8 @@ def fill_land(workers=3, budget_s=None):
                     r["landSrc"] = how
                     n_ratio += bool(vl)
                 save(list(rows.values()))
-    except QuotaExceeded:
-        msg = " (건축물대장 하루 호출 한도로 중단, 다음 실행에 이어서)"
+    except QuotaExceeded as e:
+        msg = f" (건축물대장 하루 호출 한도로 중단, 다음 실행에 이어서 · {e})"
     save(list(rows.values()))
     still = sum(1 for r in rows.values() if r["status"] == "ok" and not r["vlRat"])
     return f"토지 면적으로 채우기: 대지면적 {n_area}곳, 용적률 {n_ratio}곳 채움{msg} · 용적률 빈 단지 {still}"
