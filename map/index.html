@@ -193,6 +193,33 @@ td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; }
 .g-mini .nm { font-size: 12.5px; font-weight: 600; }
 .g-mini .zn { font-size: 11px; color: var(--muted); }
 @media (prefers-reduced-motion: reduce) { .zone-path, .gauge-marker, .bar-fill, .g-needle, .g-arc { transition: none; } }
+
+/* 한눈에 보기: 게이지 줄은 낮게(권역 게이지 6개를 한 줄로), 지도·숫자는 한 화면에 들어오게 */
+.gauges { padding: 12px 16px; gap: 16px; grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.25fr); }
+.g-main { gap: 12px; }
+#g-big { max-width: 220px; margin-inline: auto; }
+.g-title { font-size: 12.5px; }
+.g-cmp .row { padding-block: 5px; font-size: 12.5px; }
+.g-cmp .v b { font-size: 16px; }
+.mini-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px; }
+@media (max-width: 960px) { .mini-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.pin.gu .n { font-size: 9.5px; }
+.pin.gu .v { font-size: 13px; }
+.g-mini { padding: 6px 4px 5px; }
+.g-mini svg { max-width: 92px; margin-inline: auto; }
+.g-mini .nm { font-size: 11.5px; white-space: nowrap; }
+.g-mini .zn { font-size: 10.5px; }
+.main { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 16px; }
+.col-left { gap: 16px; }
+.mapcard { padding: 12px; gap: 8px; }
+.mapbox { max-width: 560px; margin-inline: auto; }
+.read { padding: 14px 16px; gap: 12px; }
+.hero-num { font-size: 46px; }
+.bars { gap: 4px; }
+.bar-row { font-size: 12.5px; }
+.relbox { padding: 10px 12px; }
+.timebar { padding: 10px 16px; gap: 8px; }
+.time-now { font-size: 18px; }
 </style>
 <script>try { const m = localStorage.getItem("fgi-theme"); if (m === "light" || m === "dark") document.documentElement.setAttribute("data-theme", m); } catch (e) {}</script>
 
@@ -411,7 +438,7 @@ function bars(el, rows) {
 }
 
 function history_(el, R) {
-  const W = el.clientWidth || 600, h = W < 480 ? 180 : 250, top = 10, ml = 30, mr = 8, Hh = top + h + 24;
+  const W = el.clientWidth || 600, h = W < 480 ? 160 : 190, top = 10, ml = 30, mr = 8, Hh = top + h + 24;  // 한 화면에 들어오게 낮게
   const s = R.score;
   const x = (i) => ml + (i / (N - 1)) * (W - ml - mr), y = (v) => top + (1 - v / 100) * h;
   const sv = S("svg", { width: W, height: Hh, viewBox: `0 0 ${W} ${Hh}`, role: "img", "aria-label": "지수 추이. 누르면 그 달로 이동합니다." }, el);
@@ -724,7 +751,7 @@ function drawNow() {
 function render() { if (!raf) raf = requestAnimationFrame(drawNow); }  // 슬라이더를 끌 때 한 프레임에 한 번만
 if (tblDetails) tblDetails.addEventListener("toggle", () => { if (tblDetails.open) renderTable(); });
 drawNow();
-new ResizeObserver(() => box.classList.toggle("compact", box.clientWidth < 560)).observe(box);
+new ResizeObserver(() => box.classList.toggle("compact", box.clientWidth < 440)).observe(box);  // 아주 좁을 때만 구 이름을 숨김
 let ht;
 new ResizeObserver(() => { clearTimeout(ht); ht = setTimeout(renderHist, 150); }).observe($("#histcard"));
 document.addEventListener("keydown", (e) => {
