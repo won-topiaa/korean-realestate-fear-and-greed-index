@@ -11,6 +11,7 @@
 | 신고가 단지 | https://won-topiaa.github.io/korean-realestate-fear-and-greed-index/highs/ | 이번 달 같은 단지·같은 평형의 역대 최고가를 넘은 거래, 구별 비중 |
 | 모의 투자 | https://won-topiaa.github.io/korean-realestate-fear-and-greed-index/sim/ | 그때 샀다면 지금 얼마? 실거래로 계산하는 가상 투자, 단지 2~3개 비교 |
 | 백테스트 보고서 | https://won-topiaa.github.io/korean-realestate-fear-and-greed-index/report/ | 지수를 실거래 141만 건으로 검증한 정확도와 한계 |
+| 데이터 API | https://won-topiaa.github.io/korean-realestate-fear-and-greed-index/api/ | 지수를 다른 서비스에서 가져다 쓰는 JSON·CSV 안내 (키 없이, 매달 20일 갱신) |
 
 - **갱신**: 매달 20일 09:17(한국 시간) GitHub Actions가 자료를 새로 받아 다시 계산하고 배포해요.
 - **문의**: wontopiaaa@gmail.com
@@ -117,8 +118,18 @@
 - `sim_build.py`: '그때 샀다면 지금 얼마?' 단지·평형별 분기 가격(8~10층 기준 실거래 중앙값)으로 산 시기·판 시기를 골라 수익률을 계산하고, 같은 기간 구·서울 실거래지수와 예금을 함께 보여줘요. 거래가 없던 분기는 가장 가까운 거래 분기 값 × 그사이 구 반복매매지수 변화. 대출 비율·금리(단순 이자)는 선택. 산 때·판 때의 구 공포탐욕지수와 가격 흐름 아래 공포탐욕 띠. 단지를 2~3개 고르면 같은 기간을 나란히 비교해요(산 때 = 0% 선 그래프 + 서울 전체 점선, 색은 색맹 구분 검사를 통과한 주황·청록·보라). 주소(#단지:평형,단지:평형)로 비교를 공유할 수 있어요. 세금·수수료 제외, 매매 신호 아님. 기록은 그 브라우저(localStorage)에만.
 - 신고가·모의 투자 결과(`results_highs/`, `results_sim/`)는 저장소에 올리지 않고 월간 갱신·배포 때 다시 계산해요.
 
+### 데이터 API (`/api/`)
+- `api_build.py`: 지도와 같은 `results_zone/map_data.json`에서 직접 계산한 점수만 꺼내 정적 JSON·CSV로 만들어요(원자료 값은 넣지 않음). `site_build.py`가 사이트를 만들 때 함께 만들고, 월간 갱신 때 같이 바뀌어요.
+- 주소(앞: `https://won-topiaa.github.io/korean-realestate-fear-and-greed-index/api/v1/`):
+  - `latest.json`: 최신 달 점수·구간·1·3·12개월 변화, 속도별 3그룹·주제 9개 점수, 구는 서울 안 상대 강도 순위
+  - `history.json`, `history.csv`: 2006년 1월부터 월별 점수, 지역 31곳
+  - `history/{id}.json`: 한 지역의 월별 점수. id는 `seoul`, 권역 `dosim`·`dongbuk`·`seobuk`·`seonam`·`dongnam`, 구는 시군구 코드 5자리(예: `11680` 강남구)
+  - `regions.json`(지역 목록), `index.json`(안내·필드 설명)
+- 키가 없고, GitHub Pages가 CORS(`Access-Control-Allow-Origin: *`)를 열어 두어 다른 사이트의 브라우저에서 바로 불러갈 수 있어요. 누가 얼마나 쓰는지는 알 수 없어요(업체별 키·사용량 제한이 필요해지면 그때 앞에 API 서버를 둠).
+- 주소 형식을 바꿀 때는 `v1`을 그대로 두고 `v2`를 새로 만들어요.
+
 ## 겉모습과 쓰기 편하게
-- 다섯 페이지(지도·단지 검색·신고가 단지·모의 투자·보고서)에 같은 겉모습을 입혀요: `assets/skin.css`. Figma 커뮤니티의 'Legacy Homes' 디자인을 참고한 회색 바탕·검정 포인트·아주 굵은 제목·각진 카드와 버튼·검정 원 장식·어두운 바닥글이에요. 페이지 구성과 데이터 색(공포 파랑·탐욕 빨강)은 그대로예요.
+- 여섯 페이지(지도·단지 검색·신고가 단지·모의 투자·보고서·데이터 API)에 같은 겉모습을 입혀요: `assets/skin.css`. Figma 커뮤니티의 'Legacy Homes' 디자인을 참고한 회색 바탕·검정 포인트·아주 굵은 제목·각진 카드와 버튼·검정 원 장식·어두운 바닥글이에요. 페이지 구성과 데이터 색(공포 파랑·탐욕 빨강)은 그대로예요.
 - 머리글 메뉴, 첫 화면 사진 띠(페이지 사진을 어둡게 깐 화면 폭 배경, 글자는 흰색), 바닥글은 `site_build.py`가 사이트를 만들 때 끼워 넣어요(원래 템플릿은 그대로). 사진은 인라인 배경으로 넣어요(CSS 변수로 넘기면 주소가 스타일 파일 기준이 돼 최상위 페이지에서 틀어져요). 단지 검색·모의 투자는 검색 전(`body.sk-intro`)에는 그 페이지 사진 한 장을 화면 전체 배경으로 은은하게 깔고, 결과 칸이 보이면 위 띠·아래 바닥글 사진으로 돌아가요. 사진·스타일 주소에는 내용 지문(`?v=`)을 붙여 바꾸면 바로 새 파일이 보여요.
 - 사진은 모두 위키미디어 공용의 **CC0·퍼블릭 도메인**(저작권 없음) 대형 건물 사진이라 출처 표기 의무가 없지만, 바닥글과 `assets/img/credits.json`에 출처를 적어 뒀어요: 63빌딩(USAGI_POST), 롯데월드타워 낮·야경(mauveine.kim), 여의도 스카이라인(pixabay @heecheol890102), 롯데월드타워 불꽃놀이(HyunJae Park), 송파 석촌호수 노을(cmmellow).
 - 링크 미리보기(카카오톡·문자·SNS): 페이지마다 1200×630 그림 `assets/og/*.jpg`(사이트와 같은 사진 띠 + 로고 + 두 단 제목, `python og_build.py`로 헤드리스 Chrome에서 만듦)과 og·twitter 메타 태그를 `site_build.py`가 넣어요.
@@ -164,7 +175,7 @@
 | 원자료 받기 | `kb_fetch.py`, `reb_fetch.py`, `zone_fetch.py`, `molit_fetch.py`, `molit_store.py`(실거래 저장소·단지 표), `bldg_fetch.py`(건축물대장·토지대장: `python bldg_fetch.py [fill\|land]`), `applyhome_fetch.py`, `ecos_fetch.py`, `fetch_stocks.py`, `fetch_trends.py` |
 | 지표 만들기 | `molit_indicators.py`(반복매매지수, 신고가·급락), `rs_vintage.py`(그때 알 수 있던 실거래 변화), `extra_indicators.py`(부동산원·청약홈), `build_indicators.py`, `timing.py`(공개 시차) |
 | 엔진 | `v3.py`(서울), `zone_index.py` → `zone_v3.py`(5대 권역·25개 구), `backtest.py`(공통 함수) |
-| 결과·화면 | `export_zone.py` → `map/`(지도), `export_report_v3.py` → `report/`(보고서), `apt_score.py` → `apt/`(단지 검색), `highs_build.py` → `highs/`(신고가 단지), `sim_build.py` → `sim/`(모의 투자), `site_build.py` → `site/`(Pages: 공통 머리글·사진 띠·바닥글·링크 미리보기를 입힘) |
+| 결과·화면 | `export_zone.py` → `map/`(지도), `export_report_v3.py` → `report/`(보고서), `apt_score.py` → `apt/`(단지 검색), `highs_build.py` → `highs/`(신고가 단지), `sim_build.py` → `sim/`(모의 투자), `api_build.py` → `api/`(데이터 API), `site_build.py` → `site/`(Pages: 공통 머리글·사진 띠·바닥글·링크 미리보기를 입힘) |
 | 공통 겉모습 | `assets/skin.css`(스타일), `assets/img/`(CC0 사진, `credits.json` 출처), `assets/og/`(링크 미리보기 그림, `og_build.py`로 만듦) |
 | 운영 | `update_pipeline.py`(전체 갱신), `update.sh`, `live_track.py`(실시간 검증 기록), `.github/workflows/` |
 | 분석 기록 | `audit.py`, `audit2.py`(엔진 점검), `eval_structure.py`(표 묶기 비교), `remedies.py`, `diag_time.py`(시점 의존), `public_variant.py`(공공데이터만), `gu_engine_study.py`(구 엔진 비교), `apt_study.py`(단지 점수 설계) |
@@ -174,7 +185,7 @@
 | 워크플로 | 언제 | 하는 일 |
 |---|---|---|
 | `monthly-update.yml` (월간 자동 갱신) | 매달 20일 00:17 UTC, 수동 실행 가능 | 원자료 받기(건축물대장: 새 단지 → 다시 찾기 → 용적률, 15분 안에서 단계별 시간) → 재계산 → 점검 → 단지 점수·신고가·모의 투자 → 결과 커밋 → Pages 배포 |
-| `site-deploy.yml` (화면만 다시 배포) | 페이지 템플릿(`map/`·`report/`·`apt/`·`highs/`·`sim/`), `assets/`, `site_build.py` 등을 고쳐 올릴 때 | 저장소의 최신 결과로 사이트만 1~2분 안에 다시 배포 (단지 점수·신고가·모의 투자 자료는 여기서 다시 계산) |
+| `site-deploy.yml` (화면만 다시 배포) | 페이지 템플릿(`map/`·`report/`·`apt/`·`highs/`·`sim/`·`api/`), `assets/`, `site_build.py`·`api_build.py` 등을 고쳐 올릴 때 | 저장소의 최신 결과로 사이트만 1~2분 안에 다시 배포 (단지 점수·신고가·모의 투자 자료는 여기서 다시 계산) |
 | `cache-keepalive.yml` (원자료 캐시 유지) | 4일마다 | KB·네이버 원자료 캐시를 꺼내 써서 GitHub의 7일 만료를 막음 |
 
 원자료 하나가 실패하면 지난 자료로 계속 진행해요(파일은 다 받은 뒤에만 바꿔 쓰고, 자료처마다 시간 한도가 있어요). 건축물대장은 하루 호출 한도가 차면(서버가 '초당 한도'로 답해도 5번 뒤엔 하루 한도로 봄) 받은 만큼 저장하고 다음 달에 이어서 받아요. 계산이나 점검이 실패하면 커밋·배포하지 않아요. KB·네이버 원자료는 저장소에 올리지 않고 Actions 캐시에만 보관해요.

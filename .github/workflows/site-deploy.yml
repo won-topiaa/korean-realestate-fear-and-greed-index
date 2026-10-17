@@ -19,6 +19,8 @@ on:
       - "sim/**"
       - "highs_build.py"
       - "sim_build.py"
+      - "api/**"
+      - "api_build.py"
   workflow_dispatch:
 
 permissions:

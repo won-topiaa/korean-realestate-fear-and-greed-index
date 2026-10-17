@@ -1,4 +1,5 @@
-"""GitHub Pages용 정적 사이트: site/index.html (지도), site/report/index.html (보고서), site/apt/ (단지 검색).
+"""GitHub Pages용 정적 사이트: site/index.html (지도), site/report/index.html (보고서), site/apt/ (단지 검색),
+site/api/ (데이터 API 안내 페이지 + api_build.py가 만드는 JSON·CSV).
 
 아티팩트용 HTML에는 문서 머리말이 없어서, 문자 인코딩·뷰포트·doctype을 감싸 정식 문서로 만든다.
 페이지마다 공통 겉모습(assets/skin.css: 레퍼런스 'Legacy Homes' 스타일)과 머리글·첫 화면 사진 띠(어둡게 깐 배경)·바닥글을 입힌다.
@@ -10,6 +11,8 @@ import re
 import shutil
 from pathlib import Path
 from urllib.parse import quote
+
+import api_build
 
 ROOT = Path(__file__).parent
 SITE = ROOT / "site"
@@ -32,7 +35,7 @@ SITE_URL = "https://won-topiaa.github.io/korean-realestate-fear-and-greed-index/
 # 링크 미리보기 (카카오톡·문자·SNS): 사이트 폴더 → (미리보기 그림 assets/og/*.jpg, 제목). 그림은 og_build.py로 만든다
 OG = {"": ("map", "서울 아파트 공포탐욕지도"), "apt/": ("apt", "단지 검색 · 서울 아파트 공포탐욕지도"),
       "highs/": ("highs", "신고가 단지 · 서울 아파트 공포탐욕지도"), "sim/": ("sim", "모의 투자 · 서울 아파트 공포탐욕지도"),
-      "report/": ("report", "백테스트 보고서 · 서울 아파트 공포탐욕지도")}
+      "report/": ("report", "백테스트 보고서 · 서울 아파트 공포탐욕지도"), "api/": ("map", "데이터 API · 서울 아파트 공포탐욕지도")}
 
 
 def og_meta(dst, desc):
@@ -86,7 +89,7 @@ def footer(base):
             who.append(f'<a href="{v["page"]}">{v["artist"]}</a>')
     who = ", ".join(who)
     links = "".join(f'<li><a href="{base}{h}">{n}</a></li>' for h, n in
-                    [("", "공포탐욕 지도"), ("apt/", "단지 검색"), ("highs/", "신고가 단지"), ("sim/", "모의 투자"), ("report/", "백테스트 보고서")])
+                    [("", "공포탐욕 지도"), ("apt/", "단지 검색"), ("highs/", "신고가 단지"), ("sim/", "모의 투자"), ("report/", "백테스트 보고서"), ("api/", "데이터 API")])
     return (f'\n<footer class="sk-foot"><div class="sk-foot-bg" aria-hidden="true" style="background-image:url(\'{base}assets/img/footer.jpg{ver("assets/img/footer.jpg")}\')"></div><div class="sk-in">'
             f'<div class="sk-about"><a class="sk-logo" href="{base}">SEOUL FEAR &amp; GREED</a>'
             '<p>서울 아파트 시장의 공포와 탐욕을 0~100으로 보여주는 지수예요. 공공데이터로 매달 20일에 갱신해요.</p></div>'
@@ -191,5 +194,13 @@ if __name__ == "__main__":
          skin_args=("../", "보고서", ('<section class="top">', "</section>"),
                     ("<h1>서울 공포탐욕지수 백테스트</h1>", '<h1><span class="sk-h1a">서울 공포탐욕지수</span><span class="sk-h1b">백테스트</span></h1>'),
                     ("bg-report", "50%"), 1040))
+    shutil.rmtree(SITE / "api", ignore_errors=True)
+    month, n = api_build.build(SITE / "api" / "v1")
+    wrap(ROOT / "api" / "template.html", SITE / "api" / "index.html",
+         "서울 아파트 공포탐욕지수를 JSON·CSV로. 서울·5대 권역·25개 구의 2006년부터 월별 점수, 키 없이 호출, 매달 20일 갱신.",
+         skin_args=("../", "데이터 API", ('<header style="display:grid;gap:6px">', "</header>"),
+                    ("<h1>데이터 API</h1>", '<h1><span class="sk-h1a">서울 아파트 공포탐욕지수</span><span class="sk-h1b">데이터 API</span></h1>'),
+                    ("bg-report", "50%"), 960))
+    print(f"api: {month} · 지역 {n}곳")
     (SITE / ".nojekyll").write_text("")
     print("site:", [str(p.relative_to(ROOT)) for p in SITE.rglob("*.html")])
