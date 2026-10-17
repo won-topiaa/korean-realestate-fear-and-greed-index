@@ -139,11 +139,12 @@ ul { margin: 0; padding-left: 20px; display: grid; gap: 4px; }
 const $ = (s) => document.querySelector(s);
 const BASE = new URL("v1/", location.href).href;
 $("#base").textContent = BASE;
-$("#ex-js").textContent = `// 자바스크립트 (브라우저·Node 18+)
+const exJs = (out) => `// 자바스크립트 (브라우저·Node 18+)
 const r = await fetch("${BASE}latest.json");
 const { month, regions } = await r.json();
 const seoul = regions.find((x) => x.id === "seoul");
-console.log(month, seoul.score, seoul.band.label);  // 예: 2026-09 48.8 중립`;
+console.log(month, seoul.score, seoul.band.label);${out ? "  // " + out : ""}`;
+$("#ex-js").textContent = exJs("");
 $("#ex-curl").textContent = `# 터미널
 curl -s ${BASE}history/seoul.json`;
 const ZONES = ["seoul", "dosim", "dongbuk", "seobuk", "seonam", "dongnam"];
@@ -164,7 +165,9 @@ Promise.all([fetch(BASE + "latest.json").then((r) => r.json()), fetch(BASE + "re
     c.querySelector(".z").textContent = r.band ? r.band.label : "";
     now.append(c);
   }
-  $("#ex-res").textContent = JSON.stringify(L.regions.find((x) => x.id === "seoul"), null, 2);
+  const se = L.regions.find((x) => x.id === "seoul");
+  $("#ex-res").textContent = JSON.stringify(se, null, 2);
+  if (se && se.band) $("#ex-js").textContent = exJs(`지금: ${L.month} ${se.score} ${se.band.label}`);
   const ids = $("#ids");
   ids.replaceChildren();
   for (const g of G.regions) {

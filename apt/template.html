@@ -416,6 +416,8 @@ function renderDetail(it, d) {
       H("p", { class: "note", style: "margin-top:10px" }, box, `실거래에서는 ${info.shared}개 단지로 나뉘어 있지만 건축물대장에는 '${info.regNm || it.name}' 한 장부로 묶여 있어요. 위 값은 ${info.shared}개 단지를 합친 기준이에요.`);
     else if (land)
       H("p", { class: "note", style: "margin-top:10px" }, box, "이 단지는 건축물대장에 대지면적이 비어 있어서, 대장에 적힌 지번들의 토지대장 면적을 더해 대지면적으로 쓰고 용적률·건폐율을 계산했어요." + (approx ? " 건물 면적은 층별 면적을 더한 값이라 1%p 안팎 차이가 날 수 있어요." : ""));
+    else if (approx && info.vlRat)  // 대장 대지는 있지만 연면적·건축면적 칸이 맞지 않아 층별 면적 합으로 계산한 단지
+      H("p", { class: "note", style: "margin-top:10px" }, box, "이 단지는 건축물대장의 건물 면적 값이 서로 맞지 않아, 층별 면적을 더해 용적률·건폐율을 계산했어요. 1%p 안팎 차이가 날 수 있어요.");
     else if (!info.vlRat && info.src === "총괄표제부")
       H("p", { class: "note", style: "margin-top:10px" }, box, "오래된 단지는 건축물대장에 대지면적·용적률이 비어 있는 경우가 있어요.");
   } else {

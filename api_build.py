@@ -16,13 +16,15 @@ import io
 import json
 from pathlib import Path
 
-from apt_score import LAWD2GU
-
 ROOT = Path(__file__).parent
 SITE_URL = "https://won-topiaa.github.io/korean-realestate-fear-and-greed-index/"
 BASE = SITE_URL + "api/v1/"
 ZONE_ID = {"도심권": "dosim", "동북권": "dongbuk", "서북권": "seobuk", "서남권": "seonam", "동남권": "dongnam"}
-GU_ID = {v: k for k, v in LAWD2GU.items()}  # 구 이름 → 법정동 시군구 코드 5자리 (예: 강남구 → 11680)
+# 구 이름 → 법정동 시군구 코드 5자리 (apt_score.LAWD2GU와 같은 표. 무거운 계산 모듈을 사이트 빌드에 끌어오지 않으려고 따로 둠)
+GU_ID = {"종로구": "11110", "중구": "11140", "용산구": "11170", "성동구": "11200", "광진구": "11215", "동대문구": "11230",
+         "중랑구": "11260", "성북구": "11290", "강북구": "11305", "도봉구": "11320", "노원구": "11350", "은평구": "11380",
+         "서대문구": "11410", "마포구": "11440", "양천구": "11470", "강서구": "11500", "구로구": "11530", "금천구": "11545",
+         "영등포구": "11560", "동작구": "11590", "관악구": "11620", "서초구": "11650", "강남구": "11680", "송파구": "11710", "강동구": "11740"}
 GROUP = {"선행": "leading", "동행": "coincident", "후행": "lagging"}
 THEME = {"가격": "price", "수급심리": "sentiment", "전세": "jeonse", "자금": "funding", "가격부담": "price_burden",
          "관심": "attention", "금융시장": "markets", "거래": "transactions", "공급": "supply"}
@@ -44,7 +46,7 @@ def rid(name):
 
 def dump(path, obj):
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(obj, ensure_ascii=False, separators=(",", ":")))
+    path.write_text(json.dumps(obj, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
 
 
 def build(out):
@@ -95,7 +97,7 @@ def build(out):
     w.writerow(["month", *hist])
     for i, m in enumerate(dates):
         w.writerow([m, *("" if hist[k][i] is None else hist[k][i] for k in hist)])
-    (out / "history.csv").write_text(buf.getvalue())
+    (out / "history.csv").write_text(buf.getvalue(), encoding="utf-8")
 
     dump(out / "index.json", {
         "name": "서울 아파트 공포탐욕지수 API",
