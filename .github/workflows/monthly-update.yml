@@ -1,21 +1,48 @@
 name: 월간 자동 갱신
 
+# GitHub 예약 실행은 몇 시간 늦거나 아예 빠지기도 한다 (2026-10-20 본 실행이 빠짐). 그래서 예비 시각을 두고,
+# 예약 실행은 먼저 'due'에서 이번 달 갱신이 이미 됐거나 먼저 시작한 갱신이 돌고 있으면 바로 끝낸다.
+# 앞 실행이 실패했으면 예비 실행이 다시 시도하는 셈. 22일까지 안 되면 '원자료 캐시 유지'가 다시 실행하고 이슈로 알린다.
 on:
   schedule:
-    - cron: "17 0 20 * *"   # 매달 20일 00:17 UTC = 09:17 KST
-  workflow_dispatch:         # Actions 탭에서 수동 실행
+    - cron: "17 0 20 * *"   # 본 실행: 매달 20일 00:17 UTC = 09:17 KST
+    - cron: "43 6 20 * *"   # 예비: 20일 15:43 KST
+    - cron: "43 12 20 * *"  # 예비: 20일 21:43 KST
+    - cron: "43 0 21 * *"   # 예비: 21일 09:43 KST
+    - cron: "43 0 22 * *"   # 예비: 22일 09:43 KST
+  workflow_dispatch:         # Actions 탭에서 수동 실행 (확인 없이 바로 갱신)
 
 permissions:
   contents: write
   pages: write
   id-token: write
-
-concurrency:  # '화면만 다시 배포'와 같은 묶음: 둘이 겹치지 않고 차례로 (배포·푸시 충돌 방지)
-  group: pages
-  cancel-in-progress: false
+  actions: read   # due: 돌고 있는 갱신 확인
 
 jobs:
+  due:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      go: ${{ steps.c.outputs.go }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: automation
+      - id: c
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ "$GITHUB_EVENT_NAME" != schedule ]; then echo "go=true" >> "$GITHUB_OUTPUT"; exit 0; fi
+          state=$(bash automation/monthly_due.sh)
+          echo "이번 달 갱신 상태: $state" | tee -a "$GITHUB_STEP_SUMMARY"
+          echo "go=$([ "$state" = due ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+
   update:
+    needs: due
+    if: needs.due.outputs.go == 'true'
+    concurrency:  # '화면만 다시 배포'와 같은 묶음: 둘이 겹치지 않고 차례로 (배포·푸시 충돌 방지). 건너뛴 예비 실행은 묶음에 안 들어감
+      group: pages
+      cancel-in-progress: false
     runs-on: ubuntu-latest
     timeout-minutes: 150
     env:
