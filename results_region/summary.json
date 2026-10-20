@@ -40,5 +40,26 @@
    "seoul": 0.269
   },
   "variant": "A"
+ },
+ "ulsan": {
+  "name": "울산",
+  "publish": true,
+  "month": "2026-09",
+  "score": 40.0,
+  "prev": 45.2,
+  "acc": 0.531,
+  "win_median": 0.535,
+  "win_min": -0.131,
+  "acc_seoul": 0.04,
+  "acc_kb": 0.681,
+  "start": "2011-02",
+  "n_sub": 5,
+  "sub_word": "구·군",
+  "sub_acc_mean": {
+   "sub": 0.461,
+   "region": 0.491,
+   "seoul": 0.017
+  },
+  "variant": "A"
  }
 }
