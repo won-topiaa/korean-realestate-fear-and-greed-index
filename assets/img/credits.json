@@ -46,5 +46,45 @@
   "artist": "pixabay: @heecheol890102",
   "page": "https://commons.wikimedia.org/wiki/File:Yeouido_Han_River_Seoul_Bamseom_Pixabay_1602524.jpg",
   "orig": "4912x3264"
+ },
+ "bg-busan": {
+  "title": "Gwangan Bridge and Gwangalli Beach - Gwangalli2721.jpg",
+  "license": "CC0",
+  "licenseUrl": "http://creativecommons.org/publicdomain/zero/1.0/deed.en",
+  "artist": "lumoplank",
+  "page": "https://commons.wikimedia.org/wiki/File:Gwangan_Bridge_and_Gwangalli_Beach_-_Gwangalli2721.jpg",
+  "orig": "5082x3034"
+ },
+ "bg-incheon": {
+  "title": "송도동, Incheon, South Korea (Unsplash).jpg",
+  "license": "CC0",
+  "licenseUrl": "http://creativecommons.org/publicdomain/zero/1.0/deed.en",
+  "artist": "Hon Kim honn2",
+  "page": "https://commons.wikimedia.org/wiki/File:%EC%86%A1%EB%8F%84%EB%8F%99,_Incheon,_South_Korea_(Unsplash).jpg",
+  "orig": "4032x3024"
+ },
+ "bg-gyeonggi": {
+  "title": "Dongjangdae (East Command Post) 01.jpg",
+  "license": "CC0",
+  "licenseUrl": "http://creativecommons.org/publicdomain/zero/1.0/deed.en",
+  "artist": "Bernard Gagnon",
+  "page": "https://commons.wikimedia.org/wiki/File:Dongjangdae_(East_Command_Post)_01.jpg",
+  "orig": "4314x2876"
+ },
+ "bg-gwangju": {
+  "title": "Gwangju View.JPG",
+  "license": "Public domain",
+  "licenseUrl": "https://commons.wikimedia.org/wiki/Template:PD-self",
+  "artist": "Dohuskor",
+  "page": "https://commons.wikimedia.org/wiki/File:Gwangju_View.JPG",
+  "orig": "3264x2448"
+ },
+ "bg-daejeon": {
+  "title": "Night in Daejeon 01.jpg",
+  "license": "CC0",
+  "licenseUrl": "http://creativecommons.org/publicdomain/zero/1.0/deed.en",
+  "artist": "Bernard Gagnon",
+  "page": "https://commons.wikimedia.org/wiki/File:Night_in_Daejeon_01.jpg",
+  "orig": "3633x2188"
  }
 }
