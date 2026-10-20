@@ -63,8 +63,9 @@ def engine_note():
     """지역 페이지 '계산 방식'의 엔진 설명."""
     if not ENG:
         return "서울과 같은 엔진이에요. ", "선행·동행·후행 3그룹을 같은 비중으로 평균해요. "
-    head = (f"서울 밖 {len(ENG['regions'])}개 지역에서 엔진 44개를 비교해 고른 엔진('{ENG['name']}', {ENG['chosen']} 고정)이에요. "
-            "한 지역씩 빼고 고른 엔진을 뺀 지역에 써서 잰 성적으로 골랐어요. ")
+    head = (f"서울 밖 {len(ENG['regions'])}개 지역에서 엔진 44개를 비교해 고른 엔진('{ENG['name']}', {ENG['chosen']} {'임시 ' if ENG.get('provisional') else ''}고정)이에요. "
+            "한 지역씩 빼고 고른 엔진을 뺀 지역에 써서 잰 성적으로 골랐어요. "
+            + ("부산·경기 실거래가 다 들어오면 7개 지역으로 다시 골라 최종으로 고정해요. " if ENG.get("provisional") else ""))
     if ENG.get("weights"):
         top = sorted(((v, k) for k, v in ENG["weights"].items() if v > 0), reverse=True)[:6]
         tw = sum(v for v, _ in top) / sum(v for v in ENG["weights"].values() if v > 0)
