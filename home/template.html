@@ -245,7 +245,8 @@ live.slice().sort((a, b) => b.score - a.score).forEach((r) => {
   H("u", { style: `left:${Math.max(1, Math.min(99, r.score))}%` }, bar);
   const meta = H("div", { class: "meta" }, c);
   const d = r.prev == null ? null : r.score - r.prev;
-  H("span", {}, meta, d == null ? "" : `지난달 ${Math.round(r.prev)}에서 ${d >= 0 ? "▲" : "▼"} ${Math.abs(Math.round(d))} · 정확도 ${r.acc.toFixed(2)}`);
+  const old = r.month && r.month !== D.month ? `${ym(r.month)} 점수 · ` : "";  // 지역 계산이 실패해 지난 결과를 보여 주는 달
+  H("span", {}, meta, old + (d == null ? "" : `지난달 ${Math.round(r.prev)}에서 ${d >= 0 ? "▲" : "▼"} ${Math.abs(Math.round(d))} · `) + `정확도 ${r.acc.toFixed(2)}`);
   H("span", { class: "go" }, meta, "자세히 →");
   c.addEventListener("mouseenter", () => hot(r.id, true));
   c.addEventListener("mouseleave", () => hot(r.id, false));

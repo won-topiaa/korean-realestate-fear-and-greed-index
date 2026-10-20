@@ -23,6 +23,7 @@ on:
       - "api_build.py"
       - "home/template.html"
       - "home_build.py"
+      - "regions.py"
       - "data/korea_map.json"
       - "data/region_maps/**"
       - "results_region/*.json"

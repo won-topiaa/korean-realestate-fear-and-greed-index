@@ -40,6 +40,7 @@ def load(d=DIR):
 def save(df, years=None, d=DIR):
     """years를 주면 그 연도 파일만 다시 쓴다. d: 저장 폴더 (지역 저장소는 data/molit_kr)."""
     d.mkdir(parents=True, exist_ok=True)
+    tmps = []
     for y, part in df.groupby("dealYear"):
         if years is not None and str(y) not in years:
             continue
@@ -47,7 +48,9 @@ def save(df, years=None, d=DIR):
         part = part.sort_values(["_m", "lawd", "_d", "aptSeq", "dealAmount"]).drop(columns=["_m", "_d"])
         tmp = d / f"trades_{y}.csv.gz.tmp"
         part.to_csv(tmp, index=False, compression={"method": "gzip", "compresslevel": 9, "mtime": 0})
-        tmp.replace(d / f"trades_{y}.csv.gz")  # 쓰다 끊겨도 지난 파일 유지
+        tmps.append(tmp)
+    for tmp in tmps:  # 모든 연도를 다 쓴 뒤에 바꾼다: 중간에 끊기거나 이상한 행에 걸려도 지난 파일 그대로
+        tmp.replace(tmp.with_suffix(""))
 
 
 def load_complexes():

@@ -39,7 +39,10 @@ def save(done, rows):
             continue
         path = PART / f"{lawd}.csv.gz"
         old = pd.read_csv(path, dtype=str, keep_default_na=False) if path.exists() else pd.DataFrame(columns=S.COLS)
-        df = pd.concat([old, S._frame(new, lawd)], ignore_index=True).fillna("")
+        nf = S._frame(new, lawd).astype(str)
+        again = set(zip(nf["dealYear"], nf["dealMonth"]))  # 지난 실행이 이 파일을 쓰고 done.json은 못 쓴 채 끊겼으면 같은 달이 또 옴
+        old = old[[ym not in again for ym in zip(old["dealYear"], old["dealMonth"])]]
+        df = pd.concat([old, nf], ignore_index=True).fillna("")
         buf = io.BytesIO()
         with gzip.GzipFile(fileobj=buf, mode="wb", compresslevel=9, mtime=0) as gz:
             gz.write(df.to_csv(index=False).encode())
@@ -59,9 +62,15 @@ def merge(rid):
     store = region_store.load() if region_store.exists() else pd.DataFrame(columns=S.COLS)
     store = store[~store["lawd"].isin(REGIONS[rid]["lawd"])]
     df = pd.concat([store, *parts], ignore_index=True).fillna("")
-    for old in S.files(region_store.DIR):  # 연도 파일을 통째로 다시 쓰므로 지난 파일부터 정리
-        old.unlink()
-    S.save(df, d=region_store.DIR)
+    bad = ~(df["dealYear"].str.isdigit() & df["dealMonth"].str.isdigit())
+    if bad.any():  # 연·월이 빈 행은 저장소 파일을 나눌 수 없다 (한 줄 때문에 병합이 매번 실패하지 않게 빼고 알림)
+        print(f"  알림: 거래 연·월이 비어 뺀 행 {int(bad.sum())}개", flush=True)
+        df = df[~bad]
+    S.save(df, d=region_store.DIR)  # 연도 파일을 다 쓴 뒤 한꺼번에 바꾼다 (실패하면 지난 저장소·partial 그대로)
+    keep = {f"trades_{y}.csv.gz" for y in df["dealYear"].unique()}
+    for old in S.files(region_store.DIR):  # 거래가 없어진 연도 파일만 정리
+        if old.name not in keep:
+            old.unlink()
     done = load_done()
     for l in REGIONS[rid]["lawd"]:
         (PART / f"{l}.csv.gz").unlink(missing_ok=True)
@@ -106,15 +115,18 @@ def main(end, minutes):
                         save(done, rows)
                         print(f"시간 한도 {minutes}분 — 호출 {calls}회 후 멈춤", flush=True)
                         return 3
+                    got = None
                     for attempt in range(4):  # 잠깐 끊긴 경우만 다시 (한도는 바로 멈춤)
                         try:
                             got = M.fetch(lawd, ym)
                             break
                         except RuntimeError as e:
                             print(f"  재시도 {attempt + 1}: {str(e)[:120]}", flush=True)
+                            if time.time() - t0 > minutes * 60:  # 재시도가 길어져 작업 시간 한도를 넘기지 않게
+                                break
                             time.sleep(30 * (attempt + 1))
-                    else:
-                        continue  # 이번에는 건너뛰고 다음 실행에 다시
+                    if got is None:
+                        continue  # 이번에는 건너뛰고 다음 실행에 다시 (시간 한도를 넘겼으면 다음 차례에서 멈춤)
                     rows.setdefault(lawd, []).extend(got)
                     done.setdefault(lawd, []).append(ym)
                     calls += 1
@@ -126,9 +138,8 @@ def main(end, minutes):
             if all(ym in done.get(l, []) for l in d["lawd"] for ym in M.months(START, end)):
                 print(f"{d['name']} 완료 → 지역 저장소 {merge(rid):,}건", flush=True)
                 done = load_done()
-            else:
+            else:  # 한두 달이 끊겨도 남은 한도로 다음 지역은 계속 받는다 (끝의 '남은 지역'이 3을 돌려줌)
                 print(f"{d['name']}: 이번에 못 받은 달이 있어 다음 실행에 이어받기", flush=True)
-                return 3
     except M.QuotaExceeded:
         save(done, rows)
         print(f"하루 호출 한도 — 호출 {calls}회 후 멈춤", flush=True)

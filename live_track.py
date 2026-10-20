@@ -79,6 +79,14 @@ def evaluate():
         zcd = pd.read_pickle(zc)
         for z, o in {**zcd["zones"], **zcd.get("gus", {})}.items():
             rs[z] = o["rs"]
+    for p in sorted((ROOT / "results_region").glob("*.json")):  # 수도권·광역시 (지역 페이지 자료의 실거래 지수, 이름은 record_regions와 같게)
+        x = json.loads(p.read_text())
+        if "top" not in x:
+            continue
+        dates = pd.to_datetime(pd.Series(x["dates"]) + "-01")
+        for name, reg in x["regions"].items():
+            if reg.get("rs") is not None:
+                rs[name if reg["level"] == "top" else f"{x['top']} {name}"] = pd.Series(reg["rs"], index=dates, dtype=float)
 
     def fwd(r, month):
         s = rs.get(r)
@@ -102,8 +110,13 @@ def evaluate():
         if len(pts) >= 20:
             months.append(spearmanr(*zip(*pts)).statistic)
     rel_out = {"months": len(months), "ic": round(float(np.mean(months)), 3) if months else None}
-    return {"logged_months": int(main["month"].nunique()), "first_month": main["month"].min(),
-            "evaluable": max((v["n"] for e in out.values() for v in e.values()), default=0), "by_region": out, "relative": rel_out}
+    reg_eng = main["engine"].str.contains("-지역")  # 수도권·광역시 엔진은 서울 보고서의 기록 개월 수에 섞지 않는다
+    seoul, region = main[~reg_eng], main[reg_eng]
+    n_eval = lambda e: max((v["n"] for k, x in out.items() if (k in set(e["engine"])) for v in x.values()), default=0)
+    return {"logged_months": int(seoul["month"].nunique()), "first_month": seoul["month"].min(), "evaluable": n_eval(seoul),
+            "by_region": out, "relative": rel_out,
+            "regions": {"logged_months": int(region["month"].nunique()), "first_month": region["month"].min() if len(region) else None,
+                        "evaluable": n_eval(region)}}
 
 
 if __name__ == "__main__":

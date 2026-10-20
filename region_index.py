@@ -39,6 +39,8 @@ REB_COLS = ["거래_거래량", "거래_거래량증가", "거래_외지인비�
 APPLY_COLS = ["청약_1순위경쟁률", "청약_미달역수", "청약_무순위경쟁률", "청약_실제공급"]
 KB_COLS = ["가격_3개월모멘텀", "가격_12개월이평괴리", "가격_상승구비율", "설문_매수우위", "설문_매수우위변화", "설문_거래활발",
            "설문_가격전망", "전세_수급", "전세_가격전망", "전세_매매선호", "전세_3개월모멘텀", "부담_전세가율역수"]
+# 수준이 시군구마다 다른 지표: 자기 자료가 늦게 시작한 시군구(부천·화성의 구, 인천 새 구 등)는 그 전의 시도 값을 시작 무렵의 차이만큼 옮겨 잇는다
+LEVEL = ["부담_전세가율역수", "거래_외지인비중", "거래_원정매수비중", "거래_2030비중", "거래_법인매수비중"]
 SUB_OWN = ["가격_3개월모멘텀", "가격_12개월이평괴리", "전세_3개월모멘텀", "부담_전세가율역수",
            "거래_거래량", "거래_거래량증가", "거래_외지인비중", "거래_원정매수비중", "거래_2030비중", "거래_법인매수비중"]
 
@@ -90,6 +92,17 @@ def trade_cols(ind, prefix):
     if subj is not None:
         corp = subj[[c for c in subj.columns if c.endswith("→법인")]].sum(axis=1)
         ind["거래_법인매수비중"] = (corp / subj["합계"]).rolling(3).mean()
+    for k in ("거래_거래량", "거래_거래량증가", "거래_외지인비중", "거래_원정매수비중", "거래_2030비중", "거래_법인매수비중"):
+        if k in ind:  # 거래가 0건인 달(섬 지역 등)의 log(0)·0으로 나누기 → 빈 값 (무한대가 백분위 끝에 박히지 않게)
+            ind[k] = ind[k].replace([np.inf, -np.inf], np.nan)
+
+
+def cut_outsider(df, rid):
+    """시도가 합쳐져 매입자 거주지의 '관할시도외'가 넓은 시도 기준이 된 달부터 외지인 비중을 비운다 (광주: 2026-07 전남광주 통합)."""
+    brk = REGIONS[rid].get("outsider_break")
+    if brk and "거래_외지인비중" in df.columns:
+        df.loc[df.index >= brk, "거래_외지인비중"] = np.nan  # 발표 지연으로 늦춘 뒤라 통합 뒤 자료가 섞인 달은 모두 이 뒤
+    return df
 
 
 def region_indicators(rid, common, cols):
@@ -128,7 +141,7 @@ def region_indicators(rid, common, cols):
         ind[c] = ah[c]
     df = pd.DataFrame({k: (v.reindex(idx) if isinstance(v, pd.Series) else pd.Series(v, index=idx)) for k, v in ind.items()})
     df = df.ffill(limit=3)  # 서울과 같은 규칙: 발표가 늦은 달은 최근 값으로 3개월까지
-    df = timing.apply(df, cols=REB_COLS + APPLY_COLS)
+    df = cut_outsider(timing.apply(df, cols=REB_COLS + APPLY_COLS), rid)
     for c in cols:
         if c.startswith(COMMON_PREFIX) or c in COMMON:
             df[c] = common[c]
@@ -149,12 +162,19 @@ def sub_indicators(rid, lawd, reg):
             own[col] = fn(panel[name])
     trade_cols(own, f"r_{lawd}")
     o = pd.DataFrame({k: v.reindex(idx) for k, v in own.items()}, index=idx).ffill(limit=3)
-    o = timing.apply(o, cols=REB_COLS)
+    o = cut_outsider(timing.apply(o, cols=REB_COLS), rid)
     ind = reg.copy()
     for c in o.columns:
         first = o[c].first_valid_index()
-        if first is not None:
-            ind.loc[ind.index >= first, c] = o.loc[o.index >= first, c]
+        if first is None:
+            continue
+        after = ind.index >= first
+        if c in LEVEL:  # 그 전의 시도 값은 시작 6개월의 평균 차이만큼 옮긴다 (그대로 이으면 백분위가 한쪽 끝에 몰림)
+            w = after & (ind.index < first + pd.DateOffset(months=6))
+            gap = (o.loc[w, c] - ind.loc[w, c]).mean()
+            if pd.notna(gap):
+                ind.loc[~after, c] += gap
+        ind.loc[after, c] = o.loc[after, c]
     return ind, [c for c in o.columns if o[c].notna().any()]
 
 
@@ -193,12 +213,19 @@ def main(rids=None):
         for lawd in d["lawd"]:
             si, own = sub_indicators(rid, lawd, reg)
             st, sa = trades[trades["lawd"] == lawd], tall[tall["lawd"] == lawd]
-            if len(st) < 50:  # 거래가 거의 없는 곳 (섬 지역 등)
-                subs[lawd] = {"region": rid, "ind": si, "rs": None, "fwd12": None, "pairs": None, "own": own, "n_trades": len(st)}
+            thin = len(st) < 50  # 거래가 거의 없는 곳 (섬 지역 등)
+            if not thin:
+                full = si.copy()
+                srs, sy, sp = build_target(full, st, sa, idx)
+                # 반복매매 쌍이 없는 달이 많으면 그 달 가격지수가 기준값으로 튄다 (군위군: 2011년 이후 44%) → 정답·신고가 없이
+                thin = (sp[sp.index >= "2011-01-01"] == 0).mean() > 0.2
+            first = st["date"].min() if len(st) else None  # 첫 거래 달 (행정구역이 바뀐 곳의 옛 거래가 지금 코드로 왔는지 확인용)
+            if thin:
+                subs[lawd] = {"region": rid, "ind": si, "rs": None, "fwd12": None, "pairs": None, "own": own, "n_trades": len(st), "first": first}
                 continue
-            srs, sy, sp = build_target(si, st, sa, idx)
+            si = full
             own += ["거래_신고가비중", "거래_급락거래역수"]
-            subs[lawd] = {"region": rid, "ind": si, "rs": srs, "fwd12": sy, "pairs": sp, "own": own, "n_trades": len(st)}
+            subs[lawd] = {"region": rid, "ind": si, "rs": srs, "fwd12": sy, "pairs": sp, "own": own, "n_trades": len(st), "first": first}
         out[rid]["sub_weight"] = w
         print(f"{d['name']}: 거래 {len(trades):,}건 · 반복매매 쌍 월 중앙값(2011~) {int(npairs[npairs.index >= '2011-01-01'].median())} · "
               f"실거래 지수 {rs.dropna().index[-1].date()}까지 · 시군구 {len(d['lawd'])}곳", flush=True)

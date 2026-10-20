@@ -9,6 +9,7 @@ from pathlib import Path
 from regions import REGIONS
 
 ROOT = Path(__file__).parent
+f2 = lambda v: "–" if v is None else f"{v:.2f}"
 RULE = ("서울 밖 지역은 결과를 보기 전에 정한 기준(2011년 이후 정확도 0.40 이상, 5년씩 나눈 구간의 중앙값 0.25 이상)을 넘은 곳만 공개해요. "
         "지역 엔진을 여러 후보 중에서 고른 뒤에는, 그 지역을 빼고 고른 엔진으로 잰 성적(교차검증)에 이 기준을 적용해요. 서울은 2011년 이후 0.59예요.")
 
@@ -26,16 +27,18 @@ def data():
     t = max(i for i, v in enumerate(s) if v is not None)
     p = ROOT / "results_region" / "summary.json"
     summ = json.loads(p.read_text()) if p.exists() else {}
+    fixed = (ROOT / "data" / "region_engine.json").exists()  # 지역 엔진을 고른 뒤로는 교차검증 성적으로만 공개를 정한다
     regions = [{"id": "seoul", "name": "서울", "prov": "서울", "url": "seoul/", "status": "live", "score": s[t], "prev": s[t - 1],
                 "acc": m["regions"]["서울"]["acc"], "sub": "5대 권역 · 25개 구"}]
     for rid, d in REGIONS.items():
         x = summ.get(rid)
         if x and x["publish"]:
             regions.append({"id": rid, "name": d["name"], "prov": d["name"], "url": f"{rid}/", "status": "live", "score": x["score"],
-                            "prev": x["prev"], "acc": x["acc"], "sub": f"{x['n_sub']}개 {x['sub_word']}"})
+                            "prev": x["prev"], "acc": x["acc"], "month": x["month"], "sub": f"{x['n_sub']}개 {x['sub_word']}"})
         else:
-            why = (f"{'교차검증 ' if x.get('cross_validated') else ''}정확도 {x['acc']:.2f} · 5년 구간 중앙값 {x['win_median']:.2f} (기준 0.40 · 0.25)" if x
-                   else "실거래 자료를 받는 중이에요")
+            why = ("실거래 자료를 받는 중이에요" if not x
+                   else "실거래를 다 받았어요. 7개 지역으로 엔진을 확정한 뒤 공개 여부를 정해요" if fixed and not x.get("cross_validated")
+                   else f"{'교차검증 ' if x.get('cross_validated') else ''}정확도 {f2(x.get('acc'))} · 5년 구간 중앙값 {f2(x.get('win_median'))} (기준 0.40 · 0.25)")
             regions.append({"id": rid, "name": d["name"], "prov": d["name"], "status": "wait", "why": why,
                             "sub": f"{len(d['lawd'])}개 {'시·구' if rid == 'gyeonggi' else '구·군'}"})
     return {"map": json.loads((ROOT / "data" / "korea_map.json").read_text()), "month": m["dates"][t], "regions": regions,

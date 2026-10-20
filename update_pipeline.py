@@ -26,6 +26,7 @@ ROOT = Path(__file__).parent
 PY = str(ROOT / ".venv" / "bin" / "python") if (ROOT / ".venv" / "bin" / "python").exists() else sys.executable
 LOGS = ROOT / "logs"
 LOGS.mkdir(exist_ok=True)
+FETCHED = True  # 이번 실행에서 원자료를 받았는지 (--skip-fetch면 False)
 STAMP = os.environ.get("FGI_STAMP") or dt.datetime.now().strftime("%Y%m%d_%H%M")  # 동시에 받는 갈래들은 부모의 STAMP를 이어받음
 LOG = LOGS / f"update_{STAMP}.log"
 PREFIX = ""  # 갈래 프로세스의 실행 기록 앞에 붙는 이름
@@ -391,8 +392,12 @@ def check_and_summarize():
         if jumps:
             log(f"알림: 지난 실행보다 20점 넘게 바뀐 곳 {jumps} — 자료를 확인해 보세요.")
     pd.concat([hist, pd.DataFrame([row])], ignore_index=True).to_csv(hist_path, index=False)
-    summary = {"run": STAMP, "latest_month": latest, "scores": now, "log": str(LOG.relative_to(ROOT))}
-    (ROOT / "results_zone/update_summary.json").write_text(json.dumps(summary, ensure_ascii=False, indent=1))
+    sp = ROOT / "results_zone/update_summary.json"
+    prev = json.loads(sp.read_text()) if sp.exists() else {}
+    # fetched=false: 자료 받기 없이 재계산만 한 실행. 월간 갱신 확인(monthly_due.sh)은 last_fetched(마지막으로 자료를 받은 실행)로 본다
+    summary = {"run": STAMP, "fetched": FETCHED, "last_fetched": STAMP if FETCHED else prev.get("last_fetched", prev.get("run")),
+               "latest_month": latest, "scores": now, "log": str(LOG.relative_to(ROOT))}
+    sp.write_text(json.dumps(summary, ensure_ascii=False, indent=1))
     zs = [r for r in now if regs[r].get("level") == "zone"]
     gs = {r: v for r, v in now.items() if regs[r].get("level") == "gu"}
     gtxt = f" · 구 {len(gs)}개 {min(gs.values()):.1f}~{max(gs.values()):.1f}" if gs else ""
@@ -484,6 +489,8 @@ def main():
         run_group(a.fetch_group)
         return 0
     sys.path.insert(0, str(ROOT))
+    global FETCHED
+    FETCHED = not a.skip_fetch
     log(f"=== 갱신 시작 {STAMP} ===")
     if not a.skip_fetch:
         fetch_all()
@@ -516,6 +523,12 @@ def main():
         if not step(f"계산 {rel}", lambda rel=rel: run_script(rel)):
             log(f"알림: {rel} 실패 — 수도권·광역시는 지난 결과로 게시")
             region_ok = False
+            why = f"- 실패한 단계: `{rel}`\n- 내용: {STATUS[-1]['detail']}\n- 실행 기록: `{LOG.relative_to(ROOT)}` (Actions 실행의 update-log)\n"
+            (ROOT / "results_region/region_failed.md").write_text(why)  # 월간 갱신 워크플로가 이슈로 알림
+            note = ROOT / "results_region/engine_new.md"
+            if note.exists():  # 엔진은 고정했지만 그 뒤 단계가 실패: 알림에 같이 적는다
+                note.write_text(note.read_text() + f"\n**다만 그 뒤 `{rel}` 단계가 실패해 지역 페이지에는 아직 반영하지 못했어요.** "
+                                "다음 월간 갱신에서 고정한 엔진으로 다시 계산해요.\n")
             break
     if region_ok and (os.environ.get("CI") or a.record):
         step("실시간 기록 (지역)", lambda: run_script("live_track.py --regions"))

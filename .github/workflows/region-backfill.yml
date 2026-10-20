@@ -3,7 +3,7 @@ name: 지역 실거래 채우기
 # 수도권·광역시 실거래를 2006년부터 처음 채운다 (하루 호출 한도 약 1만 건이라 며칠에 나눠서, 맥 없이).
 # 받은 만큼 data/molit_kr/partial/에 커밋하고 다음 날 이어받는다 (region_backfill.py).
 # 7개 지역이 다 차면 '월간 자동 갱신'을 자료 받기 없이 불러 지역 엔진을 고정하고 사이트에 반영한다.
-# 다 찬 뒤에는 매일 1분 안에 바로 끝난다 (그때 이 파일을 지워도 됨).
+# 그 갱신이 실패해 엔진이 아직 임시면 다음 차례(하루 두 번)에 다시 부른다. 최종 엔진이 고정된 뒤에는 1분 안에 끝난다 (그때 이 파일을 지워도 됨).
 on:
   schedule:
     - cron: "23 15 * * *"   # 00:23 KST (한도가 풀린 직후)
@@ -41,6 +41,11 @@ jobs:
                   have.add(row["lawd"])
           left = [r for r, d in REGIONS.items() if not have & set(d["lawd"])]
           print("left=" + ",".join(left))
+          try:
+              eng = json.load(open("data/region_engine.json"))
+          except FileNotFoundError:
+              eng = {"provisional": True}
+          print("fix=" + ("true" if eng.get("provisional") else "false"))  # 최종 엔진이 아직 없음
           PY
 
       - uses: actions/setup-python@v5
@@ -61,7 +66,7 @@ jobs:
         run: |
           printf 'DATA_GO_KR_KEY=%s\n' "$DATA_GO_KR_KEY" > .env
           set +e
-          python region_backfill.py --minutes 320
+          python region_backfill.py --minutes 280   # 재시도가 길어져도 작업 한도(340분) 안에서 저장·커밋
           code=$?
           set -e
           echo "code=$code" >> "$GITHUB_OUTPUT"
@@ -80,7 +85,11 @@ jobs:
           git push origin HEAD:main
 
       - name: 다 찼으면 월간 자동 갱신 부르기 (자료 받기 없이 → 엔진 고정·사이트 반영)
-        if: steps.fill.outputs.code == '0'
+        if: steps.fill.outputs.code == '0' || (steps.left.outputs.left == '' && steps.left.outputs.fix == 'true')
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh workflow run monthly-update.yml -R "$GITHUB_REPOSITORY" --ref main -f skip_fetch=true
+        run: |
+          busy=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/monthly-update.yml/runs?per_page=20" \
+            --jq '[.workflow_runs[] | select(.status != "completed")] | length')
+          if [ "$busy" != 0 ]; then echo "월간 자동 갱신이 돌고 있어 다음 차례에 다시 확인"; exit 0; fi
+          gh workflow run monthly-update.yml -R "$GITHUB_REPOSITORY" --ref main -f skip_fetch=true

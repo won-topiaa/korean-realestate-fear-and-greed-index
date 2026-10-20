@@ -9,7 +9,7 @@
 REGIONS = {
     "gwangju": {
         "name": "광주", "kb": "(구)광주광역시", "reb": "전남광주>(구)광주", "reb_sup": "전남광주>광주", "reb_unsold": "광주",
-        "reb_sub": "전남광주", "reb_sum_subs": True, "kb_code": "1200000000", "kb_sub_lawd_only": True,
+        "reb_sub": "전남광주", "reb_sum_subs": True, "kb_code": "1200000000", "kb_sub_lawd_only": True, "outsider_break": "2026-07-01",
         "lawd": {"12210": "동구", "12240": "서구", "12270": "남구", "12300": "북구", "12330": "광산구"},
     },
     "daejeon": {
@@ -58,5 +58,12 @@ REGIONS = {
 }
 # reb: 부동산원 거래 통계의 시도 이름, reb_sup: 수급지수 이름, reb_unsold: 미분양 이름('>계'), reb_sub: 시군구 앞 이름 (없으면 reb),
 # reb_sum_subs: 시도 거래 통계·미분양을 시군구 합으로 (광주: 통합 뒤 '(구)광주' 합계가 2026-07부터 0, 구별 값은 이어짐),
+# outsider_break: 시도 통합으로 매입자 거주지 '관할시도외'의 뜻이 바뀐 달 (그 달부터 외지인 비중을 비움),
 # kb: KB 시도 이름, kb_code: KB 시군구 가격지수의 지역코드, kb_sub_lawd_only: 그 코드의 시군구 중 이 지역(lawd 이름)만 씀
 LAWD2REGION = {c: r for r, d in REGIONS.items() for c in d["lawd"]}
+
+
+def josa(word, a="을", b="를"):
+    """받침 있으면 a, 없으면 b (광주를·대구를, 부산은·경기는, 시·구를)."""
+    c = ord(word[-1]) - 0xAC00
+    return a if 0 <= c < 11172 and c % 28 else b

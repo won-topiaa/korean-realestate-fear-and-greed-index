@@ -181,7 +181,7 @@ details.more[open] > summary { margin-bottom: 10px; }
 <div class="wrap">
   <header style="display:grid;gap:6px">
     <div class="topbar">
-      <a class="back" href="../">← 서울 아파트 공포탐욕지도</a>
+      <a class="back" href="../seoul/">← 서울 아파트 공포탐욕지도</a>
       <div class="theme-ctl" id="theme-ctl" role="group" aria-label="화면 밝기"><span class="tl" aria-hidden="true">화면</span><button type="button" data-m="auto" aria-pressed="true" title="기기 설정을 따라요">자동</button><button type="button" data-m="light" aria-pressed="false">밝게</button><button type="button" data-m="dark" aria-pressed="false">어둡게</button></div>
     </div>
     <div class="eyebrow">서울 아파트 · 단지별 실거래 위치</div>
@@ -382,7 +382,7 @@ function renderDetail(it, d) {
   const chips = H("div", { class: "chips" }, head);
   const gm = META.gu[it.seq.slice(0, 5)] || {};
   if (gm.score != null) {
-    const a = H("a", { class: "chip", href: "../#" + encodeURIComponent(gm.name), title: "지도에서 이 구의 공포탐욕지수 보기" }, chips);
+    const a = H("a", { class: "chip", href: "../seoul/#" + encodeURIComponent(gm.name), title: "지도에서 이 구의 공포탐욕지수 보기" }, chips);
     a.append(`${gm.name} 공포탐욕 `);
     H("b", {}, a, gm.score.toFixed(1));
     a.append(` · ${fgName(gm.score)} (${+gm.month.slice(5)}월)`);

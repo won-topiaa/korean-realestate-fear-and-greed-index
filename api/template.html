@@ -71,11 +71,11 @@ ul { margin: 0; padding-left: 20px; display: grid; gap: 4px; }
 <div class="wrap">
   <header style="display:grid;gap:6px">
     <div class="topbar">
-      <div class="eyebrow">서울 아파트 · 공포탐욕지수 데이터</div>
+      <div class="eyebrow">아파트 · 공포탐욕지수 데이터</div>
       <div class="theme-ctl" id="theme-ctl" role="group" aria-label="화면 밝기"><span class="tl" aria-hidden="true">화면</span><button type="button" data-m="auto" aria-pressed="true" title="기기 설정을 따라요">자동</button><button type="button" data-m="light" aria-pressed="false">밝게</button><button type="button" data-m="dark" aria-pressed="false">어둡게</button></div>
     </div>
     <h1>데이터 API</h1>
-    <p class="sub">서울 아파트 공포탐욕지수를 다른 서비스에서 가져다 쓸 수 있도록 JSON·CSV로 열어 두었어요. 서울 전체·5대 권역·25개 구의 2006년부터 월별 점수가 들어 있어요.</p>
+    <p class="sub">아파트 공포탐욕지수를 다른 서비스에서 가져다 쓸 수 있도록 JSON·CSV로 열어 두었어요. 서울 전체·5대 권역·25개 구와, 공개 기준을 넘은 수도권·광역시와 그 시군구의 2006년부터 월별 점수가 들어 있어요.</p>
     <div class="facts"><span>키 없이 GET</span><span>다른 사이트에서 바로 호출 (CORS 허용)</span><span>매달 20일 갱신</span><span>JSON · CSV</span></div>
   </header>
 
@@ -89,7 +89,7 @@ ul { margin: 0; padding-left: 20px; display: grid; gap: 4px; }
     <h2>주소</h2>
     <dl class="rows">
       <div><dt><a href="v1/latest.json"><code>/api/v1/latest.json</code></a></dt><dd>최신 달 점수·구간·1·3·12개월 변화, 속도별 3그룹·주제 9개 점수, 구는 서울 안 상대 강도 순위까지</dd></div>
-      <div><dt><a href="v1/history.json"><code>/api/v1/history.json</code></a></dt><dd>2006년 1월부터 월별 점수, 지역 31곳 전체</dd></div>
+      <div><dt><a href="v1/history.json"><code>/api/v1/history.json</code></a></dt><dd>2006년 1월부터 월별 점수, 모든 지역</dd></div>
       <div><dt><a href="v1/history.csv"><code>/api/v1/history.csv</code></a></dt><dd>같은 내용을 표로 (열 이름 = 지역 id)</dd></div>
       <div><dt><a href="v1/history/seoul.json"><code>/api/v1/history/{id}.json</code></a></dt><dd>한 지역의 월별 점수 (예: <code>seoul</code>, <code>dongnam</code>, <code>11680</code>)</dd></div>
       <div><dt><a href="v1/regions.json"><code>/api/v1/regions.json</code></a></dt><dd>지역 id·이름·상위 지역</dd></div>
@@ -110,7 +110,7 @@ ul { margin: 0; padding-left: 20px; display: grid; gap: 4px; }
 
   <section class="panel" aria-label="지역 id">
     <h2>지역 id</h2>
-    <p class="sub" style="font-size:14px">서울 전체는 <code>seoul</code>, 권역은 영문 이름, 구는 법정동 시군구 코드 5자리예요.</p>
+    <p class="sub" style="font-size:14px">서울 전체는 <code>seoul</code>, 서울 권역은 영문 이름, 구·시군은 법정동 시군구 코드 5자리, 수도권·광역시는 영문 이름(예: <code>incheon</code>)이에요.</p>
     <div class="ids" id="ids"><p class="loading">불러오는 중…</p></div>
   </section>
 
@@ -118,19 +118,20 @@ ul { margin: 0; padding-left: 20px; display: grid; gap: 4px; }
     <h2>필드</h2>
     <dl class="rows">
       <div><dt><code>month</code> <code>updated</code> <code>engine</code></dt><dd>점수의 기준 달 · 계산한 날 · 계산 엔진 버전</dd></div>
+      <div><dt><code>level</code></dt><dd><code>seoul</code> 서울 전체 · <code>zone</code> 서울 5대 권역 · <code>gu</code> 서울 25개 구 · <code>region</code> 수도권·광역시 · <code>sigungu</code> 그 시군구 (상위 지역은 <code>regions.json</code>의 <code>parent</code>)</dd></div>
       <div><dt><code>score</code></dt><dd>공포탐욕 점수 0~100 (소수 한 자리). 자료가 없는 달은 <code>null</code></dd></div>
       <div><dt><code>band</code></dt><dd>구간: 0~25 극단적 공포 · 25~45 공포 · 45~55 중립 · 55~75 탐욕 · 75~100 극단적 탐욕</dd></div>
       <div><dt><code>change</code></dt><dd>1·3·12개월 전보다 점수가 변한 폭 (점)</dd></div>
-      <div><dt><code>groups</code></dt><dd>속도별 3그룹: <code>leading</code> 선행(기대·금리 변화·검색·주가), <code>coincident</code> 동행(가격·거래·수급), <code>lagging</code> 후행(가격부담·금리 수준·미분양). 최종 점수는 세 그룹 평균을 눈금에 맞춘 값</dd></div>
+      <div><dt><code>groups</code></dt><dd>속도별 3그룹: <code>leading</code> 선행(기대·금리 변화·검색·주가), <code>coincident</code> 동행(가격·거래·수급), <code>lagging</code> 후행(가격부담·금리 수준·미분양). 서울·권역·구는 최종 점수가 세 그룹 평균을 눈금에 맞춘 값이에요. 수도권·광역시는 표마다 비중을 따로 줘서 최종 점수가 세 그룹 평균과 다를 수 있어요(참고용)</dd></div>
       <div><dt><code>themes</code></dt><dd>주제 9개: <code>price</code> 가격, <code>sentiment</code> 수급심리, <code>jeonse</code> 전세, <code>funding</code> 자금(금리·대출), <code>price_burden</code> 가격부담, <code>attention</code> 관심(검색량), <code>markets</code> 금융시장, <code>transactions</code> 거래, <code>supply</code> 공급(미분양)</dd></div>
-      <div><dt><code>relative_strength_rank</code></dt><dd>구만: 같은 달 25개 구 중 신고가 비중 순위 (1 = 가장 강함). 공포탐욕 점수와 별개 지표</dd></div>
+      <div><dt><code>relative_strength_rank</code></dt><dd>서울의 구만: 같은 달 25개 구 중 신고가 비중 순위 (1 = 가장 강함). 공포탐욕 점수와 별개 지표</dd></div>
     </dl>
     <p class="note">점수·그룹·주제 모두 높을수록 탐욕(과열), 낮을수록 공포(위축) 쪽이에요. 예를 들어 <code>price_burden</code>이 높으면 가격 부담이 커서 과열 쪽, <code>funding</code>이 낮으면 금리·대출 여건이 빡빡해 위축 쪽이에요.</p>
   </section>
 
   <footer class="foot">
     <p><b>이용 안내</b> · 시장 분위기를 재는 지표이고, 사고팔 시점을 알려주는 신호가 아니에요. 계산 방법이나 자료가 바뀌면 지난 달 값도 다시 계산될 수 있어요(<code>engine</code>으로 구분). 계산에 쓴 원자료 값은 들어 있지 않고 직접 계산한 점수만 있어요.</p>
-    <p><b>계산 방법</b> · 지표 34개(같은 출처끼리 묶어 25표)를 선행·동행·후행 3그룹으로 나눠 평균해요. 정확도와 한계는 <a href="../report/">백테스트 보고서</a>에 있어요.</p>
+    <p><b>계산 방법</b> · 서울은 지표 34개(같은 출처끼리 묶어 25표)를 선행·동행·후행 3그룹으로 나눠 평균해요. 정확도와 한계는 <a href="../report/">백테스트 보고서</a>에 있어요. 수도권·광역시는 지역마다 받을 수 있는 지표로 표를 만들고, 여러 엔진 후보 중 교차검증으로 고른 비중으로 합쳐요(각 지역 페이지 아래 설명).</p>
     <p><b>서비스에 넣어 쓰실 때</b> · <a href="mailto:wontopiaaa@gmail.com?subject=%5B%EC%84%9C%EC%9A%B8%20%EC%95%84%ED%8C%8C%ED%8A%B8%20%EA%B3%B5%ED%8F%AC%ED%83%90%EC%9A%95%EC%A7%80%EB%8F%84%5D%20API%20%EC%9D%B4%EC%9A%A9">wontopiaaa@gmail.com</a>으로 알려 주세요. 갱신 시각이나 형식이 바뀔 때 미리 알려 드릴게요.</p>
   </footer>
 </div>

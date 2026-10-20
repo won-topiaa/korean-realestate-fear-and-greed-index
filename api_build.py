@@ -46,6 +46,14 @@ def rid(name, ids=None):
     return "seoul" if name == "서울" else ZONE_ID.get(name) or GU_ID[name]
 
 
+def on_dates(r, src, dst):
+    """지역 결과의 달을 서울 달(dst)에 맞춘다. 지역 단계가 실패해 지난 결과가 남은 달에는 그 지역의 새 달이 null."""
+    pos = {m: i for i, m in enumerate(src)}
+    f = lambda s: [s[pos[m]] if m in pos else None for m in dst]
+    return {**r, "score": f(r["score"]), "speed": {k: f(v) for k, v in r["speed"].items()},
+            "themes": {k: f(v) for k, v in r["themes"].items()}}
+
+
 def dump(path, obj):
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(obj, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
@@ -63,14 +71,15 @@ def build(out):
     from regions import REGIONS
     for rg in home_build.published():
         x = json.loads((ROOT / "results_region" / f"{rg}.json").read_text())
-        assert x["dates"] == dates, f"{rg}: 기간이 서울과 다름"
+        if x["dates"] != dates:
+            print(f"  {rg}: 기간이 서울과 달라({x['dates'][-1]} · 서울 {dates[-1]}) 서울 달에 맞춤", flush=True)
         code = {v: k for k, v in REGIONS[rg]["lawd"].items()}
-        R[x["top"]] = {**x["regions"][x["top"]], "level": "region", "gus": x["gu_order"]}
+        R[x["top"]] = {**on_dates(x["regions"][x["top"]], x["dates"], dates), "level": "region", "gus": x["gu_order"]}
         ids[x["top"]] = rg
         extra.append(x["top"])
         for sub in x["gu_order"]:
             key = f"{x['top']} {sub}"
-            R[key] = {**x["regions"][sub], "level": "gu", "zone": x["top"]}
+            R[key] = {**on_dates(x["regions"][sub], x["dates"], dates), "level": "sigungu", "zone": x["top"]}
             ids[key] = code[sub]
             extra.append(key)
     names += extra
@@ -133,10 +142,11 @@ def build(out):
             "score": "공포탐욕 점수 0~100 (소수 한 자리). 자료가 없는 달은 null",
             "band": "점수 구간 (scale 참고)",
             "change": "1·3·12개월 전보다 점수가 얼마나 변했는지 (점)",
-            "groups": "속도별 3그룹 점수: leading 선행(기대·금리 변화·검색·주가), coincident 동행(가격·거래·수급), lagging 후행(가격부담·금리 수준·미분양). 최종 점수는 세 그룹의 평균을 눈금에 맞춘 값",
+            "level": "seoul 서울 전체 · zone 서울 5대 권역 · gu 서울 25개 구 · region 수도권·광역시 · sigungu 그 시군구 (상위 지역은 regions.json의 parent)",
+            "groups": "속도별 3그룹 점수: leading 선행(기대·금리 변화·검색·주가), coincident 동행(가격·거래·수급), lagging 후행(가격부담·금리 수준·미분양). 서울·권역·구는 최종 점수가 세 그룹의 평균을 눈금에 맞춘 값. 수도권·광역시는 표마다 비중을 따로 줘서 최종 점수가 세 그룹 평균과 다를 수 있음 (참고용)",
             "themes": "주제별 점수: price 가격, sentiment 수급심리(중개사 설문), jeonse 전세, funding 자금(금리·대출), price_burden 가격부담(PIR·구매력·전세가율), attention 관심(검색량), markets 금융시장(건설주·KOSPI), transactions 거래, supply 공급(미분양)",
             "direction": "score·groups·themes 모두 높을수록 탐욕(과열), 낮을수록 공포(위축) 쪽. 예: price_burden이 높으면 가격 부담이 커서 과열 쪽, funding이 낮으면 금리·대출 여건이 빡빡해 위축 쪽",
-            "relative_strength_rank": "구만: 같은 달 25개 구 중 신고가 비중 순위 (1 = 가장 강함). 공포탐욕 점수와 별개 지표",
+            "relative_strength_rank": "서울의 구만: 같은 달 25개 구 중 신고가 비중 순위 (1 = 가장 강함). 공포탐욕 점수와 별개 지표",
         },
         "method": SITE_URL + "report/",
         "site": SITE_URL,

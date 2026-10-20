@@ -11,7 +11,9 @@ since=$(TZ=Asia/Seoul date +%Y%m)20
 
 if (( 10#$day < 20 )); then echo early; exit 0; fi
 
-last=$(gh api "repos/$repo/contents/results_zone/update_summary.json?ref=main" -H "Accept: application/vnd.github.raw" | jq -r .run)
+# 자료 받기 없이 재계산만 한 실행(지역 엔진 고정용 skip_fetch, fetched=false)은 이번 달 갱신으로 치지 않는다
+last=$(gh api "repos/$repo/contents/results_zone/update_summary.json?ref=main" -H "Accept: application/vnd.github.raw" \
+  | jq -r 'if .fetched == false then (.last_fetched // "") else .run end')
 if [[ ! "${last:0:8}" < "$since" ]]; then echo done; exit 0; fi
 
 busy=$(gh api "repos/$repo/actions/workflows/monthly-update.yml/runs?per_page=30" \

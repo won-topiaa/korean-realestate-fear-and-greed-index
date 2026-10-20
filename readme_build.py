@@ -8,7 +8,7 @@ import json
 import re
 from pathlib import Path
 
-from regions import REGIONS
+from regions import REGIONS, josa
 
 ROOT = Path(__file__).parent
 f2 = lambda v: "–" if v is None else f"{v:.2f}".replace("-", "−")
@@ -46,7 +46,7 @@ def current():
     if rk:
         lines += [f"- 서울 안 상대 강도(신고가 비중 순위)는 {'·'.join(g for _, g in rk[:3])}가 1~3위, {rk[-1][1]}가 {rk[-1][0]}위예요."]
     if wait:
-        lines += [f"- {'·'.join(wait)}는 아직 검증 중이라 점수를 공개하지 않아요 (아래 '수도권·광역시 확장')."]
+        lines += [f"- {'·'.join(wait)}{josa(wait[-1], '은', '는')} 아직 검증 중이라 점수를 공개하지 않아요 (아래 '수도권·광역시 확장')."]
     lines += ["- 최신 점수는 매달 `results_zone/update_summary.json`(서울)과 `results_region/summary.json`(수도권·광역시)에 기록돼요."]
     return lines
 
@@ -71,14 +71,17 @@ def regional():
     lines += ["", f"**지금 결과** (정확도는 그 지역을 빼고 고른 엔진으로 잰 교차검증 성적, 공개 기준 0.40·5년 구간 중앙값 0.25)",
               "| 지역 | 지금 점수 | 교차검증 정확도 | 5년 구간 중앙값 | 2019년 이후 | 서울과 같은 엔진이면 | 서울 지수를 그대로 쓰면 | 상태 |",
               "|---|---|---|---|---|---|---|---|"]
-    rows = sorted(eng["loro"].items(), key=lambda kv: -kv[1]["acc"])
+    loro = eng.get("loro") or {}
+    rows = sorted(loro.items(), key=lambda kv: -(kv[1].get("acc") if kv[1].get("acc") is not None else -9))
     for r, lo in rows:
         x, b = summ.get(r, {}), base.get(r, {}).get("base", {})
-        lines.append(f"| {REGIONS[r]['name']} | {f1(x.get('score'))} | {f2(lo['acc'])} | {f2(lo['win_median'])} | {f2(lo['recent'])} | "
+        score = x.get("score") if x.get("publish") else None  # 공개 기준을 못 넘은 지역은 점수를 쓰지 않는다
+        lines.append(f"| {REGIONS[r]['name']} | {f1(score)} | {f2(lo.get('acc'))} | {f2(lo.get('win_median'))} | {f2(lo.get('recent'))} | "
                      f"{f2(b.get('acc'))} / {f2(b.get('win_median'))} | {f2(x.get('acc_seoul'))} | {'공개' if x.get('publish') else '검증 중'} |")
-    rest = [REGIONS[r]["name"] for r in REGIONS if r not in eng["loro"]]
-    if rest:
-        lines.append(f"| {'·'.join(rest)} | | 실거래 받는 중 | | | | | 검증 중 |")
+    for why, rest in (("엔진 확정 대기", [REGIONS[r]["name"] for r in REGIONS if r not in loro and r in summ]),
+                      ("실거래 받는 중", [REGIONS[r]["name"] for r in REGIONS if r not in loro and r not in summ])):
+        if rest:
+            lines.append(f"| {'·'.join(rest)} | | {why} | | | | | 검증 중 |")
     sc = eng.get("seoul_check") or {}
     lines += ["", f"지역 엔진을 학습에 안 쓴 서울에 써 보면 {f2(sc.get('acc'))}이라(서울 엔진 {f2(seoul_acc)}) 서울은 서울 엔진을 그대로 써요."]
     if eng.get("weights"):

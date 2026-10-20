@@ -16,6 +16,7 @@ from urllib.parse import quote
 import api_build
 import home_build
 from map.build import render as map_render
+from regions import josa
 
 ROOT = Path(__file__).parent
 SITE = ROOT / "site"
@@ -162,12 +163,6 @@ def wrap(src, dst, desc, inject=None, skin_args=None, intro=None):
     dst.write_text(HEAD.format(desc=desc, title=title, og=og_meta(dst, desc), body_attr=' class="sk-intro"' if intro else "") + html + TAIL)
 
 
-def josa(word, a="을", b="를"):
-    """받침 있으면 a, 없으면 b (구·군을, 시·구를)."""
-    c = ord(word[-1]) - 0xAC00
-    return a if 0 <= c < 11172 and c % 28 else b
-
-
 def region_fill(d):
     """서울 밖 지역 페이지에 들어갈 글 (지도 템플릿의 빈칸)."""
     nm, sw, n = d["top"], d["sub_word"], len(d["gu_order"])
@@ -235,9 +230,9 @@ if __name__ == "__main__":
     shutil.rmtree(SITE / "api", ignore_errors=True)
     month, n = api_build.build(SITE / "api" / "v1")
     wrap(ROOT / "api" / "template.html", SITE / "api" / "index.html",
-         "서울 아파트 공포탐욕지수를 JSON·CSV로. 서울·5대 권역·25개 구의 2006년부터 월별 점수, 키 없이 호출, 매달 20일 갱신.",
+         "아파트 공포탐욕지수를 JSON·CSV로. 서울·25개 구와 공개한 수도권·광역시의 2006년부터 월별 점수, 키 없이 호출, 매달 20일 갱신.",
          skin_args=("../", "데이터 API", ('<header style="display:grid;gap:6px">', "</header>"),
-                    ("<h1>데이터 API</h1>", '<h1><span class="sk-h1a">서울 아파트 공포탐욕지수</span><span class="sk-h1b">데이터 API</span></h1>'),
+                    ("<h1>데이터 API</h1>", '<h1><span class="sk-h1a">아파트 공포탐욕지수</span><span class="sk-h1b">데이터 API</span></h1>'),
                     ("bg-report", "50%"), 960))
     print(f"api: {month} · 지역 {n}곳")
     (SITE / ".nojekyll").write_text("")

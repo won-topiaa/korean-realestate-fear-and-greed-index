@@ -15,7 +15,7 @@
 - '자료로 비중' 엔진은 평가하는 지역을 빼고 배운 비중으로 잰다 (자기 지역 성적으로 비중을 정하는 이득을 없앰).
 - 그 규칙 자체의 성적은 한 지역씩 빼고 고른 엔진을 뺀 지역에 써서 잰다 (지역 교차검증). 공개는 이 교차검증 성적이
   처음 정한 기준(정확도 0.40 이상, 5년 구간 중앙값 0.25 이상)을 넘는 지역만.
-- 서울은 학습에 쓰지 않고 마지막 점검용 (서울 엔진은 그대로 둔다). 2011~2018년으로 고르고 2019년~에서 재는 기간 검증도 함께 본다.
+- 서울은 학습에 쓰지 않고 마지막 점검용 (서울 엔진은 그대로 둔다). 2011~2017년(정답이 2019년 전에 끝나는 달)으로 고르고 2019년~에서 재는 기간 검증도 함께 본다.
 결과: results_region/engine_study.json, data/region_engine.json (region_v3.py가 쓰는 고정 엔진).
 - 임시 엔진 (2026-10-20, 사용자 요청): 부산·경기 실거래가 다 들어오기 전에 있는 지역(5곳)으로 같은 규칙으로 골라 먼저 쓴다 (--provisional).
 - 7개 지역이 다 모이면: 임시 엔진을 그대로 새 지역(고를 때 안 본 부산·경기)에 써 본 성적을 남기고, 7개 지역으로 다시 골라 최종으로 고정한다.
@@ -130,9 +130,10 @@ CONFIGS = [{"name": f"{t} · {a} · {w}개월", "drop": d, "agg": ag, "window": 
 CONFIGS += [{"name": f"자료로 비중 · {w}개월", "drop": [], "agg": "flat", "window": w, "learn": True} for w in WINS]
 
 
-def run(cfg, name, train, a=OFF, b=None):
+def run(cfg, name, train, a=OFF, b=None, wb=None):
+    """wb: 비중을 배울 때 쓰는 마지막 달 (없으면 b — 평가 기간과 같게)."""
     vt, vm = V(name, cfg["window"])
-    w = ic_weights([n for n in train if n != name], cfg["window"], b) if cfg.get("learn") else None  # 평가 지역은 비중 학습에서 뺀다
+    w = ic_weights([n for n in train if n != name], cfg["window"], wb if wb is not None else b) if cfg.get("learn") else None  # 평가 지역은 비중 학습에서 뺀다
     s = core(vt, vm, cfg["drop"], cfg["agg"], w)
     return score(s, (SEOUL if name == "seoul" else DATA[name])["fwd12"], a, b)
 
@@ -171,9 +172,10 @@ if __name__ == "__main__":
               f"| 기본 {r['base']['acc']:.2f}/{r['base']['win_median']:.2f}")
     print(f"  평균 목표: 고른 엔진 {np.mean([r['obj'] for r in loro.values()]):.3f} · 기본 {np.mean([r['base']['obj'] for r in loro.values()]):.3f}")
 
-    cfg_t, _ = best(regions, OFF, SPLIT)
-    per = {n: {"pick": run(cfg_t, n, regions, SPLIT), "base": run(base, n, regions, SPLIT)} for n in regions}
-    print(f"\n[기간 검증: 2011~2018년으로 고른 엔진 = {cfg_t['name']} · 2019년~ 정확도]")
+    TRAIN_END = SPLIT - pd.DateOffset(months=12)  # 이후 12개월 가격이 2019년 전에 끝나는 달까지만 고르고 배운다
+    cfg_t, _ = best(regions, OFF, TRAIN_END)
+    per = {n: {"pick": run(cfg_t, n, regions, SPLIT, wb=TRAIN_END), "base": run(base, n, regions, SPLIT)} for n in regions}
+    print(f"\n[기간 검증: 2011~2017년(이후 12개월이 2019년 전에 끝나는 달)으로 고른 엔진 = {cfg_t['name']} · 2019년~ 정확도]")
     print("  ", {n: f"{p['pick']['acc']:.2f} (기본 {p['base']['acc']:.2f})" for n, p in per.items()})
 
     final, obj = best(regions)
@@ -182,7 +184,7 @@ if __name__ == "__main__":
     EP = bt.ROOT / "data" / "region_engine.json"
     old = json.loads(EP.read_text()) if EP.exists() else None
     complete = set(regions) == set(REGIONS)
-    provisional = "--provisional" in sys.argv and not complete and (old is None or old.get("provisional"))
+    provisional = "--provisional" in sys.argv and not complete and old is None  # 임시 엔진은 한 번만: 다시 고르면 새 지역이 '안 본 지역'이 아니게 됨
     final_fit = complete and (old is None or old.get("provisional") or "--refit" in sys.argv)  # 7개 지역: 임시 엔진이면 다시 골라 최종으로
     if provisional or final_fit:
         holdout = {}
@@ -195,7 +197,9 @@ if __name__ == "__main__":
                "chosen": str(pd.Timestamp.now().date()), "regions": regions, "objective": obj,
                "loro": {h: {k: r[k] for k in ("engine", "acc", "win_median", "win_min", "recent")} for h, r in loro.items()},
                "publish": pub, "seoul_check": sr, "provisional": provisional,
-               "previous": {"name": old["name"], "chosen": old["chosen"], "regions": old["regions"], "holdout": holdout} if holdout else None}
+               # --refit으로 다시 고를 때도 임시 엔진의 시험 성적(미리 정한 기록)은 그대로 둔다
+               "previous": {"name": old["name"], "chosen": old["chosen"], "regions": old["regions"], "holdout": holdout} if holdout
+               else (old or {}).get("previous")}
         json.dump(eng, open(EP, "w"), ensure_ascii=False, indent=1, default=float)
         print(f"{'임시' if provisional else '최종'} 엔진 저장: data/region_engine.json · 공개", [h for h, v in pub.items() if v])
         lines = [f"## 지역 엔진 {'임시 ' if provisional else ''}고정: {final['name']}", "", f"- 지역 {len(regions)}곳, 엔진 후보 {len(CONFIGS)}개, 목표 {obj:.3f}",
@@ -207,6 +211,11 @@ if __name__ == "__main__":
         if final.get("learn"):
             top = sorted(eng["weights"].items(), key=lambda x: -x[1])[:8]
             lines += ["", "비중이 큰 표: " + ", ".join(f"{k} {v:.2f}" for k, v in top)]
+        subs = pd.read_pickle(bt.ROOT / "results_region" / "region_calc.pkl")["subs"]
+        late = [f"{REGIONS[x['region']]['name']} {REGIONS[x['region']]['lawd'][l]}({'실거래 0건' if x.get('first') is None else format(x['first'], '%Y-%m')})"
+                for l, x in subs.items() if x.get("first") is None or x["first"] > pd.Timestamp("2008-01-01")]
+        if late:  # 행정구역이 바뀐 곳의 옛 거래가 지금 코드로 안 왔을 수 있음 (부천·화성의 구 등) — 확인 필요
+            lines += ["", "첫 실거래가 2008년 뒤인 시군구 (옛 거래가 빠졌는지 확인): " + ", ".join(late)]
         if holdout:
             lines += ["", f"임시 엔진({old['chosen']}, {len(old['regions'])}개 지역으로 고름)을 고를 때 안 본 지역에 그대로 쓴 성적:"]
             lines += [f"- {REGIONS[h]['name']}: 정확도 {r['acc']:.2f}, 5년 중앙값 {r['win_median']:.2f}, 2019년 이후 {r['recent']:.2f}" for h, r in holdout.items()]

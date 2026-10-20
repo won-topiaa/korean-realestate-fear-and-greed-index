@@ -3,8 +3,8 @@
   "name": "광주",
   "publish": true,
   "month": "2026-09",
-  "score": 38.9,
-  "prev": 40.3,
+  "score": 39.3,
+  "prev": 40.7,
   "acc": 0.714,
   "win_median": 0.364,
   "win_min": 0.033,
@@ -80,9 +80,9 @@
   "n_sub": 9,
   "sub_word": "구·군",
   "sub_acc_mean": {
-   "sub": 0.6,
-   "region": 0.585,
-   "seoul": 0.073
+   "sub": 0.656,
+   "region": 0.639,
+   "seoul": 0.084
   },
   "engine": "2026-10-20",
   "cross_validated": true

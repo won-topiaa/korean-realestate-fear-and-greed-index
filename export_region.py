@@ -11,7 +11,7 @@ import pandas as pd
 
 import backtest as bt
 import v3
-from regions import REGIONS
+from regions import REGIONS, josa
 
 RV = pd.read_pickle(bt.ROOT / "results_region" / "region_v3.pkl")
 RC = pd.read_pickle(bt.ROOT / "results_region" / "region_calc.pkl")
@@ -57,6 +57,11 @@ def short(name):
 summary = {}
 ENG = RV.get("engine")  # region_v3가 쓴 고정 엔진 (없으면 서울과 같은 v3)
 IND_META = pd.read_csv(bt.ROOT / "data" / "indicator_meta.csv", index_col=0).fillna("")
+VOTE_LABEL = {v3.GOOGLE: "구글 검색량 급증"}  # 여러 지표를 묶은 표라 indicator_meta.csv에 줄이 없는 것
+
+
+def label(k):
+    return IND_META.loc[k, "설명"].split(" (")[0] if k in IND_META.index else VOTE_LABEL.get(k, k)
 
 
 def engine_note():
@@ -69,7 +74,7 @@ def engine_note():
     if ENG.get("weights"):
         top = sorted(((v, k) for k, v in ENG["weights"].items() if v > 0), reverse=True)[:6]
         tw = sum(v for v, _ in top) / sum(v for v in ENG["weights"].values() if v > 0)
-        names = ", ".join(IND_META.loc[k, "설명"].split(" (")[0] for _, k in top)
+        names = ", ".join(label(k) for _, k in top)
         how = (f"표마다 비중을 두고 합치는데, 비중은 {len(ENG['regions'])}개 지역에서 각 표가 이후 12개월 가격과 맞은 정도(순위상관, 맞지 않은 표는 0)로 정해 고정했어요. "
                f"비중이 큰 표는 {names}이고 이 여섯 표가 비중의 {tw * 100:.0f}%예요. ")
     else:
@@ -78,6 +83,7 @@ def engine_note():
 
 
 ENG_HEAD, ENG_HOW = engine_note()
+ENG_LABEL = f"지역 엔진 {ENG['chosen']}{' 임시' if ENG.get('provisional') else ''}" if ENG else v3.VERSION  # 서울 엔진(v3.x)과 구분
 for rid, R in RV["regions"].items():
     VMr = R["vote_meta"]  # 이 지역 엔진의 표 구성
     d = REGIONS[rid]
@@ -99,7 +105,7 @@ for rid, R in RV["regions"].items():
         pk["n_trades"] = int(S["n_trades"])
         a = S["acc3"]
         if S["rs"] is None or pd.isna(a["sub"]):
-            acc_sub[names[l]] = f"{names[l]}은 거래가 적어 정확도를 재지 못했어요. {v3.VERSION} 점수는 KB·부동산원 시군구 값과 {name} 값으로 계산했어요."
+            acc_sub[names[l]] = f"{names[l]}{josa(names[l], '은', '는')} 거래가 적어 정확도를 재지 못했어요. 점수는 KB·부동산원 시군구 값과 {name} 값으로 계산했어요."
         else:
             accs.append(a)
             acc_sub[names[l]] = (f"{ym(st)} 이후 이 {sw} 지수와 이후 12개월 {names[l]} 실거래 가격의 순위상관은 {f2(a['sub'])}예요. "
@@ -110,7 +116,7 @@ for rid, R in RV["regions"].items():
     mean = {k: (float(A[k].mean()) if len(A) else np.nan) for k in ("sub", "region", "seoul")}
     lo = R.get("loro")
     if lo:  # 고정 엔진: 이 지역을 빼고 고른 엔진으로 잰 성적을 먼저 (공개 판단에 쓴 값)
-        top_txt = (f"엔진을 고를 때 {name}을 빼고 고른 엔진으로 재면 {ym(st)} 이후 이 지수와 이후 12개월 {name} 실거래 가격의 순위상관은 {f2(lo['acc'])}, "
+        top_txt = (f"엔진을 고를 때 {name}{josa(name)} 빼고 고른 엔진으로 재면 {ym(st)} 이후 이 지수와 이후 12개월 {name} 실거래 가격의 순위상관은 {f2(lo['acc'])}, "
                    f"5년씩 나눠 본 중앙값 {f2(lo['win_median'])}, 2019년 이후 {f2(lo['recent'])}예요. 지금 엔진으로 다시 재면 {f2(R['acc'])}인데, "
                    f"고를 때 {name} 자료도 함께 써서 조금 낙관적이에요. 같은 기간 서울 지수를 그대로 쓰면 {f2(R['acc_seoul'])}, KB 매수우위지수 하나만 보면 {f2(R['acc_kb'])}예요.")
     else:
@@ -132,7 +138,7 @@ for rid, R in RV["regions"].items():
             "aux_label": AUX_LABEL, "n_ind": int(sum(len(c.split(", ")) for c in VMr["구성"])), "n_votes": int(len(VMr)), "k": v3.K,
             "gu_order": [names[l] for l in subs], "version": v3.VERSION, "official_start": st.strftime("%Y-%m"),
             "top": name, "top_full": f"{name} 전체", "sub_word": sw, "presets": [["2008-12", "금융위기"], ["2022-11", "금리 급등 후 급락"]],
-            "eyebrow": f"{name} 아파트 · 공포탐욕지수 {v3.VERSION} · {len(subs)}개 {sw}", "map_label": f"{name} {sw} 지도",
+            "eyebrow": f"{name} 아파트 · 공포탐욕지수 {ENG_LABEL} · {len(subs)}개 {sw}", "map_label": f"{name} {sw} 지도",
             "method": method, "acc_text": {"top": top_txt, "sub": acc_sub}, "minis": [name] + [names[l] for l in by_w[:5]],
             "short_name": {names[l]: short(names[l]) for l in subs}, "compact_pins": len(subs) > 16,
             "sub_acc_mean": {k: r3(v) for k, v in mean.items()}, "region_id": rid,

@@ -123,19 +123,35 @@ jobs:
           git diff --cached --quiet || git commit -m "화면 다시 빌드 (갱신 중 바뀐 화면 반영)"
           git push origin HEAD:main
 
-      - name: 지역 엔진을 처음 고정했으면 이슈로 알림
-        if: hashFiles('results_region/engine_new.md') != ''
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          gh issue create -R "$GITHUB_REPOSITORY" --title "수도권·광역시 엔진 고정 ($(TZ=Asia/Seoul date +%Y-%m-%d))" \
-            --body "@${{ github.repository_owner }} 7개 지역 실거래가 다 모여 미리 정한 규칙대로 지역 엔진을 고정하고 사이트에 반영했어요.
-
-          $(cat results_region/engine_new.md)"
-
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
           path: site
       - id: deploy
         uses: actions/deploy-pages@v4
+
+      # 알림은 배포 뒤에 (이슈를 못 열어도 배포는 끝나게). 커밋이나 배포가 실패했어도 엔진을 고정했으면 알린다
+      - name: 지역 엔진을 처음 고정했으면 이슈로 알림
+        if: always() && hashFiles('results_region/engine_new.md') != ''
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh issue create -R "$GITHUB_REPOSITORY" --title "수도권·광역시 엔진 고정 ($(TZ=Asia/Seoul date +%Y-%m-%d))" \
+            --body "@${{ github.repository_owner }} 7개 지역 실거래가 다 모여 미리 정한 규칙대로 지역 엔진을 고정했어요. 이 실행의 결과: ${{ job.status }} ($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID)
+
+          $(cat results_region/engine_new.md)"
+
+      - name: 수도권·광역시 계산이 실패했으면 이슈로 알림 (같은 이슈가 열려 있으면 댓글)
+        if: always() && hashFiles('results_region/region_failed.md') != ''
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          title="수도권·광역시 계산 실패"
+          body="@${{ github.repository_owner }} 서울은 정상 게시했고 수도권·광역시는 지난 결과를 그대로 보여 주고 있어요. ($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID)
+
+          $(cat results_region/region_failed.md)"
+          n=$(gh issue list -R "$GITHUB_REPOSITORY" --state open --search "in:title $title" --json number --jq '.[0].number // empty')
+          if [ -n "$n" ]; then gh issue comment "$n" -R "$GITHUB_REPOSITORY" --body "$body"
+          else gh issue create -R "$GITHUB_REPOSITORY" --title "$title" --body "$body"; fi
