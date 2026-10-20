@@ -204,7 +204,7 @@ if __name__ == "__main__":
              f"{nm} 아파트 시장의 공포와 탐욕을 0~100으로. {n}개 {sw} 지도와 2006년부터의 추이, 매달 20일 갱신.",
              skin_args=("../", "지도", ('<header style="display:grid;gap:6px">', "</header>"),
                         (f"<h1>{nm} 아파트 공포탐욕지도</h1>", f'<h1><span class="sk-h1a">{nm} 아파트</span><span class="sk-h1b">공포탐욕지도</span></h1>'),
-                        ("bg-map", "50%"), 1180))
+                        (f"bg-{rid}" if (ROOT / "assets" / "img" / f"bg-{rid}.jpg").exists() else "bg-map", "50%"), 1180))  # 지역 사진이 없으면 서울 사진
     wrap(ROOT / "apt" / "template.html", SITE / "apt" / "index.html",
          "우리 단지 최근 실거래가가 비싼 편인지 싼 편인지 0~100점으로. 세대수·용적률 같은 단지 정보도 함께.",
          skin_args=("../", "단지 검색", ('<header style="display:grid;gap:6px">', "</header>"),

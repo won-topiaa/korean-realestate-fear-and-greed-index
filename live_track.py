@@ -42,7 +42,7 @@ def record(map_data_path=ROOT / "results_zone" / "map_data.json"):
 
 def record_regions(out=ROOT / "results_region"):
     """수도권·광역시: 최신 달 시도·시군구 점수를 아직 기록이 없을 때만 덧붙인다 (공개 전인 지역도 검증용으로 남긴다).
-    엔진 이름은 '{버전}-지역A/B' (서울 엔진과 섞이지 않게), 시군구 이름은 '부산 해운대구'처럼 시도 이름을 붙인다."""
+    엔진 이름은 '{버전}-지역A' 또는 '{버전}-지역{고정한 날짜}' (서울 엔진과 섞이지 않게), 시군구 이름은 '부산 해운대구'처럼 시도 이름을 붙인다."""
     p = out / "summary.json"
     if not p.exists():
         return 0, None
@@ -53,7 +53,7 @@ def record_regions(out=ROOT / "results_region"):
     new, month = [], None
     for rid, s in summ.items():
         d = json.loads((out / f"{rid}.json").read_text())
-        eng = f"{d['version']}-지역{s.get('variant', 'A')}"
+        eng = f"{d['version']}-지역{s.get('engine', 'A')}"  # A = 서울과 같은 엔진, 날짜 = 그날 고정한 지역 엔진
         t = d["dates"].index(s["month"])
         month = s["month"]
         for name, reg in d["regions"].items():

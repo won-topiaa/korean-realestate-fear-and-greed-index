@@ -583,7 +583,7 @@ function renderRead() {
   const more = H("div", { class: "m-fold read-more" + (state.readOpen ? " m-open" : "") }, el);
   more.style.cssText = "display:grid;gap:16px";
   tg.addEventListener("click", () => { state.readOpen = !state.readOpen; more.classList.toggle("m-open", state.readOpen); tg.textContent = state.readOpen ? "지표 구성·순위 접기 ▴" : "지표 구성·순위 자세히 보기 ▾"; });
-  H("div", { class: "sec-title" }, more, "구성 (속도별 3그룹을 같은 비중으로 평균)");
+  H("div", { class: "sec-title" }, more, D.compose_label || "구성 (속도별 3그룹을 같은 비중으로 평균)");
   const b1 = H("div", { class: "bars" }, more);
   bars(b1, [["선행", "기대·금리 변화·검색·주가"], ["동행", "가격·거래·수급"], ["후행", "가격부담·금리 수준·미분양"]].map(([k, note]) => ({ name: k, note, v: R.speed[k][t] })));
 

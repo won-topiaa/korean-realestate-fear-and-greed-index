@@ -9,8 +9,8 @@ from pathlib import Path
 from regions import REGIONS
 
 ROOT = Path(__file__).parent
-RULE = ("서울 밖 지역은 결과를 보기 전에 정한 기준(지수가 갖춰진 달부터 정확도 0.40 이상, 5년씩 나눈 구간의 중앙값 0.25 이상)을 "
-        "넘은 곳만 공개해요. 서울은 2011년 이후 0.59예요.")
+RULE = ("서울 밖 지역은 결과를 보기 전에 정한 기준(2011년 이후 정확도 0.40 이상, 5년씩 나눈 구간의 중앙값 0.25 이상)을 넘은 곳만 공개해요. "
+        "지역 엔진을 여러 후보 중에서 고른 뒤에는, 그 지역을 빼고 고른 엔진으로 잰 성적(교차검증)에 이 기준을 적용해요. 서울은 2011년 이후 0.59예요.")
 
 
 def published():
@@ -34,7 +34,7 @@ def data():
             regions.append({"id": rid, "name": d["name"], "prov": d["name"], "url": f"{rid}/", "status": "live", "score": x["score"],
                             "prev": x["prev"], "acc": x["acc"], "sub": f"{x['n_sub']}개 {x['sub_word']}"})
         else:
-            why = (f"정확도 {x['acc']:.2f} · 5년 구간 중앙값 {x['win_median']:.2f} (기준 0.40 · 0.25)" if x
+            why = (f"{'교차검증 ' if x.get('cross_validated') else ''}정확도 {x['acc']:.2f} · 5년 구간 중앙값 {x['win_median']:.2f} (기준 0.40 · 0.25)" if x
                    else "실거래 자료를 받는 중이에요")
             regions.append({"id": rid, "name": d["name"], "prov": d["name"], "status": "wait", "why": why,
                             "sub": f"{len(d['lawd'])}개 {'시·구' if rid == 'gyeonggi' else '구·군'}"})

@@ -1,17 +1,15 @@
-"""수도권·광역시 v3 지수와 검증 (region_index.py 결과 위에 서울과 같은 v3 엔진) → results_region/region_v3.pkl
+"""수도권·광역시 지수와 검증 (region_index.py 결과 위에) → results_region/region_v3.pkl
 
-공개 기준 (결과를 보기 전에 2026-10-20에 정함):
+엔진: data/region_engine.json이 있으면 그 고정 엔진(region_engine_study.py가 7개 지역으로 고른 것), 없으면 서울과 같은 v3.
+공개 기준 (결과를 보기 전에 2026-10-20에 정함): 정확도(지수와 이후 12개월 그 지역 실거래 가격의 순위상관) 0.40 이상,
+5년 구간(1년씩 밀며) 중앙값 0.25 이상. 고정 엔진을 쓸 때는 이 기준을 지역 교차검증 성적(그 지역을 빼고 고른 엔진의 성적)에 적용한다.
 - 시작 달: 쓸 수 있는 표가 처음으로 가장 많을 때의 90% 이상이 된 달 (서울 공식 기록 2011년 2월과 같은 규칙). 그 전은 참고용.
-- 정확도: 시작 달 이후 지수와 이후 12개월 그 지역 실거래 가격 변화의 순위상관이 0.40 이상이고,
-  5년 구간(1년씩 밀며)의 중앙값이 0.25 이상이면 공개. 못 미치면 지도에는 '검증 중'으로만 보인다.
 비교용(공개 판단에는 안 씀): 서울 지수를 그 지역에 그대로 쓴 경우, KB 매수우위지수 하나, 실거래 6개월 변화(2개월 늦춤).
-
-대안 B (2026-10-20 15:40, 광주·대전 결과만 보고 정함. 대구·울산·인천·부산·경기는 아직 계산 전 = 검증용):
-- 광주·대전에서는 서울과 달리 '가격부담' 3표(PIR, 주택구매력, 전세가율)가 이후 가격과 반대로 움직였다
-  (광주 -0.44·-0.38·0.01, 대전 -0.03·-0.51·-0.09. 서울은 0.00·0.23·0.38). 그래서 서울 밖 지역은 이 3표를 뺀 22표로 계산해 본다.
-- 채택 규칙: 검증용 5개 지역에서 B의 정확도 중앙값이 기본(A)보다 높고, 공개 기준을 넘는 지역 수가 A 이상이면 서울 밖 모든 지역에 B를 쓴다.
-  아니면 A를 쓴다. 광주·대전의 B 성적은 설계에 쓴 자료라 낙관적이다. 다른 대안은 시험하지 않는다.
+(2026-10-20 15:40에 적어 둔 '대안 B: 가격부담 3표 빼기' 비교는 사용자 요청으로 엔진 여러 개를 비교하는 region_engine_study.py로 바뀜.
+ 대안 B는 그 후보 중 '가격부담 빼기'로 들어 있다.)
 """
+import json
+
 import numpy as np
 import pandas as pd
 
@@ -20,11 +18,37 @@ import v3
 from regions import REGIONS
 
 PASS_ACC, PASS_WIN = 0.40, 0.25
-DESIGN = ["gwangju", "daejeon"]  # 대안 B를 정할 때 본 지역 (나머지는 검증용)
 R = pd.read_pickle(bt.ROOT / "results_region" / "region_calc.pkl")
 meta, aux_meta = v3.load_meta()
-meta_b = meta[meta["주제"] != "가격부담"]  # 대안 B: 가격부담 3표(PIR·구매력·전세가율) 제외
 seoul = pd.read_pickle(bt.ROOT / "results_v2" / "v3_seoul.pkl")
+EP = bt.ROOT / "data" / "region_engine.json"
+ENGINE = json.loads(EP.read_text()) if EP.exists() else None
+
+
+def compute(ind):
+    """고정 엔진(없으면 서울 v3)으로 지수. 화면용 속도 3그룹·주제 점수도 같은 표로 다시 만든다."""
+    if ENGINE is None:
+        return v3.compute(ind, meta, aux_meta)
+    bt.WINDOW = ENGINE["window"]
+    try:
+        r = v3.compute(ind, meta, aux_meta)
+    finally:
+        bt.WINDOW = 120
+    V, M = r["votes"], r["vote_meta"]
+    keep = M.index[~M["주제"].isin(ENGINE["drop"])]
+    V, M = V[keep], M.loc[keep]
+    if ENGINE.get("weights"):
+        w = pd.Series(ENGINE["weights"]).reindex(keep).fillna(0)
+        core = (V * w).sum(axis=1, min_count=1) / V.notna().mul(w).sum(axis=1).replace(0, np.nan)
+    elif ENGINE["agg"] == "flat":
+        core = V.mean(axis=1)
+    else:
+        key = "속도" if ENGINE["agg"] == "speed" else "주제"
+        core = pd.concat([V[M.index[M[key] == g]].mean(axis=1) for g in M[key].unique()], axis=1).mean(axis=1)
+    r.update({"core": core, "final": v3.spread(core), "votes": V, "vote_meta": M, "n_votes_available": V.notna().sum(axis=1),
+              "groups": {g: v3.spread(V[M.index[M["속도"] == g]].mean(axis=1)) for g in v3.SPEED},
+              "themes": {t: v3.spread(V[M.index[M["주제"] == t]].mean(axis=1)) for t in M["주제"].unique()}})
+    return r
 
 
 def start_month(n_votes):
@@ -50,37 +74,11 @@ def windows(s, y, start):
     return out
 
 
-def evaluate(o, mt):
-    r = v3.compute(o["ind"], mt, aux_meta)
-    idx = o["ind"].index
-    f, y = r["final"].reindex(idx), o["fwd12"]
-    st = start_month(r["n_votes_available"])
-    m = idx >= st
-    wv = [v for v in windows(f, y, st).values() if not np.isnan(v)]
-    a, med = acc(f, y, m), (float(np.median(wv)) if wv else np.nan)
-    return r, {"acc": a, "win_median": med, "pass": bool(a >= PASS_ACC and med >= PASS_WIN)}
-
-
-# 대안 비교 (검증용 지역이 다 들어왔을 때만 채택을 판단)
-cmp = {rid: {"A": evaluate(o, meta)[1], "B": evaluate(o, meta_b)[1]} for rid, o in R["regions"].items()}
-hold = [r for r in cmp if r not in DESIGN]
-complete = set(hold) == set(REGIONS) - set(DESIGN)
-if complete:
-    med = {k: float(np.median([cmp[r][k]["acc"] for r in hold])) for k in "AB"}
-    npass = {k: sum(cmp[r][k]["pass"] for r in hold) for k in "AB"}
-    VARIANT = "B" if med["B"] > med["A"] and npass["B"] >= npass["A"] else "A"
-    print(f"대안 비교 (검증용 {len(hold)}곳): 정확도 중앙값 A {med['A']:.2f} · B {med['B']:.2f}, 기준 통과 A {npass['A']} · B {npass['B']} → {VARIANT}")
-else:
-    VARIANT = "A"  # 검증용 지역이 다 모이기 전에는 기본 엔진
-    print(f"대안 비교 보류: 검증용 {len(hold)}/{len(set(REGIONS) - set(DESIGN))}곳만 계산됨 → 기본(A)")
-for rid, c in cmp.items():
-    print(f"  {REGIONS[rid]['name']}{' (설계용)' if rid in DESIGN else ''}: A {c['A']['acc']:.2f}/{c['A']['win_median']:.2f}{' 통과' if c['A']['pass'] else ''} · "
-          f"B {c['B']['acc']:.2f}/{c['B']['win_median']:.2f}{' 통과' if c['B']['pass'] else ''}")
-META = meta_b if VARIANT == "B" else meta
+print("엔진:", ENGINE["name"] + f" (고정 {ENGINE['chosen']})" if ENGINE else "서울과 같은 v3 (고정 엔진 없음)")
 
 res = {}
 for rid, o in R["regions"].items():
-    r = v3.compute(o["ind"], META, aux_meta)
+    r = compute(o["ind"])
     idx = o["ind"].index
     f, y = r["final"].reindex(idx), o["fwd12"]
     st = start_month(r["n_votes_available"])
@@ -93,7 +91,12 @@ for rid, o in R["regions"].items():
               "acc_rs6": acc(rs6, y, m), "win": win})
     wv = [v for v in win.values() if not np.isnan(v)]
     r["win_median"], r["win_min"] = (float(np.median(wv)), float(np.min(wv))) if wv else (np.nan, np.nan)
-    r["publish"] = bool(r["acc"] >= PASS_ACC and r["win_median"] >= PASS_WIN)
+    lo = (ENGINE or {}).get("loro", {}).get(rid)
+    if ENGINE:  # 고정 엔진: 교차검증 성적으로 공개 판단 (엔진을 고를 때 없던 지역은 공개하지 않음)
+        r["loro"] = lo
+        r["publish"] = bool(ENGINE["publish"].get(rid, False))
+    else:
+        r["publish"] = bool(r["acc"] >= PASS_ACC and r["win_median"] >= PASS_WIN)
     res[rid] = r
     print(f"{REGIONS[rid]['name']}: 현재 {f.dropna().iloc[-1]:.1f} · 시작 {st.date()} · 정확도 {r['acc']:.2f} "
           f"(서울 지수 {r['acc_seoul']:.2f}, KB 매수우위 {r['acc_kb']:.2f}, 실거래 6개월 {r['acc_rs6']:.2f}) · "
@@ -101,7 +104,7 @@ for rid, o in R["regions"].items():
 
 subs = {}
 for lawd, o in R["subs"].items():
-    r = v3.compute(o["ind"], META, aux_meta)
+    r = compute(o["ind"])
     idx = o["ind"].index
     f = r["final"].reindex(idx)
     reg = res[o["region"]]
@@ -117,4 +120,4 @@ for rid in res:
     A = pd.DataFrame({l: subs[l]["acc3"] for l in REGIONS[rid]["lawd"] if l in subs}).T
     print(f"  {REGIONS[rid]['name']} 시군구 {len(A)}곳 평균 정확도: 시군구 지수 {A['sub'].mean():.2f} · 시도 지수 {A['region'].mean():.2f} · "
           f"서울 지수 {A['seoul'].mean():.2f}")
-pd.to_pickle({"regions": res, "subs": subs, "variant": VARIANT, "compare": cmp}, bt.ROOT / "results_region" / "region_v3.pkl")
+pd.to_pickle({"regions": res, "subs": subs, "engine": ENGINE}, bt.ROOT / "results_region" / "region_v3.pkl")
