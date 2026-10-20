@@ -56,9 +56,10 @@ def reb_jobs(rid):
     return jobs, missing
 
 
-def refresh(refresh=True, workers=8):
+def refresh(refresh=True, workers=8, reb=True, kb=True):
+    """reb·kb로 부동산원·KB 중 하나만 받을 수 있다 (월간 갱신에서 자료처별로 따로 동시에 받으므로)."""
     jobs, missing = [], []
-    for rid in REGIONS:
+    for rid in (REGIONS if reb else []):
         j, m = reb_jobs(rid)
         jobs += j
         missing += m
@@ -74,15 +75,18 @@ def refresh(refresh=True, workers=8):
     with ThreadPoolExecutor(max_workers=workers) as ex:
         list(ex.map(one, jobs))
     kb_fail = []
-    for rid, d in REGIONS.items():
+    for rid, d in (REGIONS.items() if kb else []):
         for nm, (ep, p) in KB_SUB.items():
             try:
                 K.fetch(ep, {**p, "지역코드": d["kb_code"]}, f"{nm}_{rid}", refresh=refresh)
             except Exception as e:  # noqa: BLE001
                 kb_fail.append(f"{nm}_{rid}: {str(e)[:80]}")
-    if len(errors) == len(jobs):
+    if jobs and len(errors) == len(jobs):
         raise RuntimeError(f"지역 부동산원 전부 실패 · 예: {errors[0]}")
-    msg = f"지역 부동산원 {len(jobs) - len(errors)}/{len(jobs)}개 · KB 시군구 {len(REGIONS) * len(KB_SUB) - len(kb_fail)}/{len(REGIONS) * len(KB_SUB)}개"
+    n_kb = len(REGIONS) * len(KB_SUB) if kb else 0
+    if n_kb and len(kb_fail) == n_kb:
+        raise RuntimeError(f"KB 시군구 전부 실패 · 예: {kb_fail[0]}")
+    msg = " · ".join(([f"지역 부동산원 {len(jobs) - len(errors)}/{len(jobs)}개"] if reb else []) + ([f"KB 시군구 {n_kb - len(kb_fail)}/{n_kb}개"] if kb else []))
     if errors or kb_fail:
         msg += f" · 실패 예: {(errors + kb_fail)[0]}"
     return msg, missing

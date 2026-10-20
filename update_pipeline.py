@@ -3,6 +3,7 @@
 순서: 원자료 갱신 → 지표·지수 재계산 → 실시간 기록 → 지도·보고서·사이트 → 점검 → (선택) 아티팩트 게시.
 한 단계가 실패해도 이전 데이터로 계속 진행하고, 지수 계산이나 점검이 실패하면 게시하지 않는다.
 자료처마다 시간 한도(FETCH_BUDGET)가 있어, 한 곳 서버가 멈춰도 전체 실행 시간(Actions 150분)을 넘기지 않는다.
+원자료는 네 갈래(FETCH_GROUPS)로 나눠 동시에 받는다 (갈래마다 `--fetch-group` 프로세스).
 
 사용:
   .venv/bin/python update_pipeline.py              # 전체 갱신 + 게시
@@ -25,15 +26,16 @@ ROOT = Path(__file__).parent
 PY = str(ROOT / ".venv" / "bin" / "python") if (ROOT / ".venv" / "bin" / "python").exists() else sys.executable
 LOGS = ROOT / "logs"
 LOGS.mkdir(exist_ok=True)
-STAMP = dt.datetime.now().strftime("%Y%m%d_%H%M")
+STAMP = os.environ.get("FGI_STAMP") or dt.datetime.now().strftime("%Y%m%d_%H%M")  # 동시에 받는 갈래들은 부모의 STAMP를 이어받음
 LOG = LOGS / f"update_{STAMP}.log"
+PREFIX = ""  # 갈래 프로세스의 실행 기록 앞에 붙는 이름
 MAP_URL = "https://claude.ai/artifact/Ri1jEadgtHmcBGcAC4pd9L"
 REPORT_URL = "https://claude.ai/artifact/AvrgVB6y2Ah4WSkZEAuKGh"
 CLAUDE = str(Path.home() / ".local" / "bin" / "claude")
 
 
 def log(msg):
-    line = _scrub(f"[{dt.datetime.now():%H:%M:%S}] {msg}")
+    line = _scrub(f"[{dt.datetime.now():%H:%M:%S}] {PREFIX}{msg}")
     print(line, flush=True)
     with LOG.open("a") as f:
         f.write(line + "\n")
@@ -63,7 +65,8 @@ def _clean(msg):
 
 FETCH_BUDGET = {"KB부동산": 15, "한국은행 금리·가계신용·CSI": 8, "네이버 금융 주가": 5, "구글 트렌드": 15,
                 "한국부동산원 R-ONE": 40, "국토부 실거래": 25, "청약홈": 12, "건축물대장": 15,
-                "수도권·광역시 원자료": 45, "수도권·광역시 실거래": 30}  # 분. 평소: R-ONE 11분, 나머지 1~4분
+                "수도권·광역시 부동산원": 45, "수도권·광역시 KB 시군구": 5, "수도권·광역시 원자료": 10,
+                "수도권·광역시 실거래": 30}  # 분. 평소: R-ONE 11분, 나머지 1~4분
 
 
 def _child(fn, q):
@@ -259,11 +262,11 @@ def refresh_molit(back=4):
     return msg
 
 
-def refresh_region_src(refresh=True):
+def refresh_region_src(refresh=True, reb=True, kb=True):
     """수도권·광역시: 부동산원 시도·시군구 거래 통계·수급·미분양, KB 시군구 가격지수 (region_src_fetch.py).
     refresh=False면 없는 파일만 받는다 (--skip-fetch 실행에서 Actions 캐시에 없는 KB 시군구 파일 등)."""
     import region_src_fetch
-    msg, missing = region_src_fetch.refresh(refresh=refresh)
+    msg, missing = region_src_fetch.refresh(refresh=refresh, reb=reb, kb=kb)
     return msg + (f" · 부동산원에 없는 이름 {len(missing)}개는 시도 값으로" if missing else "")
 
 
@@ -416,25 +419,74 @@ def publish():
     return r.stdout.strip().splitlines()[-2:] if r.stdout.strip() else "출력 없음"
 
 
+# 원자료는 자료처별 네 갈래로 나눠 동시에 받는다 (갈래마다 따로 프로세스, 갈래 안에서는 차례로, 단계마다 시간 한도).
+# 건축물대장은 이번 달 새 단지를 서울 실거래에서 알아내므로 '국토부 실거래'가 끝난 뒤 시작한다. 결과 기록은 이 순서로 합친다.
+FETCH_GROUPS = {
+    "실거래": [("국토부 실거래", refresh_molit), ("수도권·광역시 실거래", refresh_molit_regions)],
+    "부동산원": [("한국부동산원 R-ONE", refresh_reb), ("수도권·광역시 부동산원", lambda: refresh_region_src(kb=False))],
+    "KB·시장": [("KB부동산", refresh_kb), ("수도권·광역시 KB 시군구", lambda: refresh_region_src(reb=False)),
+               ("한국은행 금리·가계신용·CSI", refresh_ecos), ("네이버 금융 주가", refresh_stocks), ("구글 트렌드", refresh_trends),
+               ("청약홈", refresh_applyhome)],
+    "건축물대장": [("건축물대장", refresh_bldg)],
+}
+SEOUL_MOLIT_DONE = LOGS / f".seoul_molit_{STAMP}"
+
+
+def run_group(g):
+    """갈래 하나 (update_pipeline.py --fetch-group 이름): 단계를 차례로 돌리고 결과를 logs/status_{STAMP}_{갈래}.json에 남긴다."""
+    global LOG, PREFIX
+    LOG, PREFIX = LOGS / f"update_{STAMP}_{g}.log", f"[{g}] "
+    for name, fn in FETCH_GROUPS[g]:
+        if name == "건축물대장":
+            t0 = time.time()
+            while not SEOUL_MOLIT_DONE.exists() and time.time() - t0 < (FETCH_BUDGET["국토부 실거래"] + 5) * 60:
+                time.sleep(5)
+        if os.environ.get("FGI_FAKE_FETCH"):  # 갈래 동시 실행 시험용: 실제로 받지 않고 잠깐 기다리기만
+            fn = lambda: (time.sleep(3), "시험 실행")[1]  # noqa: E731
+        step(name, fn)
+        if name == "국토부 실거래":
+            SEOUL_MOLIT_DONE.touch()
+    (LOGS / f"status_{STAMP}_{g}.json").write_text(json.dumps(STATUS, ensure_ascii=False))
+
+
+def fetch_all():
+    """네 갈래를 동시에 띄우고, 다 끝나면 실행 기록과 단계별 결과를 합친다."""
+    t0 = time.time()
+    env = {**os.environ, "FGI_STAMP": STAMP}
+    procs = {g: subprocess.Popen([PY, "-W", "ignore", str(ROOT / "update_pipeline.py"), "--fetch-group", g], cwd=ROOT, env=env)
+             for g in FETCH_GROUPS}
+    for p in procs.values():
+        p.wait()
+    for g, p in procs.items():
+        gl, gs = LOGS / f"update_{STAMP}_{g}.log", LOGS / f"status_{STAMP}_{g}.json"
+        if gl.exists():
+            with LOG.open("a") as f:
+                f.write(gl.read_text())
+            gl.unlink()
+        if gs.exists():
+            STATUS.extend(json.loads(gs.read_text()))
+            gs.unlink()
+        else:
+            STATUS.append({"step": f"{g} 갈래", "ok": False, "sec": 0, "detail": f"갈래 프로세스가 결과 없이 끝남 (종료코드 {p.returncode})"})
+    SEOUL_MOLIT_DONE.unlink(missing_ok=True)
+    log(f"원자료 네 갈래 동시 받기 끝 ({time.time() - t0:.0f}s)")
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--no-publish", action="store_true")
     ap.add_argument("--skip-fetch", action="store_true")
     ap.add_argument("--record", action="store_true", help="로컬 실행에서도 실시간 기록에 남김")
+    ap.add_argument("--fetch-group", help="원자료 갈래 하나만 받기 (fetch_all이 띄우는 프로세스)")
     a = ap.parse_args()
+    if a.fetch_group:
+        sys.path.insert(0, str(ROOT))
+        run_group(a.fetch_group)
+        return 0
     sys.path.insert(0, str(ROOT))
     log(f"=== 갱신 시작 {STAMP} ===")
     if not a.skip_fetch:
-        step("KB부동산", refresh_kb)
-        step("한국은행 금리·가계신용·CSI", refresh_ecos)
-        step("네이버 금융 주가", refresh_stocks)
-        step("구글 트렌드", refresh_trends)
-        step("한국부동산원 R-ONE", refresh_reb)
-        step("국토부 실거래", refresh_molit)
-        step("청약홈", refresh_applyhome)
-        step("건축물대장", refresh_bldg)
-        step("수도권·광역시 원자료", refresh_region_src)
-        step("수도권·광역시 실거래", refresh_molit_regions)
+        fetch_all()
     else:
         step("수도권·광역시 원자료", lambda: refresh_region_src(refresh=False))
     for rel in COMPUTE:
