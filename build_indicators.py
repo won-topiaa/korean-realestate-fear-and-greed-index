@@ -44,19 +44,19 @@ def kb_lead50():
     return pd.Series(d["선도50지수리스트"], index=_ym(pd.Series(d["날짜리스트"]))).astype(float)
 
 
-def kb_hai():
+def kb_hai(region="서울"):
     d = json.loads((RAW / "kb" / "HAI.json").read_text())
     dates = _ym(pd.Series(d["날짜리스트"]))
     rate = pd.Series({_ym(e["기준날짜"]): e["주택담보대출금리"] for e in d["주담보월소득리스트"]}).astype(float)
-    seoul = next(x for x in d["주택구매력리스트"] if x["지역명"] == "서울")
+    seoul = next(x for x in d["주택구매력리스트"] if x["지역명"] == region)
     apt = next(e for e in seoul["지역구분리스트"] if e["매물종별구분"] == "아파트")
     return rate.sort_index(), pd.Series(apt["매물종별구분리스트"], index=dates).astype(float)
 
 
-def kb_pir(house_q=3, income_q=3):
+def kb_pir(house_q=3, income_q=3, region="서울"):
     d = json.loads((RAW / "kb" / "PIR.json").read_text())
     dates = _ym(pd.Series(d["날짜리스트"]))
-    seoul = next(x for x in d["데이터리스트"] if x["지역명"] == "서울")
+    seoul = next(x for x in d["데이터리스트"] if x["지역명"] == region)
     h = next(e for e in seoul["주택분위구분"] if e["주택분위"] == house_q)
     i = next(e for e in h["소득분위구분"] if e["소득분위"] == income_q)
     return pd.Series(i["dataList"][: len(dates)], index=dates).astype(float)

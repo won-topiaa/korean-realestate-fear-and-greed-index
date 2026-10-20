@@ -1,0 +1,44 @@
+{
+ "gwangju": {
+  "name": "광주",
+  "publish": false,
+  "month": "2026-09",
+  "score": 30.2,
+  "prev": 33.1,
+  "acc": 0.51,
+  "win_median": 0.217,
+  "win_min": -0.307,
+  "acc_seoul": 0.277,
+  "acc_kb": 0.666,
+  "start": "2011-02",
+  "n_sub": 5,
+  "sub_word": "구·군",
+  "sub_acc_mean": {
+   "sub": 0.522,
+   "region": 0.505,
+   "seoul": 0.302
+  },
+  "variant": "A"
+ },
+ "daejeon": {
+  "name": "대전",
+  "publish": false,
+  "month": "2026-09",
+  "score": 33.7,
+  "prev": 36.1,
+  "acc": 0.314,
+  "win_median": 0.132,
+  "win_min": -0.501,
+  "acc_seoul": 0.272,
+  "acc_kb": 0.324,
+  "start": "2011-02",
+  "n_sub": 5,
+  "sub_word": "구·군",
+  "sub_acc_mean": {
+   "sub": 0.327,
+   "region": 0.312,
+   "seoul": 0.269
+  },
+  "variant": "A"
+ }
+}

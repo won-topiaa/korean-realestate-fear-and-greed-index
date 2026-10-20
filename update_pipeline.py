@@ -62,7 +62,8 @@ def _clean(msg):
 
 
 FETCH_BUDGET = {"KB부동산": 15, "한국은행 금리·가계신용·CSI": 8, "네이버 금융 주가": 5, "구글 트렌드": 15,
-                "한국부동산원 R-ONE": 40, "국토부 실거래": 25, "청약홈": 12, "건축물대장": 15}  # 분. 평소: R-ONE 11분, 나머지 1~4분
+                "한국부동산원 R-ONE": 40, "국토부 실거래": 25, "청약홈": 12, "건축물대장": 15,
+                "수도권·광역시 원자료": 30, "수도권·광역시 실거래": 30}  # 분. 평소: R-ONE 11분, 나머지 1~4분
 
 
 def _child(fn, q):
@@ -258,6 +259,53 @@ def refresh_molit(back=4):
     return msg
 
 
+def refresh_region_src():
+    """수도권·광역시: 부동산원 시도·시군구 거래 통계·수급·미분양, KB 시군구 가격지수 (region_src_fetch.py)."""
+    import region_src_fetch
+    msg, missing = region_src_fetch.refresh(refresh=True)
+    return msg + (f" · 부동산원에 없는 이름 {len(missing)}개는 시도 값으로" if missing else "")
+
+
+def refresh_molit_regions(back=4):
+    """수도권·광역시 실거래: 저장소에 있는 지역만 최근 몇 달을 다시 받는다 (처음 채우기는 region_fetch.py로 따로)."""
+    import molit_fetch as M
+    import region_store
+    from regions import REGIONS
+    rids = region_store.regions_in_store()
+    if not rids:
+        return "지역 저장소 없음 (건너뜀)"
+    today = dt.date.today()
+    y, m = today.year, today.month
+    for _ in range(back):
+        m -= 1
+        if m == 0:
+            y, m = y - 1, 12
+    start, end = f"{y}{m:02d}", f"{today.year}{today.month:02d}"
+    codes = [c for r in rids for c in REGIONS[r]["lawd"]]
+    new, failed, n = {}, {}, 0
+    for ym in M.months(start, end):
+        for lawd in codes:
+            try:
+                rows = M.fetch(lawd, ym)
+            except M.QuotaExceeded:
+                failed.setdefault(ym, []).append(f"{lawd} 호출 한도")
+                continue
+            except Exception as e:  # noqa: BLE001  (한 곳·한 달이 실패해도 나머지는 계속)
+                failed.setdefault(ym, []).append(str(e)[:200])
+                continue
+            new.setdefault(ym, []).append((lawd, rows))
+            n += 1
+            time.sleep(0.15)
+    complete = {ym: v for ym, v in new.items() if ym not in failed and len(v) == len(codes)}
+    if not complete:
+        raise RuntimeError(f"지역 실거래 갱신 실패 (모든 달) · 예: {next(iter(failed.values()))[0] if failed else '응답 없음'}")
+    total = region_store.replace_months(complete)
+    msg = f"지역 실거래 {start}~{end}: {len(complete)}개월 갱신 ({n}회 호출, {len(rids)}개 지역) · 저장소 {total:,}건"
+    if failed:
+        msg += f" · 일부 실패로 지난 자료 유지: {', '.join(sorted(failed))}"
+    return msg
+
+
 def refresh_bldg():
     """단지 기본정보(세대수·용적률 등). 새 단지만 지번으로 받고, 못 찾은 단지는 이름으로 다시 찾는다.
     받은 만큼 바로 저장하므로 시간 한도 전에 스스로 멈춘다 (데이터는 data/molit/buildings.csv에 쌓인다)."""
@@ -291,11 +339,13 @@ COMPUTE = ["molit_indicators.py", "rs_vintage.py", "extra_indicators.py", "build
            "zone_index.py", "zone_v3.py", "export_zone.py", "map/build.py"]
 AFTER_CHECK = ["export_report_v3.py", "report/build.py"]  # 실시간 기록은 점검을 통과한 뒤에
 OPTIONAL = ["apt_score.py", "highs_build.py", "sim_build.py"]  # 단지 검색: 실패해도 지도·보고서는 게시 (알림만)
-FINAL = ["site_build.py"]
+REGION = ["region_index.py", "region_v3.py", "export_region.py"]  # 수도권·광역시: 실패하면 지난 결과로 첫 화면·지역 페이지를 만든다
+FINAL = ["home_build.py", "site_build.py"]
 
 
 def run_script(rel):
-    r = subprocess.run([PY, "-W", "ignore", str(ROOT / rel)], cwd=ROOT / Path(rel).parent, capture_output=True, text=True)
+    rel, *args = rel.split()  # "live_track.py --regions"처럼 인자를 붙일 수 있음
+    r = subprocess.run([PY, "-W", "ignore", str(ROOT / rel), *args], cwd=ROOT / Path(rel).parent, capture_output=True, text=True)
     with LOG.open("a") as f:
         f.write(f"--- {rel} stdout ---\n{r.stdout[-3000:]}\n")
         if r.stderr:
@@ -381,6 +431,8 @@ def main():
         step("국토부 실거래", refresh_molit)
         step("청약홈", refresh_applyhome)
         step("건축물대장", refresh_bldg)
+        step("수도권·광역시 원자료", refresh_region_src)
+        step("수도권·광역시 실거래", refresh_molit_regions)
     for rel in COMPUTE:
         if not step(f"계산 {rel}", lambda rel=rel: run_script(rel)):
             log("=== 계산 실패로 중단 (게시 안 함) ===")
@@ -403,6 +455,14 @@ def main():
     for rel in OPTIONAL:
         if not step(f"계산 {rel}", lambda rel=rel: run_script(rel)):
             log(f"알림: {rel} 실패 — 지도·보고서는 그대로 게시")
+    region_ok = True
+    for rel in REGION:
+        if not step(f"계산 {rel}", lambda rel=rel: run_script(rel)):
+            log(f"알림: {rel} 실패 — 수도권·광역시는 지난 결과로 게시")
+            region_ok = False
+            break
+    if region_ok and (os.environ.get("CI") or a.record):
+        step("실시간 기록 (지역)", lambda: run_script("live_track.py --regions"))
     for rel in FINAL:
         if not step(f"계산 {rel}", lambda rel=rel: run_script(rel)):
             log("=== 계산 실패로 중단 (게시 안 함) ===")

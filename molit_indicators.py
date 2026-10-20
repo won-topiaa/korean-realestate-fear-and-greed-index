@@ -16,11 +16,13 @@ ROOT = Path(__file__).parent
 SRC = ROOT / "data" / "raw" / "molit" / "apt"
 
 
-def load(market_only=True):
-    """압축 저장소(molit_store) 우선, 없으면 구·월 JSON 캐시에서 읽는다.
+def load(market_only=True, df=None):
+    """압축 저장소(molit_store) 우선, 없으면 구·월 JSON 캐시에서 읽는다. df를 주면 그 거래(같은 열)를 쓴다 (지역 저장소).
     market_only: 해제 신고(2020.2~ 표시)·직거래(2021.11~ 표시) 제외. 지표용은 False (표시가 없던 시기와 같은 정의)."""
     import molit_store
-    if molit_store.exists():
+    if df is not None:
+        df = df.copy()
+    elif molit_store.exists():
         df = molit_store.load()
     else:
         frames = []

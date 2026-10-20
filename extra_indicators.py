@@ -20,9 +20,9 @@ def reb(name, cls=None):
     return d.pivot_table(index="date", columns="CLS_NM", values="DTA_VAL", aggfunc="sum").astype(float)
 
 
-def applyhome_monthly():
+def applyhome_monthly(area="서울"):
     a = pd.DataFrame(json.loads((RAW / "applyhome" / "APT_분양공고.json").read_text()))
-    s = a[(a["SUBSCRPT_AREA_CODE_NM"] == "서울")].copy()
+    s = a[(a["SUBSCRPT_AREA_CODE_NM"] == area)].copy()
     s["date"] = pd.to_datetime(s["RCEPT_BGNDE"].fillna(s["RCRIT_PBLANC_DE"])).dt.to_period("M").dt.to_timestamp()
     c = pd.DataFrame(json.loads((RAW / "applyhome" / "APT_경쟁률.json").read_text()))
     c = c[c["HOUSE_MANAGE_NO"].isin(s["HOUSE_MANAGE_NO"]) & (c["SUBSCRPT_RANK_CODE"].astype(str) == "1")].copy()
@@ -37,7 +37,7 @@ def applyhome_monthly():
     supply = s.groupby("date")["TOT_SUPLY_HSHLDCO"].sum()
     rr = pd.DataFrame(json.loads((RAW / "applyhome" / "무순위_경쟁률.json").read_text()))
     rp = pd.DataFrame(json.loads((RAW / "applyhome" / "무순위_분양공고.json").read_text()))
-    rp = rp[rp["SUBSCRPT_AREA_CODE_NM"] == "서울"].copy()
+    rp = rp[rp["SUBSCRPT_AREA_CODE_NM"] == area].copy()
     rp["date"] = pd.to_datetime(rp["SUBSCRPT_RCEPT_BGNDE"].fillna(rp["RCRIT_PBLANC_DE"])).dt.to_period("M").dt.to_timestamp()
     rr = rr[rr["HOUSE_MANAGE_NO"].isin(rp["HOUSE_MANAGE_NO"])].copy()
     for k in ("REQ_CNT", "SUPLY_HSHLDCO"):

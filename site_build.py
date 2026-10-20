@@ -1,4 +1,5 @@
-"""GitHub Pages용 정적 사이트: site/index.html (지도), site/report/index.html (보고서), site/apt/ (단지 검색),
+"""GitHub Pages용 정적 사이트: site/index.html (첫 화면: 대한민국 지도), site/seoul/ (서울 지도), site/{지역id}/ (공개한
+수도권·광역시 지도, 서울과 같은 템플릿), site/report/ (보고서), site/apt/ (단지 검색),
 site/api/ (데이터 API 안내 페이지 + api_build.py가 만드는 JSON·CSV).
 
 아티팩트용 HTML에는 문서 머리말이 없어서, 문자 인코딩·뷰포트·doctype을 감싸 정식 문서로 만든다.
@@ -13,6 +14,8 @@ from pathlib import Path
 from urllib.parse import quote
 
 import api_build
+import home_build
+from map.build import render as map_render
 
 ROOT = Path(__file__).parent
 SITE = ROOT / "site"
@@ -33,7 +36,9 @@ FONTS = ('<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=
 REPO = "https://github.com/won-topiaa/korean-realestate-fear-and-greed-index"
 SITE_URL = "https://won-topiaa.github.io/korean-realestate-fear-and-greed-index/"
 # 링크 미리보기 (카카오톡·문자·SNS): 사이트 폴더 → (미리보기 그림 assets/og/*.jpg, 제목). 그림은 og_build.py로 만든다
-OG = {"": ("map", "서울 아파트 공포탐욕지도"), "apt/": ("apt", "단지 검색 · 서울 아파트 공포탐욕지도"),
+SITE_NAME = "아파트 공포탐욕지도"
+OG = {"": ("map", "아파트 공포탐욕지도 · 서울·수도권·광역시"), "seoul/": ("map", "서울 아파트 공포탐욕지도"),
+      "apt/": ("apt", "단지 검색 · 서울 아파트 공포탐욕지도"),
       "highs/": ("highs", "신고가 단지 · 서울 아파트 공포탐욕지도"), "sim/": ("sim", "모의 투자 · 서울 아파트 공포탐욕지도"),
       "report/": ("report", "백테스트 보고서 · 서울 아파트 공포탐욕지도"), "api/": ("map", "데이터 API · 서울 아파트 공포탐욕지도")}
 
@@ -45,7 +50,7 @@ def og_meta(dst, desc):
         return ""
     img, title = OG[page]
     url, pic = SITE_URL + page, f"{SITE_URL}assets/og/{img}.jpg{ver(f'assets/og/{img}.jpg')}"
-    tags = [("property", "og:type", "website"), ("property", "og:site_name", "서울 아파트 공포탐욕지도"), ("property", "og:locale", "ko_KR"),
+    tags = [("property", "og:type", "website"), ("property", "og:site_name", SITE_NAME), ("property", "og:locale", "ko_KR"),
             ("property", "og:url", url), ("property", "og:title", title), ("property", "og:description", desc),
             ("property", "og:image", pic), ("property", "og:image:width", "1200"), ("property", "og:image:height", "630"),
             ("property", "og:image:alt", title), ("name", "twitter:card", "summary_large_image"), ("name", "twitter:title", title),
@@ -60,15 +65,15 @@ def ver(rel):
 
 PAGES = [("", "지도"), ("apt/", "단지 검색"), ("highs/", "신고가 단지"), ("sim/", "모의 투자"), ("report/", "보고서")]
 CONTACT = "wontopiaaa@gmail.com"
-MAILTO = f"mailto:{CONTACT}?subject=" + quote("[서울 아파트 공포탐욕지도] 문의")
+MAILTO = f"mailto:{CONTACT}?subject=" + quote(f"[{SITE_NAME}] 문의")
 
 
 def nav(base, cur):
     links = "".join(f'<a href="{base}{h}"' + (' aria-current="page"' if n == cur else "") + f">{n}</a>"
                     for h, n in PAGES if n != "보고서")  # 보고서·문의는 바닥글에만
     cta = ("", "지도 보기") if cur == "단지 검색" else ("apt/", "단지 검색")
-    return (f'<header class="sk-nav"><div class="sk-in"><a class="sk-logo" href="{base}" aria-label="서울 아파트 공포탐욕지도 처음으로">'
-            f'<span>SEOUL FEAR &amp; GREED</span><span class="ko">서울 아파트 공포탐욕지도</span></a><nav class="sk-menu" aria-label="사이트 메뉴">{links}</nav>'
+    return (f'<header class="sk-nav"><div class="sk-in"><a class="sk-logo" href="{base}" aria-label="{SITE_NAME} 처음으로">'
+            f'<span>KOREA FEAR &amp; GREED</span><span class="ko">{SITE_NAME}</span></a><nav class="sk-menu" aria-label="사이트 메뉴">{links}</nav>'
             f'<div class="sk-right" id="sk-right"><button type="button" class="sk-theme-m" id="sk-theme-m">화면: 자동</button>'
             f'<a class="sk-cta" href="{base}{cta[0]}">{cta[1]}</a></div></div></header>\n')
 
@@ -89,10 +94,10 @@ def footer(base):
             who.append(f'<a href="{v["page"]}">{v["artist"]}</a>')
     who = ", ".join(who)
     links = "".join(f'<li><a href="{base}{h}">{n}</a></li>' for h, n in
-                    [("", "공포탐욕 지도"), ("apt/", "단지 검색"), ("highs/", "신고가 단지"), ("sim/", "모의 투자"), ("report/", "백테스트 보고서"), ("api/", "데이터 API")])
+                    [("", "전국 지도"), ("seoul/", "서울 지도"), ("apt/", "단지 검색"), ("highs/", "신고가 단지"), ("sim/", "모의 투자"), ("report/", "백테스트 보고서"), ("api/", "데이터 API")])
     return (f'\n<footer class="sk-foot"><div class="sk-foot-bg" aria-hidden="true" style="background-image:url(\'{base}assets/img/footer.jpg{ver("assets/img/footer.jpg")}\')"></div><div class="sk-in">'
-            f'<div class="sk-about"><a class="sk-logo" href="{base}">SEOUL FEAR &amp; GREED</a>'
-            '<p>서울 아파트 시장의 공포와 탐욕을 0~100으로 보여주는 지수예요. 공공데이터로 매달 20일에 갱신해요.</p></div>'
+            f'<div class="sk-about"><a class="sk-logo" href="{base}">KOREA FEAR &amp; GREED</a>'
+            '<p>아파트 시장의 공포와 탐욕을 0~100으로 보여주는 지수예요. 서울에서 시작해 수도권·광역시로 넓히고 있고, 매달 20일에 갱신해요.</p></div>'
             f'<div><h4>둘러보기</h4><ul>{links}<li><a href="{REPO}">소스 코드 (GitHub)</a></li></ul></div>'
             '<div><h4>자료</h4><ul><li>국토교통부 실거래가 · 건축물대장</li><li>한국부동산원 · 청약홈 · 한국은행</li>'
             '<li>자세한 출처는 각 페이지 설명에 있어요</li></ul></div>'
@@ -157,16 +162,49 @@ def wrap(src, dst, desc, inject=None, skin_args=None, intro=None):
     dst.write_text(HEAD.format(desc=desc, title=title, og=og_meta(dst, desc), body_attr=' class="sk-intro"' if intro else "") + html + TAIL)
 
 
+def josa(word, a="을", b="를"):
+    """받침 있으면 a, 없으면 b (구·군을, 시·구를)."""
+    c = ord(word[-1]) - 0xAC00
+    return a if 0 <= c < 11172 and c % 28 else b
+
+
+def region_fill(d):
+    """서울 밖 지역 페이지에 들어갈 글 (지도 템플릿의 빈칸)."""
+    nm, sw, n = d["top"], d["sub_word"], len(d["gu_order"])
+    return {"__TITLE__": f"{nm} 아파트 공포탐욕지도", "__TOP__": nm, "__NIND__": str(d["n_ind"]),
+            "__HOWTO__": f"{sw}{josa(sw)} 누르면 그곳의 지수를, 아무 데도 누르지 않으면 {nm} 전체 지수를 보여줘요. 아래 슬라이더로 2006년부터 달마다 볼 수 있어요.",
+            "__FOOT_ACC__": (f'<p><b style="color:var(--ink-2)">정확도</b> · {nm} 지수와 {n}개 {sw} 지수는 그곳 실거래 가격으로 따로 검증했어요(지수 추이 아래 참고). '
+                             f'{sw} 지수는 {d["n_votes"]}표 중 일부만 그 {sw} 값이라 {nm} 지수와 크게 다르지 않고, 5점 미만 차이는 의미 있는 차이로 보기 어려워요. '
+                             f'거래가 적은 {sw}일수록 점수가 더 흔들려요.</p>'),
+            "__MAP_SRC__": "지도는 국토교통부 브이월드(VWorld) 시군구 경계(2026년 10월)예요."}
+
+
 if __name__ == "__main__":
     shutil.rmtree(SITE / "assets", ignore_errors=True)
     shutil.copytree(ROOT / "assets", SITE / "assets", ignore=shutil.ignore_patterns("credits.json"))
-    wrap(ROOT / "map" / "index.html", SITE / "index.html",
-         "서울 아파트 시장의 공포와 탐욕을 0~100으로. 5대 권역·25개 구 지도와 2006년부터의 추이, 매달 20일 갱신.",
-         inject=[('<footer class="foot m-fold" data-fold="계산 방법·출처 보기">', '<footer class="foot m-fold" data-fold="계산 방법·출처 보기">\n    <p><a href="apt/" style="color:var(--ink)">단지 검색 (최근 실거래 위치) →</a> · <a href="report/" style="color:var(--ink)">백테스트 보고서 보기 →</a></p>'),
-                 ('<p class="hero-now" id="hero-now" aria-live="polite"></p>', '<p class="hero-now" id="hero-now" aria-live="polite"></p>\n    <p class="m-hide" style="margin:2px 0 4px"><a class="btn" href="apt/" style="text-decoration:none;display:inline-block">단지 검색 · 최근 실거래가 위치 보기 →</a></p>')],
+    wrap(ROOT / "home" / "index.html", SITE / "index.html",
+         "서울과 수도권·광역시 아파트 시장의 공포와 탐욕을 0~100으로. 지도에서 지역을 누르면 구·시군별 지수와 2006년부터의 추이, 매달 20일 갱신.",
          skin_args=("", "지도", ('<header style="display:grid;gap:6px">', "</header>"),
+                    ("<h1>아파트 공포탐욕지도</h1>", '<h1><span class="sk-h1a">지역별 아파트</span><span class="sk-h1b">공포탐욕지도</span></h1>'),
+                    ("bg-map", "50%"), 1180))
+    wrap(ROOT / "map" / "index.html", SITE / "seoul" / "index.html",
+         "서울 아파트 시장의 공포와 탐욕을 0~100으로. 5대 권역·25개 구 지도와 2006년부터의 추이, 매달 20일 갱신.",
+         inject=[('<footer class="foot m-fold" data-fold="계산 방법·출처 보기">', '<footer class="foot m-fold" data-fold="계산 방법·출처 보기">\n    <p><a href="../apt/" style="color:var(--ink)">단지 검색 (최근 실거래 위치) →</a> · <a href="../report/" style="color:var(--ink)">백테스트 보고서 보기 →</a></p>'),
+                 ('<p class="hero-now" id="hero-now" aria-live="polite"></p>', '<p class="hero-now" id="hero-now" aria-live="polite"></p>\n    <p class="m-hide" style="margin:2px 0 4px"><a class="btn" href="../apt/" style="text-decoration:none;display:inline-block">단지 검색 · 최근 실거래가 위치 보기 →</a></p>')],
+         skin_args=("../", "지도", ('<header style="display:grid;gap:6px">', "</header>"),
                     ("<h1>서울 아파트 공포탐욕지도</h1>", '<h1><span class="sk-h1a">서울 아파트</span><span class="sk-h1b">공포탐욕지도</span></h1>'),
                     ("bg-map", "50%"), 1180))
+    for rid in home_build.published():  # 공개 기준을 넘은 수도권·광역시 (같은 지도 템플릿)
+        d = json.loads((ROOT / "results_region" / f"{rid}.json").read_text())
+        nm, sw, n = d["top"], d["sub_word"], len(d["gu_order"])
+        OG[f"{rid}/"] = ("map", f"{nm} 아파트 공포탐욕지도")
+        src = ROOT / "results_region" / f"page_{rid}.html"
+        src.write_text(map_render(region_fill(d), json.dumps(d, ensure_ascii=False, separators=(",", ":"))))
+        wrap(src, SITE / rid / "index.html",
+             f"{nm} 아파트 시장의 공포와 탐욕을 0~100으로. {n}개 {sw} 지도와 2006년부터의 추이, 매달 20일 갱신.",
+             skin_args=("../", "지도", ('<header style="display:grid;gap:6px">', "</header>"),
+                        (f"<h1>{nm} 아파트 공포탐욕지도</h1>", f'<h1><span class="sk-h1a">{nm} 아파트</span><span class="sk-h1b">공포탐욕지도</span></h1>'),
+                        ("bg-map", "50%"), 1180))
     wrap(ROOT / "apt" / "template.html", SITE / "apt" / "index.html",
          "우리 단지 최근 실거래가가 비싼 편인지 싼 편인지 0~100점으로. 세대수·용적률 같은 단지 정보도 함께.",
          skin_args=("../", "단지 검색", ('<header style="display:grid;gap:6px">', "</header>"),

@@ -25,29 +25,29 @@ def _frame(rows, lawd):
     return df.reindex(columns=COLS)
 
 
-def files():
-    return sorted(DIR.glob("trades_*.csv.gz"))
+def files(d=DIR):
+    return sorted(d.glob("trades_*.csv.gz"))
 
 
-def exists():
-    return bool(files())
+def exists(d=DIR):
+    return bool(files(d))
 
 
-def load():
-    return pd.concat([pd.read_csv(f, dtype=str, keep_default_na=False) for f in files()], ignore_index=True)
+def load(d=DIR):
+    return pd.concat([pd.read_csv(f, dtype=str, keep_default_na=False) for f in files(d)], ignore_index=True)
 
 
-def save(df, years=None):
-    """years를 주면 그 연도 파일만 다시 쓴다."""
-    DIR.mkdir(parents=True, exist_ok=True)
+def save(df, years=None, d=DIR):
+    """years를 주면 그 연도 파일만 다시 쓴다. d: 저장 폴더 (지역 저장소는 data/molit_kr)."""
+    d.mkdir(parents=True, exist_ok=True)
     for y, part in df.groupby("dealYear"):
         if years is not None and str(y) not in years:
             continue
         part = part.assign(_m=part["dealMonth"].astype(int), _d=pd.to_numeric(part["dealDay"], errors="coerce").fillna(0))
         part = part.sort_values(["_m", "lawd", "_d", "aptSeq", "dealAmount"]).drop(columns=["_m", "_d"])
-        tmp = DIR / f"trades_{y}.csv.gz.tmp"
+        tmp = d / f"trades_{y}.csv.gz.tmp"
         part.to_csv(tmp, index=False, compression={"method": "gzip", "compresslevel": 9, "mtime": 0})
-        tmp.replace(DIR / f"trades_{y}.csv.gz")  # 쓰다 끊겨도 지난 파일 유지
+        tmp.replace(d / f"trades_{y}.csv.gz")  # 쓰다 끊겨도 지난 파일 유지
 
 
 def load_complexes():

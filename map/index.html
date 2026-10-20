@@ -328,7 +328,7 @@ details.readhow[open] summary { margin-bottom: 6px; }
   </section>
 
   <details class="panel m-hide" style="padding:14px 18px">
-    <summary>선택한 달의 권역별 값 표로 보기</summary>
+    <summary>선택한 달의 지역별 값 표로 보기</summary>
     <div style="overflow-x:auto;margin-top:10px"><table id="tbl"></table></div>
   </details>
 
@@ -354,6 +354,7 @@ function H(tag, attrs, parent, text) {
   return e;
 }
 const ZONES = Object.keys(D.geo.zones);
+const TOP = D.top || "서울", TOPF = D.top_full || "서울 전체", SUBW = D.sub_word || "구";  // 이 페이지의 지역 (서울·부산 …)과 아래 단위 이름
 const N = D.dates.length;
 const BANDS = [[0, 25, "극단적 공포", "var(--band-fear-strong)"], [25, 45, "공포", "var(--band-fear-soft)"], [45, 55, "중립", "var(--band-neutral)"], [55, 75, "탐욕", "var(--band-greed-soft)"], [75, 100, "극단적 탐욕", "var(--band-greed-strong)"]];
 const LABEL_POS = { 도심권: [450, 372], 서북권: [296, 258], 동북권: [560, 205], 서남권: [236, 470], 동남권: [612, 498] };
@@ -361,9 +362,9 @@ const zoneName = (v) => (v < 25 ? "극단적 공포" : v < 45 ? "공포" : v < 5
 const side = (v) => (v < 45 ? "var(--fear)" : v < 55 ? "var(--neutral)" : "var(--greed)");
 const ym = (s) => s.slice(0, 4) + "년 " + String(+s.slice(5, 7)) + "월";
 (() => {  // 첫 화면: 가장 최근 달 서울 점수
-  const el = document.getElementById("hero-now"), R = D.regions["서울"], i = D.dates.length - 1, v = R.score[i], pv = R.score[i - 1];
+  const el = document.getElementById("hero-now"), R = D.regions[TOP], i = D.dates.length - 1, v = R.score[i], pv = R.score[i - 1];
   if (!el || v == null) return;
-  H("span", { class: "hn-k" }, el, "지금 서울");
+  H("span", { class: "hn-k" }, el, `지금 ${TOP}`);
   H("b", { class: "hn-v" }, el, String(Math.round(v)));
   H("span", { class: "hn-z", style: `border-color:${side(v)}` }, el, zoneName(v));
   const sc = H("span", { class: "hn-scale", role: "img", "aria-label": `0~100 중 ${Math.round(v)}, ${zoneName(v)}` }, el);
@@ -388,31 +389,31 @@ function lastValid(arr, t) { for (let i = t; i >= 0; i--) if (arr[i] != null) re
 
 const GUS = D.gu_order || [];
 const lvlOf = (r) => (D.regions[r] && D.regions[r].level) || "zone";
-const state = { region: "서울", t: N - 1, level: "zone" };
+const state = { region: TOP, t: N - 1, level: ZONES.length ? "zone" : "gu" };
 try { const h = decodeURIComponent(location.hash.slice(1)); if (Object.prototype.hasOwnProperty.call(D.regions, h)) state.region = h; } catch (e) {}
 if (lvlOf(state.region) === "gu") state.level = "gu";
 
 /* ---------- map ---------- */
 const g = D.geo;
 const box = $("#mapbox");
-const svg = S("svg", { viewBox: `0 0 ${g.w} ${g.h}`, role: "group", "aria-label": "서울 5대 권역·25개 구 지도" }, box);
+const svg = S("svg", { viewBox: `0 0 ${g.w} ${g.h}`, role: "group", "aria-label": D.map_label || "서울 5대 권역·25개 구 지도" }, box);
 const zonePaths = {};
 ZONES.forEach((z) => {
   const p = S("path", { d: g.zones[z].d, class: "zone-path", tabindex: 0, role: "button", "aria-label": z }, svg);
-  p.addEventListener("click", () => select(state.region === z ? "서울" : z));
-  p.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); select(state.region === z ? "서울" : z); } });
+  p.addEventListener("click", () => select(state.region === z ? TOP : z));
+  p.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); select(state.region === z ? TOP : z); } });
   zonePaths[z] = p;
 });
 const guPaths = {};
 GUS.forEach((gn) => {
   const p = S("path", { d: g.gu[gn].d, class: "zone-path gu-path", tabindex: 0, role: "button", "aria-label": gn }, svg);
-  p.addEventListener("click", () => select(state.region === gn ? "서울" : gn));
-  p.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); select(state.region === gn ? "서울" : gn); } });
+  p.addEventListener("click", () => select(state.region === gn ? TOP : gn));
+  p.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); select(state.region === gn ? TOP : gn); } });
   guPaths[gn] = p;
 });
 Object.values(g.gu).forEach((v) => S("path", { d: v.d, class: "gu-line" }, svg));
 const zoneBorders = ZONES.map((z) => S("path", { d: g.zones[z].d, class: "zone-border" }, svg));
-S("path", { d: g.river, class: "river" }, svg);
+if (g.river) S("path", { d: g.river, class: "river" }, svg);
 const selOutline = S("path", { class: "sel-outline", d: "" }, svg);
 const pins = {}, guNames = [];
 ZONES.forEach((z) => {
@@ -427,7 +428,7 @@ const guPins = {};
 GUS.forEach((gn) => {
   const [x, y] = g.gu[gn].label;
   const pin = H("div", { class: "pin gu", style: `left:${(x / g.w) * 100}%;top:${(y / g.h) * 100}%`, hidden: "" }, box);
-  H("span", { class: "n" }, pin, gn);
+  H("span", { class: "n" }, pin, (D.short_name || {})[gn] || gn);
   H("span", { class: "v" }, pin);
   guPins[gn] = pin;
 });
@@ -435,20 +436,21 @@ Object.entries(g.gu).forEach(([name, v]) => {
   const el = H("div", { class: "gu-name", style: `left:${(v.label[0] / g.w) * 100}%;top:${(v.label[1] / g.h) * 100}%`, hidden: "" }, box, name);
   guNames.push([v.zone, el]);
 });
-svg.addEventListener("click", (e) => { if (e.target === svg) select("서울"); });
+svg.addEventListener("click", (e) => { if (e.target === svg) select(TOP); });
 
 const chips = $("#chips");
-["서울", ...ZONES].forEach((r) => {
-  const b = H("button", { class: "btn", type: "button", "data-r": r, "aria-pressed": "false" }, chips, r === "서울" ? "서울 전체" : r);
+[TOP, ...ZONES].forEach((r) => {
+  const b = H("button", { class: "btn", type: "button", "data-r": r, "aria-pressed": "false" }, chips, r === TOP ? TOPF : r);
   b.addEventListener("click", () => select(r));
 });
-const gsel = H("select", { class: "gu-select", "aria-label": "구 선택" }, chips);
-H("option", { value: "" }, gsel, "구 선택");
+const gsel = H("select", { class: "gu-select", "aria-label": `${SUBW} 선택` }, chips);
+H("option", { value: "" }, gsel, `${SUBW} 선택`);
 ZONES.forEach((z) => { const og = H("optgroup", { label: z }, gsel); D.regions[z].gus.forEach((gn) => { if (D.regions[gn]) H("option", { value: gn }, og, gn); }); });
+if (!ZONES.length) GUS.forEach((gn) => H("option", { value: gn }, gsel, gn));
 gsel.addEventListener("change", () => { if (gsel.value) select(gsel.value); });
 $("#lv-zone").addEventListener("click", () => setLevel("zone"));
 $("#lv-gu").addEventListener("click", () => setLevel("gu"));
-if (!GUS.length) $(".seg").hidden = true;
+if (!GUS.length || !ZONES.length) $(".seg").hidden = true;
 $("#scale-bar").style.background = `linear-gradient(90deg, ${fill(10)}, ${fill(30)}, ${fill(50)}, ${fill(70)}, ${fill(90)})`;
 
 /* ---------- time ---------- */
@@ -458,7 +460,7 @@ slider.value = String(state.t);
 slider.addEventListener("input", () => setT(+slider.value));
 $("#prev").addEventListener("click", () => setT(state.t - 1));
 $("#next").addEventListener("click", () => setT(state.t + 1));
-const PRESETS = [["2008-12", "금융위기"], ["2012-12", "장기 침체"], ["2020-07", "영끌 매수"], ["2022-11", "금리 급등 후 급락"], [D.dates[N - 1], "최신"]];
+const PRESETS = [...(D.presets || [["2008-12", "금융위기"], ["2012-12", "장기 침체"], ["2020-07", "영끌 매수"], ["2022-11", "금리 급등 후 급락"]]), [D.dates[N - 1], "최신"]];
 const pre = $("#presets");
 PRESETS.forEach(([d, l]) => {
   const i = D.dates.indexOf(d);
@@ -466,13 +468,13 @@ PRESETS.forEach(([d, l]) => {
   H("button", { class: "btn", type: "button" }, pre, `${d.replace("-", ".")} ${l}`).addEventListener("click", () => setT(i));
 });
 function setT(t) { state.t = Math.max(0, Math.min(N - 1, t)); slider.value = String(state.t); render(); }
-function setHash(r) { try { history.replaceState(null, "", r === "서울" ? location.pathname : "#" + encodeURIComponent(r)); } catch (e) {} }
+function setHash(r) { try { history.replaceState(null, "", r === TOP ? location.pathname : "#" + encodeURIComponent(r)); } catch (e) {} }
 function setLevel(lv) {
   state.level = lv;
   if (lv === "zone" && lvlOf(state.region) === "gu") { state.region = D.regions[state.region].zone; setHash(state.region); }
   render();
 }
-function select(r) { state.region = r; if (lvlOf(r) === "gu") state.level = "gu"; try { history.replaceState(null, "", r === "서울" ? location.pathname : "#" + encodeURIComponent(r)); } catch (e) {} render(); }
+function select(r) { state.region = r; if (lvlOf(r) === "gu") state.level = "gu"; setHash(r); render(); }
 
 /* ---------- reading panel ---------- */
 function bars(el, rows) {
@@ -542,11 +544,11 @@ function renderRead() {
   const R = D.regions[state.region], t = state.t, el = $("#read");
   el.replaceChildren();
   const [v, ti] = lastValid(R.score, t);
-  const isSeoul = state.region === "서울";
-  H("div", { class: "eyebrow" }, el, isSeoul ? `서울 전체 · ${ym(D.dates[t])}` : `${state.region} · ${ym(D.dates[t])}`);
-  if (R.level === "gu") H("p", { style: "font-size:13px;color:var(--ink-2);margin-top:-10px" }, el, `${R.zone} · ${D.n_votes}표 중 ${R.own_votes}표가 이 구 값`);
+  const isSeoul = state.region === TOP;  // 이 페이지의 맨 위 지역 (서울 페이지에서는 서울)
+  H("div", { class: "eyebrow" }, el, isSeoul ? `${TOPF} · ${ym(D.dates[t])}` : `${state.region} · ${ym(D.dates[t])}`);
+  if (R.level === "gu") H("p", { style: "font-size:13px;color:var(--ink-2);margin-top:-10px" }, el, `${R.zone ? R.zone + " · " : ""}${D.n_votes}표 중 ${R.own_votes}표가 이 ${SUBW} 값`);
   else if (!isSeoul) H("p", { style: "font-size:13px;color:var(--ink-2);margin-top:-10px" }, el, R.gus.join(" · "));
-  else H("p", { style: "font-size:13px;color:var(--ink-2);margin-top:-10px" }, el, `서울 전체 지표 ${D.n_ind}개(같은 출처끼리 묶어 ${D.n_votes}표)로 계산한 ${D.version} 지수`);
+  else H("p", { style: "font-size:13px;color:var(--ink-2);margin-top:-10px" }, el, `${TOPF} 지표 ${D.n_ind}개(같은 출처끼리 묶어 ${D.n_votes}표)로 계산한 ${D.version} 지수`);
   const row = H("div", { class: "row" }, el);
   H("span", { class: "hero-num" }, row, v == null ? "–" : String(Math.round(v)));
   if (v != null) H("span", { class: "zone-chip" }, row, zoneName(v));
@@ -564,7 +566,7 @@ function renderRead() {
   const [rsNow, ri] = lastValid(R.rs, t);
   if (rsNow != null && ri >= 12 && R.rs[ri - 12] != null) add("직전 1년 실거래가 변화", `${pct(rsNow / R.rs[ri - 12] - 1)} (${ym(D.dates[ri])}까지)`);
   add("이후 1년 실거래가 변화", R.fwd12[t] == null ? "아직 모름" : pct(Math.expm1(R.fwd12[t])));
-  if (!isSeoul) add("서울 전체에서 거래 비중", `${Math.round(R.weight * 100)}%`);
+  if (!isSeoul && R.weight != null) add(`${TOPF}에서 거래 비중`, `${Math.round(R.weight * 100)}%`);
   if (R.rel) {
     const rk = R.rel.rank[t], hi = R.rel.hi[t], shi = D.regions["서울"].hi ? D.regions["서울"].hi[t] : null, C = D.gu_cs.rel;
     const box = H("div", { class: "relbox" }, el);
@@ -589,8 +591,9 @@ function renderRead() {
     H("div", { class: "sec-title" }, more, title);
     bars(H("div", { class: "bars" }, more), list.map((z) => ({ name: z, note: note(z), v: val(z, t), onclick: () => select(z) })).sort((a, b) => (b.v ?? -1) - (a.v ?? -1)));
   };
-  const share = (z) => `거래 비중 ${Math.round(D.regions[z].weight * 100)}%`;
-  if (isSeoul && state.level === "gu" && GUS.length) {
+  const share = (z) => (D.regions[z].weight == null ? "" : `거래 비중 ${Math.round(D.regions[z].weight * 100)}%`);
+  if (isSeoul && state.level === "gu" && GUS.length && !ZONES.length) rank(`${SUBW} 순위 (누르면 이동)`, GUS.filter((z) => D.regions[z]), share);
+  else if (isSeoul && state.level === "gu" && GUS.length) {
     rank("구 순위 (누르면 이동)", GUS, (z) => D.regions[z].zone);
     H("div", { class: "sec-title" }, more, "서울 안 상대 강도 순위 (신고가 비중, 공포탐욕 점수와 별개)");
     bars(H("div", { class: "bars" }, more), GUS.filter((z) => D.regions[z].rel && D.regions[z].rel.rank[t] != null)
@@ -614,15 +617,18 @@ function renderRead() {
 
 function renderHist() {
   const R = D.regions[state.region], t = state.t, el = $("#histcard");
-  const isSeoul = state.region === "서울";
+  const isSeoul = state.region === TOP;
   el.replaceChildren();
   const head = H("div", { class: "hist-head" }, el);
-  H("div", { class: "hist-title" }, head, `${isSeoul ? "서울 전체" : state.region} 지수 추이`);
+  H("div", { class: "hist-title" }, head, `${isSeoul ? TOPF : state.region} 지수 추이`);
   H("div", { class: "sec-title" }, head, "2006년부터 · 마우스를 올리면 그 달 값, 누르면 그 달로 이동");
   history_(H("div", { class: "hist" }, el), R);
   const note = H("div", { class: "note m-hide" }, el);
   const ic = R.ic;
-  if (isSeoul) {
+  if (D.acc_text) {  // 서울 밖 지역 페이지: 정확도 문장은 빌드 때 만든다
+    H("b", {}, note, "정확도 ");
+    note.append(isSeoul ? D.acc_text.top : (D.acc_text.sub[state.region] || ""));
+  } else if (isSeoul) {
     H("b", {}, note, "정확도 ");
     note.append(`${ym(D.official_start)} 이후 이 지수와 이후 12개월 서울 실거래 가격의 순위상관은 ${f2(R.acc)}예요. 5년 단위로 보면 구간에 따라 크게 달라서, 주로 나쁜 구간을 덜 나쁘게 만드는 정도로 이해해 주세요. 권역 점수는 각 권역 자료로 따로 계산해서 평균이 서울 점수와 꼭 같지는 않아요.`);
   } else if (R.level === "gu") {
@@ -674,7 +680,7 @@ function renderMap() {
     pin.classList.toggle("sel", state.region === gn);
     pin.style.opacity = D.dates[t] < D.official_start ? 0.65 : 1;
   });
-  selOutline.setAttribute("d", state.region === "서울" ? g.outline : lv === "gu" ? g.gu[state.region].d : g.zones[state.region].d);
+  selOutline.setAttribute("d", state.region === TOP ? g.outline : lv === "gu" ? g.gu[state.region].d : g.zones[state.region].d);
   guNames.forEach(([z, el]) => (el.hidden = guMode || z !== state.region));
   $("#lv-zone").setAttribute("aria-pressed", String(!guMode));
   $("#lv-gu").setAttribute("aria-pressed", String(guMode));
@@ -695,10 +701,10 @@ function renderTable() {
   const hr = H("tr", {}, H("thead", {}, tb));
   [["지역", ""], ["지수", "n"], ["구간", ""], ["3개월 변화", "n"], ["선행", "n"], ["동행", "n"], ["후행", "n"], ["상대 강도", "n"], ["이후 1년 실거래", "n"]].forEach(([h, c]) => H("th", { class: c }, hr, h));
   const body = H("tbody", {}, tb);
-  ["서울", ...ZONES, ...(state.level === "gu" ? GUS : [])].forEach((r) => {
+  [TOP, ...ZONES, ...(state.level === "gu" ? GUS : [])].forEach((r) => {
     const R = D.regions[r], v = R.score[t], p3 = t >= 3 ? R.score[t - 3] : null;
     const row = H("tr", {}, body);
-    H("td", {}, row, r === "서울" ? "서울 전체" : r);
+    H("td", {}, row, r === TOP ? TOPF : r);
     H("td", { class: "n" }, row, v == null ? "–" : String(Math.round(v)));
     H("td", {}, row, v == null ? "–" : zoneName(v));
     H("td", { class: "n" }, row, v != null && p3 != null ? (v - p3 >= 0 ? "+" : "−") + Math.abs(v - p3).toFixed(1) : "–");
@@ -709,7 +715,7 @@ function renderTable() {
 }
 
 (() => {  // 서울이 극단적 공포(25 미만)였던 시기를 자료에서 찾아 '읽는 법'에 씀
-  const s = D.regions["서울"].score, eps = [];
+  const s = D.regions[TOP].score, eps = [];
   let cur = null;
   s.forEach((v, i) => { const on = v != null && v < 25 && D.dates[i] >= "2006-01"; if (on && !cur) cur = [i, i]; else if (on) cur[1] = i; else if (cur) { eps.push(cur); cur = null; } });
   if (cur) eps.push(cur);
@@ -717,10 +723,11 @@ function renderTable() {
   const el = $("#fear-years");
   if (el && eps.length) el.textContent = [...new Set(eps.map(yr))].join(", ");
 })();
-$("#eyebrow").textContent = `서울 아파트 · 공포탐욕지수 ${D.version} · 5대 권역 · 25개 구`;
+$("#eyebrow").textContent = D.eyebrow || `서울 아파트 · 공포탐욕지수 ${D.version} · 5대 권역 · 25개 구`;
 (() => {
   const f = $("#foot-method");
   H("b", { style: "color:var(--ink-2)" }, f, `계산 방식 (${D.version})`);
+  if (D.method) { f.append(" · " + D.method); return; }
   f.append(` · 2009년 이전부터 자료가 있는 지표 ${D.n_ind}개를 쓰되, 같은 원자료에서 나온 지표는 한 표로 묶어 ${D.n_votes}표로 계산해요(구글 검색어 6개도 한 표). 표를 선행·동행·후행 3그룹으로 나눠 같은 비중으로 평균 내요. 권역 지수는 ${D.n_votes}표 중 가격·실거래·거래량·매입자 구성·전세·미분양 등 일부를 권역 값으로 바꿔 계산하고, 금리·검색량·주가·PIR 등은 서울 공통 값을 써요. 25개 구 지수도 같은 방식으로 가격·전세·거래량·매입자 구성·실거래는 구 값, 부동산원 수급과 미분양은 권역 값, KB 설문은 강북·강남 값을 써요. 각 지표는 과거 120개월 안에서의 백분위로 바꾸고, 검색량이 너무 적던 시기(직전 2년 평균 5 미만)의 검색 지표는 쓰지 않아요.`);
 })();
 
@@ -773,19 +780,19 @@ function setGauge(g, v, label) {
 }
 const gBig = buildGauge($("#g-big"), true);
 const gMinis = {};
-["서울", ...ZONES].forEach((r) => {
+(D.minis || [TOP, ...ZONES]).forEach((r) => {
   const b = H("button", { class: "g-mini", type: "button", "aria-pressed": "false" }, $("#g-minis"));
   const holder = H("div", {}, b);
   const g = buildGauge(holder, false);
-  H("span", { class: "nm" }, b, r === "서울" ? "서울 전체" : r);
+  H("span", { class: "nm" }, b, r === TOP ? TOPF : (D.short_name || {})[r] || r);
   g.zn = H("span", { class: "zn" }, b, "");
   b.addEventListener("click", () => select(r));
   gMinis[r] = { g, b };
 });
 function renderGauges() {
   const t = state.t, r = state.region, R = D.regions[r];
-  $("#g-title").textContent = `${r === "서울" ? "서울 전체" : r} · ${ym(D.dates[t])}`;
-  setGauge(gBig, R.score[t], r === "서울" ? "서울 전체" : r);
+  $("#g-title").textContent = `${r === TOP ? TOPF : r} · ${ym(D.dates[t])}`;
+  setGauge(gBig, R.score[t], r === TOP ? TOPF : r);
   const cmp = $("#g-cmp");
   cmp.replaceChildren();
   [["지난달", 1], ["3개월 전", 3], ["1년 전", 12]].forEach(([k, back]) => {
@@ -799,7 +806,7 @@ function renderGauges() {
   });
   Object.entries(gMinis).forEach(([reg, { g, b }]) => {
     const v = D.regions[reg].score[t];
-    setGauge(g, v, reg === "서울" ? "서울 전체" : reg);
+    setGauge(g, v, reg === TOP ? TOPF : reg);
     g.zn.textContent = v == null ? "자료 없음" : zoneName(v);
     b.setAttribute("aria-pressed", String(reg === r));
   });
@@ -814,19 +821,19 @@ function drawNow() {
   renderGauges(); renderMap(); renderRead(); renderHist();
   if (!tblDetails || tblDetails.open) renderTable();
   const R = D.regions[state.region], v = R.score[state.t];
-  $("#live-summary").textContent = `${state.region === "서울" ? "서울 전체" : state.region} ${ym(D.dates[state.t])} ${v == null ? "자료 없음" : Math.round(v) + "점 " + zoneName(v)}`;
+  $("#live-summary").textContent = `${state.region === TOP ? TOPF : state.region} ${ym(D.dates[state.t])} ${v == null ? "자료 없음" : Math.round(v) + "점 " + zoneName(v)}`;
   const fs = after; after = [];
   fs.forEach((f) => f());
 }
 function render() { if (!raf) raf = requestAnimationFrame(drawNow); }  // 슬라이더를 끌 때 한 프레임에 한 번만
 if (tblDetails) tblDetails.addEventListener("toggle", () => { if (tblDetails.open) renderTable(); });
 drawNow();
-new ResizeObserver(() => box.classList.toggle("compact", box.clientWidth < 440)).observe(box);  // 아주 좁을 때만 구 이름을 숨김
+new ResizeObserver(() => box.classList.toggle("compact", !!D.compact_pins || box.clientWidth < 440)).observe(box);  // 아주 좁을 때(시군구가 많은 지역은 늘) 이름을 숨김
 let ht;
 new ResizeObserver(() => { clearTimeout(ht); ht = setTimeout(renderHist, 150); }).observe($("#histcard"));
 document.addEventListener("keydown", (e) => {
   if (e.target === slider || e.target.tagName === "INPUT") return;
-  if (e.key === "Escape") select("서울");
+  if (e.key === "Escape") select(TOP);
 });
 
 /* ---------- 화면 밝기 (자동 · 밝게 · 어둡게, 지도·보고서가 같은 설정을 씀) ---------- */

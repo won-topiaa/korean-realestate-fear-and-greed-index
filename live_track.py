@@ -40,6 +40,32 @@ def record(map_data_path=ROOT / "results_zone" / "map_data.json"):
     return len(new), month
 
 
+def record_regions(out=ROOT / "results_region"):
+    """수도권·광역시: 최신 달 시도·시군구 점수를 아직 기록이 없을 때만 덧붙인다 (공개 전인 지역도 검증용으로 남긴다).
+    엔진 이름은 '{버전}-지역A/B' (서울 엔진과 섞이지 않게), 시군구 이름은 '부산 해운대구'처럼 시도 이름을 붙인다."""
+    p = out / "summary.json"
+    if not p.exists():
+        return 0, None
+    summ = json.loads(p.read_text())
+    log = load()
+    have = set(zip(log["engine"], log["month"], log["region"]))
+    now = dt.datetime.now().strftime("%Y-%m-%d %H:%M")
+    new, month = [], None
+    for rid, s in summ.items():
+        d = json.loads((out / f"{rid}.json").read_text())
+        eng = f"{d['version']}-지역{s.get('variant', 'A')}"
+        t = d["dates"].index(s["month"])
+        month = s["month"]
+        for name, reg in d["regions"].items():
+            v = reg["score"][t]
+            label = name if reg["level"] == "top" else f"{d['top']} {name}"
+            if v is not None and (eng, month, label) not in have:
+                new.append({"logged_at": now, "engine": eng, "month": month, "region": label, "score": v})
+    if new:
+        pd.concat([log, pd.DataFrame(new)], ignore_index=True).to_csv(LOG, index=False)
+    return len(new), month
+
+
 def evaluate():
     """기록된 점수와 그 뒤 12개월 실거래 가격 변화의 순위상관 (엔진·지역별, 12개월 이상 쌓인 경우만).
     상대 강도는 달마다 25개 구끼리 순위를 비교해 평균한다."""
@@ -81,5 +107,10 @@ def evaluate():
 
 
 if __name__ == "__main__":
-    n, m = record()
-    print(f"기록 {n}줄 추가 ({m})", json.dumps(evaluate(), ensure_ascii=False))
+    import sys
+    if "--regions" in sys.argv:
+        n, m = record_regions()
+        print(f"지역 기록 {n}줄 추가 ({m})")
+    else:
+        n, m = record()
+        print(f"기록 {n}줄 추가 ({m})", json.dumps(evaluate(), ensure_ascii=False))

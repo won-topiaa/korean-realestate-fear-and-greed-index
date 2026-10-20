@@ -17,6 +17,7 @@ data/indicators.csv
 data/raw/molit/
 data/raw/bigkinds/
 data/raw/geo/ne_rivers.geojson
+data/raw/geo/vworld_sigg/
 data/news_indicators.csv
 # 연구용 대용량 결과 (v1·v2 탐색)
 results/
@@ -26,3 +27,5 @@ report/template_v1.html
 *.tmp
 results_highs/
 results_sim/
+results_region/*.pkl
+results_region/page_*.html

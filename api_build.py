@@ -5,7 +5,7 @@ GitHub Pages가 모든 주소에 CORS(Access-Control-Allow-Origin: *)를 열어 
 매달 20일 자동 갱신의 site_build.py에서 함께 다시 만든다.
 
   /api/v1/index.json            안내 (주소 목록, 눈금, 갱신 주기, 필드 설명)
-  /api/v1/regions.json          지역 31곳 (서울·5대 권역·25개 구)의 id·이름·상위 지역
+  /api/v1/regions.json          지역 목록 (서울·5대 권역·25개 구 + 공개한 수도권·광역시와 그 시군구)의 id·이름·상위 지역
   /api/v1/latest.json           최신 달 점수·구간·변화·속도별 그룹·주제별 점수 (구는 서울 안 상대 강도 순위까지)
   /api/v1/history.json          2006년 1월부터 월별 점수 (지역 전체)
   /api/v1/history.csv           같은 내용을 표로 (열 이름 = 지역 id)
@@ -40,7 +40,9 @@ def band(v):
             return {"key": key, "label": ko}
 
 
-def rid(name):
+def rid(name, ids=None):
+    if ids and name in ids:
+        return ids[name]
     return "seoul" if name == "서울" else ZONE_ID.get(name) or GU_ID[name]
 
 
@@ -56,16 +58,34 @@ def build(out):
     updated = f"{run[:4]}-{run[4:6]}-{run[6:8]}" if len(run) >= 8 else None
     dates, R = d["dates"], d["regions"]
     names = ["서울", *ZONE_ID, *d["gu_order"]]
+    ids, extra = {}, []  # 공개한 수도권·광역시 (home_build.published): 시도 id는 영문(busan), 시군구는 5자리 코드
+    import home_build
+    from regions import REGIONS
+    for rg in home_build.published():
+        x = json.loads((ROOT / "results_region" / f"{rg}.json").read_text())
+        assert x["dates"] == dates, f"{rg}: 기간이 서울과 다름"
+        code = {v: k for k, v in REGIONS[rg]["lawd"].items()}
+        R[x["top"]] = {**x["regions"][x["top"]], "level": "region", "gus": x["gu_order"]}
+        ids[x["top"]] = rg
+        extra.append(x["top"])
+        for sub in x["gu_order"]:
+            key = f"{x['top']} {sub}"
+            R[key] = {**x["regions"][sub], "level": "gu", "zone": x["top"]}
+            ids[key] = code[sub]
+            extra.append(key)
+    names += extra
+    rid_ = lambda n: rid(n, ids)
     t = max(i for i, v in enumerate(R["서울"]["score"]) if v is not None)  # 최신 달 (서울 점수가 있는 마지막 달)
     month = dates[t]
 
     def parent(n):
         r = R[n]
-        return None if r["level"] == "seoul" else "seoul" if r["level"] == "zone" else rid(r["zone"])
+        return None if r["level"] in ("seoul", "region") else "seoul" if r["level"] == "zone" else rid_(r["zone"])
 
-    regions = [{"id": rid(n), "name": n, "level": R[n]["level"], "parent": parent(n),
-                **({"children": [rid(g) for g in R[n]["gus"]]} if R[n]["level"] == "zone" else {}),
-                **({"children": list(ZONE_ID.values())} if n == "서울" else {})} for n in names]
+    regions = [{"id": rid_(n), "name": n, "level": R[n]["level"], "parent": parent(n),
+                **({"children": [rid_(g) for g in R[n]["gus"]]} if R[n]["level"] == "zone" else {}),
+                **({"children": list(ZONE_ID.values())} if n == "서울" else {}),
+                **({"children": [rid_(f"{n} {g}") for g in R[n]["gus"]]} if R[n]["level"] == "region" else {})} for n in names]
 
     def at(s, i):
         return s[i] if 0 <= i < len(s) else None
@@ -77,7 +97,7 @@ def build(out):
     latest = []
     for n in names:
         r, s = R[n], R[n]["score"]
-        row = {"id": rid(n), "name": n, "level": r["level"], "score": at(s, t), "band": band(at(s, t)),
+        row = {"id": rid_(n), "name": n, "level": r["level"], "score": at(s, t), "band": band(at(s, t)),
                "change": {"1m": chg(s, 1), "3m": chg(s, 3), "12m": chg(s, 12)},
                "groups": {GROUP[k]: at(v, t) for k, v in r["speed"].items()},
                "themes": {THEME[k]: at(r["themes"][k], t) for k in d["theme_order"] if k in r["themes"]}}
@@ -88,10 +108,10 @@ def build(out):
     meta = {"month": month, "updated": updated, "engine": d["version"]}
     dump(out / "latest.json", {**meta, "regions": latest})
     dump(out / "regions.json", {"regions": regions})
-    hist = {rid(n): R[n]["score"] for n in names}
+    hist = {rid_(n): R[n]["score"] for n in names}
     dump(out / "history.json", {**meta, "dates": dates, "series": hist})
     for n in names:
-        dump(out / "history" / f"{rid(n)}.json", {**meta, "id": rid(n), "name": n, "dates": dates, "scores": R[n]["score"]})
+        dump(out / "history" / f"{rid_(n)}.json", {**meta, "id": rid_(n), "name": n, "dates": dates, "scores": R[n]["score"]})
     buf = io.StringIO()
     w = csv.writer(buf, lineterminator="\n")
     w.writerow(["month", *hist])
@@ -100,15 +120,15 @@ def build(out):
     (out / "history.csv").write_text(buf.getvalue(), encoding="utf-8")
 
     dump(out / "index.json", {
-        "name": "서울 아파트 공포탐욕지수 API",
-        "description": "서울 아파트 시장 심리를 0~100으로 나타낸 월별 지수 (0 극단적 공포, 50 중립, 100 극단적 탐욕). 서울 전체·5대 권역·25개 구.",
+        "name": "아파트 공포탐욕지수 API",
+        "description": "아파트 시장 심리를 0~100으로 나타낸 월별 지수 (0 극단적 공포, 50 중립, 100 극단적 탐욕). 서울 전체·5대 권역·25개 구와, 공개 기준을 넘은 수도권·광역시와 그 시군구.",
         **meta,
         "update_schedule": "매달 20일 09:17 (한국 시간) 전후 갱신. month = 최신 점수의 기준 달, updated = 계산한 날",
         "coverage": {"from": dates[0], "to": month, "regions": len(names), "official_from": d["official_start"]},
         "scale": [{"from": lo, "to": hi, "key": key, "label": ko} for lo, hi, key, ko in BANDS],
         "endpoints": {"index": BASE + "index.json", "regions": BASE + "regions.json", "latest": BASE + "latest.json",
                       "history": BASE + "history.json", "history_csv": BASE + "history.csv", "history_region": BASE + "history/{id}.json"},
-        "ids": "seoul = 서울 전체, dosim·dongbuk·seobuk·seonam·dongnam = 도심권·동북권·서북권·서남권·동남권, 5자리 숫자 = 구 (법정동 시군구 코드, 예: 11680 강남구)",
+        "ids": "seoul = 서울 전체, dosim·dongbuk·seobuk·seonam·dongnam = 도심권·동북권·서북권·서남권·동남권, 5자리 숫자 = 구·시군 (지금의 법정동 시군구 코드, 예: 11680 강남구), 영문 = 수도권·광역시 (gyeonggi·incheon·busan·daegu·gwangju·daejeon·ulsan 중 공개한 곳만, regions.json 참고)",
         "fields": {
             "score": "공포탐욕 점수 0~100 (소수 한 자리). 자료가 없는 달은 null",
             "band": "점수 구간 (scale 참고)",

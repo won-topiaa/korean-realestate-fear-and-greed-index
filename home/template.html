@@ -1,0 +1,284 @@
+<title>아파트 공포탐욕지도</title>
+<style>
+/* 첫 화면: 대한민국 지도에서 지수가 있는 지역(점수 색)을 눌러 지역 페이지로 간다. 지도 왼쪽, 지역 목록 오른쪽 (휴대폰은 위아래). */
+:root {
+  --bg: #f3f4f6; --surface: #fcfcfb; --ink: #111316; --ink-2: #4a4e55; --muted: #7d8189;
+  --grid: #e3e5e8; --hair: rgba(17, 19, 22, 0.1); --hl: #eaeef4;
+  --fear: #2a78d6; --greed: #e34948; --neutral: #9a9ca1; --map-neutral: #e9e8e4; --map-off: #ebebe9; --map-off-line: #ffffff;
+  --font: "IBM Plex Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f1012; --surface: #18191b; --ink: #eef0f2; --ink-2: #c1c5cb; --muted: #8b8f96; --grid: #2a2c30; --hair: rgba(255, 255, 255, 0.1); --hl: #22262d;
+    --fear: #3987e5; --greed: #e66767; --neutral: #74777d; --map-neutral: #2b2c2f; --map-off: #26272a; --map-off-line: #18191b; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f1012; --surface: #18191b; --ink: #eef0f2; --ink-2: #c1c5cb; --muted: #8b8f96; --grid: #2a2c30; --hair: rgba(255, 255, 255, 0.1); --hl: #22262d;
+  --fear: #3987e5; --greed: #e66767; --neutral: #74777d; --map-neutral: #2b2c2f; --map-off: #26272a; --map-off-line: #18191b; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font); font-size: 15px; line-height: 1.6; padding-inline: 16px; padding-block: 28px 56px; -webkit-font-smoothing: antialiased; }
+.wrap { max-width: 1180px; margin: 0 auto; display: grid; gap: 20px; }
+h1, h2, h3 { margin: 0; line-height: 1.3; }
+h1 { font-size: clamp(26px, 3.6vw, 34px); font-weight: 700; letter-spacing: -0.02em; }
+h2 { font-size: 17px; font-weight: 700; }
+p { margin: 0; }
+.eyebrow { font-family: var(--mono); font-size: 13px; letter-spacing: 0.06em; color: var(--muted); text-transform: uppercase; }
+.topbar { display: flex; justify-content: space-between; align-items: center; gap: 8px 12px; flex-wrap: wrap; }
+.theme-ctl { display: inline-flex; align-items: center; gap: 2px; padding: 2px; border: 1px solid var(--hair); border-radius: 999px; background: var(--surface); }
+.theme-ctl .tl { font-size: 13px; color: var(--muted); padding: 0 6px 0 8px; }
+.theme-ctl button { font: inherit; font-size: 13px; border: 0; background: transparent; color: var(--ink-2); padding: 3px 10px; border-radius: 999px; cursor: pointer; }
+.theme-ctl button[aria-pressed="true"] { background: var(--ink); color: var(--surface); font-weight: 600; }
+.theme-ctl button:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.hero-def { font-size: 17px; line-height: 1.7; max-width: 680px; }
+.hero-def b { font-weight: 700; }
+.panel { background: var(--surface); border: 1px solid var(--hair); border-radius: 12px; min-width: 0; }
+
+.main { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+@media (max-width: 880px) { .main { grid-template-columns: minmax(0, 1fr); } }
+.mapcard { padding: 16px; display: grid; gap: 12px; }
+.maphead { display: flex; justify-content: space-between; align-items: baseline; gap: 6px 12px; flex-wrap: wrap; }
+.hint { font-size: 14px; font-weight: 600; display: inline-flex; align-items: center; gap: 8px; }
+.hint i { width: 10px; height: 10px; border-radius: 50%; background: var(--greed); box-shadow: 0 0 0 0 color-mix(in oklab, var(--greed) 60%, transparent); animation: ping 1.8s ease-out infinite; }
+@keyframes ping { 0% { box-shadow: 0 0 0 0 color-mix(in oklab, var(--greed) 55%, transparent); } 100% { box-shadow: 0 0 0 10px transparent; } }
+.mapbox { position: relative; width: 100%; max-width: 560px; margin-inline: auto; }
+.mapbox svg { display: block; width: 100%; height: auto; overflow: visible; }
+.prov { stroke: var(--map-off-line); stroke-width: 1.2; stroke-linejoin: round; fill: var(--map-off); }
+.prov.wait { fill: url(#hatch); }
+.prov.live { stroke: var(--ink); stroke-width: 1.8; cursor: pointer; filter: drop-shadow(0 3px 3px rgba(0, 0, 0, 0.3)); transition: filter 0.15s ease, transform 0.15s ease; transform-box: fill-box; transform-origin: center; }  /* 누를 수 있는 지역은 평평한 지도 위로 떠 보이게 */
+.prov.live:hover, .prov.live:focus-visible, .prov.live.hot { filter: drop-shadow(0 6px 6px rgba(0, 0, 0, 0.35)) brightness(1.06); stroke-width: 2.8; transform: translateY(-3px); outline: none; }
+.pin { position: absolute; transform: translate(-50%, -50%); display: grid; justify-items: center; background: var(--surface); border: 1.5px solid var(--ink); border-radius: 9px;
+  padding: 2px 8px 3px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.14); cursor: pointer; text-decoration: none; color: var(--ink); line-height: 1.15; z-index: 2; }
+.pin .n { font-size: 12px; font-weight: 600; white-space: nowrap; }
+.pin .v { font-size: 18px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.pin:hover, .pin.hot { background: var(--ink); color: var(--surface); }
+.pin:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.pin.small { padding: 1px 6px 2px; } .pin.small .v { font-size: 15px; }
+.tag { position: absolute; transform: translate(-50%, -50%); font-size: 11.5px; color: var(--muted); pointer-events: none; white-space: nowrap; }
+.tag.wait { color: var(--ink-2); font-weight: 600; background: var(--surface); border: 1px dashed var(--muted); border-radius: 6px; padding: 0 5px; }
+.legend { display: flex; gap: 6px 16px; flex-wrap: wrap; font-size: 13px; color: var(--ink-2); align-items: center; }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.sw { width: 18px; height: 12px; display: inline-block; border: 1px solid var(--hair); }
+.scale-bar { height: 8px; border-radius: 4px; }
+.scale-labels { display: flex; justify-content: space-between; font-family: var(--mono); font-size: 12px; color: var(--muted); }
+.tip { position: absolute; pointer-events: none; transform: translate(-50%, calc(-100% - 14px)); background: var(--surface); border: 1px solid var(--hair); border-radius: 8px; padding: 5px 10px; font-size: 13px; white-space: nowrap; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.14); z-index: 3; }
+
+.list { display: grid; gap: 10px; align-content: start; }
+.card { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; align-items: center; padding: 12px 14px; background: var(--surface); border: 1px solid var(--hair); border-radius: 12px; text-decoration: none; color: var(--ink); }
+.card:hover, .card.hot { border-color: var(--ink); box-shadow: 0 0 0 1px var(--ink); }
+.card:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.card .nm { font-size: 16px; font-weight: 700; display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+.card .nm small { font-size: 12.5px; font-weight: 500; color: var(--muted); }
+.card .sc { display: flex; align-items: baseline; gap: 8px; justify-self: end; }
+.card .sc b { font-size: 28px; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1; }
+.chip { font-size: 12.5px; font-weight: 600; padding: 1px 8px; border: 1.5px solid; border-radius: 999px; white-space: nowrap; }
+.card .bar { grid-column: 1 / -1; position: relative; display: grid; grid-template-columns: 25fr 20fr 10fr 20fr 25fr; gap: 2px; height: 6px; }
+.card .bar i { display: block; opacity: 0.35; }
+.card .bar i:nth-child(1), .card .bar i:nth-child(2) { background: var(--fear); }
+.card .bar i:nth-child(3) { background: var(--neutral); }
+.card .bar i:nth-child(4), .card .bar i:nth-child(5) { background: var(--greed); }
+.card .bar u { position: absolute; top: -4px; bottom: -4px; width: 3px; background: var(--ink); transform: translateX(-1.5px); }
+.card .meta { grid-column: 1 / -1; display: flex; justify-content: space-between; gap: 8px; font-size: 12.5px; color: var(--muted); }
+.card .meta .go { color: var(--ink); font-weight: 600; }
+.card.off { color: var(--ink-2); background: transparent; border-style: dashed; }
+.card.off:hover { box-shadow: none; border-color: var(--hair); }
+.sec-title { font-size: 13px; color: var(--muted); font-weight: 500; margin-top: 6px; }
+.note { font-size: 13px; color: var(--ink-2); background: var(--hl); border-radius: 8px; padding: 10px 12px; }
+.foot { font-size: 13px; color: var(--muted); display: grid; gap: 6px; max-width: 90ch; }
+@media (prefers-reduced-motion: reduce) { .hint i { animation: none; } .prov.live { transition: none; } }
+</style>
+<script>try { const m = localStorage.getItem("fgi-theme"); if (m === "light" || m === "dark") document.documentElement.setAttribute("data-theme", m); } catch (e) {}</script>
+
+<div class="wrap">
+  <header style="display:grid;gap:6px">
+    <div class="topbar">
+      <div class="eyebrow" id="eyebrow">아파트 공포탐욕지수 · 지역별</div>
+      <div class="theme-ctl" id="theme-ctl" role="group" aria-label="화면 밝기"><span class="tl" aria-hidden="true">화면</span><button type="button" data-m="auto" aria-pressed="true" title="기기 설정을 따라요">자동</button><button type="button" data-m="light" aria-pressed="false">밝게</button><button type="button" data-m="dark" aria-pressed="false">어둡게</button></div>
+    </div>
+    <h1>아파트 공포탐욕지도</h1>
+    <p class="hero-def">주식시장의 '공포탐욕지수'처럼, 아파트 시장 분위기를 <b>0(극단적 공포)~100(극단적 탐욕)</b> 점수로 보여줘요. <b>지도에서 색이 칠해진 지역을 누르면</b> 그 지역의 지수와 구·시군 지도를 자세히 볼 수 있어요.</p>
+    <p class="sub" id="hero-month" style="color:var(--ink-2)"></p>
+  </header>
+
+  <section class="main">
+    <div class="panel mapcard">
+      <div class="maphead">
+        <span class="hint"><i aria-hidden="true"></i><span id="hint-text">점수가 있는 지역을 눌러 보세요</span></span>
+        <span class="eyebrow" id="map-month"></span>
+      </div>
+      <div class="mapbox" id="mapbox"></div>
+      <div class="legend" id="legend"></div>
+      <div>
+        <div class="scale-bar" id="scale-bar" aria-hidden="true"></div>
+        <div class="scale-labels" aria-hidden="true"><span>0 극단적 공포</span><span>50 중립</span><span>극단적 탐욕 100</span></div>
+      </div>
+    </div>
+    <div class="list" id="list"></div>
+  </section>
+
+  <footer class="foot">
+    <p><b style="color:var(--ink-2)">읽는 법</b> · 추세를 재는 온도계예요. 사고팔 시점을 알려주는 신호는 아니에요. 지역마다 자기 과거 10년 안에서의 위치로 계산해서, 같은 점수라도 지역끼리 가격 수준을 비교하는 값은 아니에요.</p>
+    <p id="foot-acc"></p>
+    <p><b style="color:var(--ink-2)">출처</b> · KB부동산, 한국부동산원 R-ONE, 국토교통부 실거래가, 청약홈, 한국은행 ECOS, 네이버 금융, 구글 트렌드. 지도는 국토교통부 브이월드(VWorld) 시군구 경계(2026년 10월)를 합쳐 그렸어요. 광주는 2026년 전남광주통합특별시로 합쳐졌지만 옛 광주광역시 다섯 구를 한 시장으로 봐요.</p>
+  </footer>
+</div>
+
+<script>
+const D = __DATA__;
+const NS = "http://www.w3.org/2000/svg";
+const $ = (s) => document.querySelector(s);
+function S(tag, attrs, parent) { const e = document.createElementNS(NS, tag); for (const k in attrs || {}) e.setAttribute(k, attrs[k]); if (parent) parent.appendChild(e); return e; }
+function H(tag, attrs, parent, text) {
+  const e = document.createElement(tag);
+  for (const k in attrs || {}) { if (k === "style") e.style.cssText = attrs[k]; else e.setAttribute(k, attrs[k]); }
+  if (text != null) e.textContent = text;
+  if (parent) parent.appendChild(e);
+  return e;
+}
+// 예전 주소(서울 지도가 첫 화면이던 때의 #강남구 같은 주소)는 서울 페이지로 보낸다
+try { const h = decodeURIComponent(location.hash.slice(1)); if (h && D.seoul_names.includes(h)) location.replace("seoul/#" + encodeURIComponent(h)); } catch (e) {}
+const zoneName = (v) => (v < 25 ? "극단적 공포" : v < 45 ? "공포" : v < 55 ? "중립" : v < 75 ? "탐욕" : "극단적 탐욕");
+const side = (v) => (v < 45 ? "var(--fear)" : v < 55 ? "var(--neutral)" : "var(--greed)");
+const ym = (s) => s.slice(0, 4) + "년 " + String(+s.slice(5, 7)) + "월";
+// 지수가 있는 지역 색: 구간 색(공포 파랑·중립 회색·탐욕 빨강)을 최소 45% 섞어, 중립이어도 빈 지역보다 진하게
+function fill(v) {
+  const base = v < 45 ? "var(--fear)" : v < 55 ? "var(--neutral)" : "var(--greed)", p = 45 + Math.min(45, (Math.abs(v - 50) / 40) * 45);
+  return `color-mix(in oklab, ${base} ${p.toFixed(0)}%, var(--surface))`;
+}
+const g = D.map, live = D.regions.filter((r) => r.status === "live"), wait = D.regions.filter((r) => r.status === "wait");
+const byProv = Object.fromEntries(D.regions.map((r) => [r.prov, r]));
+$("#hero-month").textContent = `${ym(D.month)} 기준 · 지수가 있는 지역 ${live.length}곳 · 매달 20일 갱신`;
+$("#map-month").textContent = ym(D.month);
+$("#hint-text").textContent = `색이 칠해진 ${live.length}곳을 눌러 보세요`;
+
+/* ---------- 지도 ---------- */
+const box = $("#mapbox");
+const svg = S("svg", { viewBox: `0 0 ${g.w} ${g.h}`, role: "group", "aria-label": "대한민국 시도 지도. 지수가 있는 지역은 눌러서 이동" }, box);
+const defs = S("defs", {}, svg);
+const pat = S("pattern", { id: "hatch", width: 6, height: 6, patternUnits: "userSpaceOnUse", patternTransform: "rotate(45)" }, defs);
+S("rect", { width: 6, height: 6, style: "fill:var(--map-off)" }, pat);
+S("line", { x1: 0, y1: 0, x2: 0, y2: 6, style: "stroke:var(--muted);stroke-width:1.4;opacity:0.45" }, pat);
+const tip = H("div", { class: "tip", hidden: "" }, box);
+const hot = (id, on) => document.querySelectorAll(`[data-id="${id}"]`).forEach((e) => e.classList.toggle("hot", on));
+const at = (p) => ({ left: (p[0] / g.w) * 100 + "%", top: (p[1] / g.h) * 100 + "%" });
+// 서울·인천은 전국 지도에서 너무 작아서, 비어 있는 서해 쪽에 1.9배로 키운 창을 두고 이름표도 거기에 단다
+const INSET = { focus: [148, 86, 214, 136], x: 2, y: 172, k: 1.9 }, IN = new Set(["서울", "인천"]);
+const inXY = (p) => [INSET.x + INSET.k * (p[0] - INSET.focus[0]), INSET.y + INSET.k * (p[1] - INSET.focus[1])];
+// 좁은 곳은 이름표를 바깥으로 빼고 가는 선으로 잇는다
+const MOVE = { 경기: [270, 152], 전남: [196, 398], 세종: [202, 236] };
+const labelAt = (name) => (IN.has(name) ? inXY(g.provinces[name].label) : MOVE[name] || g.provinces[name].label);
+const order = Object.keys(g.provinces).sort((a, b) => (byProv[a]?.status === "live") - (byProv[b]?.status === "live"));  // 누를 수 있는 지역을 위에 그림
+function drawProv(parent, name, scaled) {
+  const r = byProv[name], p = g.provinces[name];
+  const path = S("path", { d: p.d, class: "prov" + (r ? " " + r.status : "") }, parent);
+  if (scaled) path.setAttribute("vector-effect", "non-scaling-stroke");
+  if (!r) return;
+  path.dataset.id = r.id;
+  if (r.status !== "live") { path.setAttribute("aria-label", `${r.name}: 검증 중이라 아직 공개하지 않아요`); return; }
+  path.style.fill = fill(r.score);
+  path.setAttribute("tabindex", scaled ? "-1" : "0");
+  path.setAttribute("role", "link");
+  path.setAttribute("aria-label", `${r.name} ${Math.round(r.score)}점 ${zoneName(r.score)}, 눌러서 자세히 보기`);
+  const go = () => (location.href = r.url);
+  path.addEventListener("click", go);
+  path.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); go(); } });
+  path.addEventListener("mouseenter", () => {
+    hot(r.id, true);
+    tip.replaceChildren();
+    H("b", {}, tip, `${r.name} ${Math.round(r.score)} · ${zoneName(r.score)}`);
+    tip.append(" — 눌러서 자세히");
+    Object.assign(tip.style, at(labelAt(name)));
+    tip.hidden = false;
+  });
+  path.addEventListener("mouseleave", () => { hot(r.id, false); tip.hidden = true; });
+}
+order.forEach((n) => drawProv(svg, n, false));
+(() => {  // 확대 창
+  const [x0, y0, x1, y1] = INSET.focus, w = (x1 - x0) * INSET.k, h = (y1 - y0) * INSET.k;
+  S("rect", { x: x0, y: y0, width: x1 - x0, height: y1 - y0, style: "fill:none;stroke:var(--ink-2);stroke-width:0.8;stroke-dasharray:3 2;pointer-events:none" }, svg);
+  S("line", { x1: x0, y1: y1, x2: INSET.x + w * 0.6, y2: INSET.y, style: "stroke:var(--ink-2);stroke-width:0.8;stroke-dasharray:3 2;pointer-events:none" }, svg);
+  S("rect", { id: "inset-clip-rect", x: INSET.x, y: INSET.y, width: w, height: h }, S("clipPath", { id: "inset-clip" }, defs));
+  S("rect", { x: INSET.x, y: INSET.y, width: w, height: h, style: "fill:var(--bg);stroke:var(--ink-2);stroke-width:1" }, svg);
+  const inner = S("g", { transform: `translate(${INSET.x} ${INSET.y}) scale(${INSET.k}) translate(${-x0} ${-y0})` }, S("g", { "clip-path": "url(#inset-clip)" }, svg));
+  order.filter((n) => ["경기", "강원", "충남", "충북", "인천", "서울"].includes(n)).forEach((n) => drawProv(inner, n, true));
+  S("text", { x: INSET.x + 1, y: INSET.y - 5, style: "font-size:11px;fill:var(--ink-2);pointer-events:none" }, svg).textContent = "서울·인천 확대";
+})();
+Object.entries(g.provinces).forEach(([name, p]) => {
+  const r = byProv[name], q = labelAt(name);
+  if (MOVE[name]) S("line", { x1: p.label[0], y1: p.label[1], x2: q[0], y2: q[1], style: "stroke:var(--muted);stroke-width:1;pointer-events:none" }, svg);
+  if (r && r.status === "live") {
+    const a = H("a", { class: "pin" + (["서울", "인천", "대전", "세종", "광주", "울산"].includes(name) ? " small" : ""), href: r.url, "data-id": r.id, "aria-hidden": "true", tabindex: "-1" }, box);
+    Object.assign(a.style, at(q));
+    H("span", { class: "n" }, a, name);
+    H("span", { class: "v" }, a, String(Math.round(r.score)));
+    a.style.borderColor = side(r.score);
+    a.addEventListener("mouseenter", () => hot(r.id, true));
+    a.addEventListener("mouseleave", () => hot(r.id, false));
+  } else {
+    const t = H("span", { class: "tag" + (r ? " wait" : "") }, box, name);
+    Object.assign(t.style, at(q));
+  }
+});
+$("#scale-bar").style.background = `linear-gradient(90deg, ${fill(10)}, ${fill(30)}, ${fill(50)}, ${fill(70)}, ${fill(90)})`;
+const lg = $("#legend");
+const item = (sw, txt) => { const s = H("span", {}, lg); s.appendChild(sw); s.append(txt); };
+const swatch = (style) => H("i", { class: "sw", style });
+item(swatch(`background:${fill(30)};border:1.5px solid var(--ink)`), "점수 색 = 지수 있음 (누르면 이동)");
+if (wait.length) item(swatch("background:repeating-linear-gradient(45deg,var(--map-off) 0 3px,color-mix(in oklab,var(--muted) 45%,var(--map-off)) 3px 4.5px)"), "검증 중");
+item(swatch("background:var(--map-off)"), "아직 없음");
+
+/* ---------- 목록 ---------- */
+const list = $("#list");
+H("h2", {}, list, "지역별 지금 점수");
+live.slice().sort((a, b) => b.score - a.score).forEach((r) => {
+  const c = H("a", { class: "card", href: r.url, "data-id": r.id }, list);
+  const nm = H("div", { class: "nm" }, c, r.name);
+  H("small", {}, nm, r.sub);
+  const sc = H("div", { class: "sc" }, c);
+  H("span", { class: "chip", style: `border-color:${side(r.score)}` }, sc, zoneName(r.score));
+  H("b", {}, sc, String(Math.round(r.score)));
+  const bar = H("div", { class: "bar", role: "img", "aria-label": `0~100 중 ${Math.round(r.score)}` }, c);
+  for (let k = 0; k < 5; k++) H("i", {}, bar);
+  H("u", { style: `left:${Math.max(1, Math.min(99, r.score))}%` }, bar);
+  const meta = H("div", { class: "meta" }, c);
+  const d = r.prev == null ? null : r.score - r.prev;
+  H("span", {}, meta, d == null ? "" : `지난달 ${Math.round(r.prev)}에서 ${d >= 0 ? "▲" : "▼"} ${Math.abs(Math.round(d))} · 정확도 ${r.acc.toFixed(2)}`);
+  H("span", { class: "go" }, meta, "자세히 →");
+  c.addEventListener("mouseenter", () => hot(r.id, true));
+  c.addEventListener("mouseleave", () => hot(r.id, false));
+});
+if (wait.length) {
+  H("div", { class: "sec-title" }, list, "검증 중 (공개 기준에 못 미쳐 아직 점수를 내지 않아요)");
+  wait.forEach((r) => {
+    const c = H("div", { class: "card off" }, list);
+    const nm = H("div", { class: "nm" }, c, r.name);
+    H("small", {}, nm, r.sub);
+    H("div", { class: "meta" }, c, r.why);
+  });
+}
+const fa = $("#foot-acc");
+H("b", { style: "color:var(--ink-2)" }, fa, "정확도와 공개 기준");
+fa.append(` · 정확도는 지수와 이후 12개월 그 지역 실거래 가격 변화의 순위상관이에요(1에 가까울수록 잘 맞음). ${D.rule}`);
+
+/* ---------- 화면 밝기 (지도·보고서와 같은 설정) ---------- */
+(() => {
+  const ctl = document.getElementById("theme-ctl"), root = document.documentElement, KEY = "fgi-theme";
+  if (!ctl) return;
+  const apply = (m) => {
+    if (m === "light" || m === "dark") root.setAttribute("data-theme", m); else root.removeAttribute("data-theme");
+    ctl.querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.m === (m === "light" || m === "dark" ? m : "auto"))));
+  };
+  let saved = "auto";
+  try { saved = localStorage.getItem(KEY) || "auto"; } catch (e) {}
+  apply(saved);
+  ctl.addEventListener("click", (e) => {
+    const b = e.target.closest("button");
+    if (!b) return;
+    apply(b.dataset.m);
+    try { if (b.dataset.m === "auto") localStorage.removeItem(KEY); else localStorage.setItem(KEY, b.dataset.m); } catch (e2) {}
+  });
+})();
+</script>
