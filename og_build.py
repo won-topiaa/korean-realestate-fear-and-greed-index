@@ -2,7 +2,7 @@
 
 사이트와 같은 모습(페이지 사진을 어둡게 깐 띠 + 로고 + 두 단 제목)을 HTML로 그려 헤드리스 Chrome으로 찍는다.
 글꼴은 사이트와 같은 Google Fonts라 인터넷 연결이 필요하다. 로컬에서 한 번 만들어 저장소에 올린다 (사이트 빌드는 이 파일을 쓰기만 한다).
-사용: python og_build.py   (Chrome 위치는 CHROME 환경변수로 바꿀 수 있음)
+사용: python og_build.py [페이지 ...]   (없으면 전부, 예: python og_build.py gwangju daejeon. Chrome 위치는 CHROME 환경변수)
 """
 import os
 import subprocess
@@ -11,7 +11,7 @@ from pathlib import Path
 
 from PIL import Image
 
-from regions import REGIONS
+from regions import REGIONS, sub_word
 
 ROOT = Path(__file__).parent
 OUT = ROOT / "assets" / "og"
@@ -29,7 +29,7 @@ PAGES = {
 }
 for _rid, _d in REGIONS.items():
     _img = f"bg-{_rid}" if (ROOT / "assets" / "img" / f"bg-{_rid}.jpg").exists() else "bg-map"
-    _sw = "시·구" if _rid == "gyeonggi" else "구·군"
+    _sw = sub_word(_rid)
     PAGES[_rid] = (_img, "50%", f"{_d['name']} 아파트", "공포탐욕지도", f"{_d['name']} {len(_d['lawd'])}개 {_sw}의 공포와 탐욕을 0~100으로 매달 보여드려요")
 
 HTML = """<!doctype html><html lang="ko"><head><meta charset="utf-8">
@@ -61,11 +61,13 @@ html, body {{ width: 1200px; height: 630px; overflow: hidden; background: #14141
 </div></div></body></html>"""
 
 
-def main():
+def main(only=None):
     OUT.mkdir(parents=True, exist_ok=True)
     (OUT / "map.jpg").unlink(missing_ok=True)  # 예전 이름 (첫 화면이 서울 지도이던 때) → home·seoul
     with tempfile.TemporaryDirectory() as tmp:
         for name, (img, y, a, b, d) in PAGES.items():
+            if only and name not in only:
+                continue
             html = Path(tmp) / f"{name}.html"
             html.write_text(HTML.format(img=(ROOT / "assets" / "img" / f"{img}.jpg").as_uri(), y=y, a=a, b=b, d=d, site=SITE))
             png = Path(tmp) / f"{name}.png"
@@ -78,4 +80,5 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    import sys
+    main(sys.argv[1:])

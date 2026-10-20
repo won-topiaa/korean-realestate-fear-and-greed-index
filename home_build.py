@@ -6,7 +6,7 @@
 import json
 from pathlib import Path
 
-from regions import REGIONS
+from regions import REGIONS, sub_word
 
 ROOT = Path(__file__).parent
 f2 = lambda v: "–" if v is None else f"{v:.2f}"
@@ -40,7 +40,7 @@ def data():
                    else "실거래를 다 받았어요. 7개 지역으로 엔진을 확정한 뒤 공개 여부를 정해요" if fixed and not x.get("cross_validated")
                    else f"{'교차검증 ' if x.get('cross_validated') else ''}정확도 {f2(x.get('acc'))} · 5년 구간 중앙값 {f2(x.get('win_median'))} (기준 0.40 · 0.25)")
             regions.append({"id": rid, "name": d["name"], "prov": d["name"], "status": "wait", "why": why,
-                            "sub": f"{len(d['lawd'])}개 {'시·구' if rid == 'gyeonggi' else '구·군'}"})
+                            "sub": f"{len(d['lawd'])}개 {sub_word(rid)}"})
     return {"map": json.loads((ROOT / "data" / "korea_map.json").read_text()), "month": m["dates"][t], "regions": regions,
             "seoul_names": ["서울", *m["regions"]], "rule": RULE}
 

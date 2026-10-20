@@ -12,7 +12,7 @@
   "acc_kb": 0.666,
   "start": "2011-02",
   "n_sub": 5,
-  "sub_word": "구·군",
+  "sub_word": "구",
   "sub_acc_mean": {
    "sub": 0.674,
    "region": 0.684,
@@ -34,7 +34,7 @@
   "acc_kb": 0.324,
   "start": "2011-02",
   "n_sub": 5,
-  "sub_word": "구·군",
+  "sub_word": "구",
   "sub_acc_mean": {
    "sub": 0.458,
    "region": 0.47,
