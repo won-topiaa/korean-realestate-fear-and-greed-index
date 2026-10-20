@@ -11,19 +11,26 @@ from pathlib import Path
 
 from PIL import Image
 
+from regions import REGIONS
+
 ROOT = Path(__file__).parent
 OUT = ROOT / "assets" / "og"
 CHROME = os.environ.get("CHROME", "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome")
 SITE = "won-topiaa.github.io/korean-realestate-fear-and-greed-index"
 
-# 페이지: (사진, 사진 세로 위치, 윗줄, 큰 제목, 설명)
+# 페이지: (사진, 사진 세로 위치, 윗줄, 큰 제목, 설명). 지역 페이지(regions.REGIONS)는 아래에서 지역 사진으로 덧붙인다 (사진이 없으면 서울 사진)
 PAGES = {
-    "map": ("bg-map", "50%", "서울 아파트", "공포탐욕지도", "서울 5대 권역·25개 구의 공포와 탐욕을 0~100으로 매달 보여드려요"),
+    "home": ("bg-map", "50%", "지역별 아파트", "공포탐욕지도", "서울·수도권·광역시의 공포와 탐욕을 0~100으로 · 지도에서 지역을 눌러 구·시군까지"),
+    "seoul": ("bg-map", "50%", "서울 아파트", "공포탐욕지도", "서울 5대 권역·25개 구의 공포와 탐욕을 0~100으로 매달 보여드려요"),
     "apt": ("bg-apt", "40%", "최근 실거래가, 비싼 편일까?", "단지 검색", "우리 단지 최근 거래가 최근 2년 거래 중 어디쯤인지 0~100점으로"),
     "highs": ("bg-highs", "45%", "이번 달 가장 비싸게 팔린 집", "신고가 단지", "같은 단지·같은 평형의 지난 모든 거래보다 비싸게 팔린 거래"),
     "sim": ("bg-sim", "38%", "그때 샀다면 지금 얼마?", "모의 투자", "실거래로 계산하는 가상 투자 · 단지 2~3개 같은 기간 비교"),
     "report": ("bg-report", "50%", "서울 공포탐욕지수", "백테스트", "실거래 141만 건으로 검증한 지수의 정확도와 한계"),
 }
+for _rid, _d in REGIONS.items():
+    _img = f"bg-{_rid}" if (ROOT / "assets" / "img" / f"bg-{_rid}.jpg").exists() else "bg-map"
+    _sw = "시·구" if _rid == "gyeonggi" else "구·군"
+    PAGES[_rid] = (_img, "50%", f"{_d['name']} 아파트", "공포탐욕지도", f"{_d['name']} {len(_d['lawd'])}개 {_sw}의 공포와 탐욕을 0~100으로 매달 보여드려요")
 
 HTML = """<!doctype html><html lang="ko"><head><meta charset="utf-8">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@100..125,400..900&family=Noto+Sans+KR:wght@400;600;700;900&family=Poiret+One&display=block">
@@ -47,7 +54,7 @@ html, body {{ width: 1200px; height: 630px; overflow: hidden; background: #14141
 .dot2 {{ position: absolute; width: 70px; height: 70px; border-radius: 50%; background: rgba(255,255,255,.9); right: 96px; top: 262px; }}
 </style></head><body><div class="card"><div class="bg"></div><div class="shade"></div><i class="dot1"></i><i class="dot2"></i>
 <div class="in">
-  <div class="logo"><span class="en">SEOUL FEAR &amp; GREED</span><span class="ko">서울 아파트 공포탐욕지도</span></div>
+  <div class="logo"><span class="en">KOREA FEAR &amp; GREED</span><span class="ko">아파트 공포탐욕지도</span></div>
   <div class="h"><span class="a">{a}</span><span class="b">{b}</span></div>
   <p class="d">{d}</p>
   <div class="foot"><span class="tag">매달 20일 갱신</span><span>국토교통부 실거래가 · 공공데이터</span><span style="margin-left:auto">{site}</span></div>
@@ -56,6 +63,7 @@ html, body {{ width: 1200px; height: 630px; overflow: hidden; background: #14141
 
 def main():
     OUT.mkdir(parents=True, exist_ok=True)
+    (OUT / "map.jpg").unlink(missing_ok=True)  # 예전 이름 (첫 화면이 서울 지도이던 때) → home·seoul
     with tempfile.TemporaryDirectory() as tmp:
         for name, (img, y, a, b, d) in PAGES.items():
             html = Path(tmp) / f"{name}.html"

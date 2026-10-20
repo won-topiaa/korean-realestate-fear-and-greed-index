@@ -37,10 +37,10 @@ REPO = "https://github.com/won-topiaa/korean-realestate-fear-and-greed-index"
 SITE_URL = "https://won-topiaa.github.io/korean-realestate-fear-and-greed-index/"
 # 링크 미리보기 (카카오톡·문자·SNS): 사이트 폴더 → (미리보기 그림 assets/og/*.jpg, 제목). 그림은 og_build.py로 만든다
 SITE_NAME = "아파트 공포탐욕지도"
-OG = {"": ("map", "아파트 공포탐욕지도 · 서울·수도권·광역시"), "seoul/": ("map", "서울 아파트 공포탐욕지도"),
+OG = {"": ("home", "아파트 공포탐욕지도 · 서울·수도권·광역시"), "seoul/": ("seoul", "서울 아파트 공포탐욕지도"),
       "apt/": ("apt", "단지 검색 · 서울 아파트 공포탐욕지도"),
       "highs/": ("highs", "신고가 단지 · 서울 아파트 공포탐욕지도"), "sim/": ("sim", "모의 투자 · 서울 아파트 공포탐욕지도"),
-      "report/": ("report", "백테스트 보고서 · 서울 아파트 공포탐욕지도"), "api/": ("map", "데이터 API · 서울 아파트 공포탐욕지도")}
+      "report/": ("report", "백테스트 보고서 · 서울 아파트 공포탐욕지도"), "api/": ("home", "데이터 API · 아파트 공포탐욕지도")}
 
 
 def og_meta(dst, desc):
@@ -197,7 +197,7 @@ if __name__ == "__main__":
     for rid in home_build.published():  # 공개 기준을 넘은 수도권·광역시 (같은 지도 템플릿)
         d = json.loads((ROOT / "results_region" / f"{rid}.json").read_text())
         nm, sw, n = d["top"], d["sub_word"], len(d["gu_order"])
-        OG[f"{rid}/"] = ("map", f"{nm} 아파트 공포탐욕지도")
+        OG[f"{rid}/"] = (rid if (ROOT / "assets" / "og" / f"{rid}.jpg").exists() else "home", f"{nm} 아파트 공포탐욕지도")
         src = ROOT / "results_region" / f"page_{rid}.html"
         src.write_text(map_render(region_fill(d), json.dumps(d, ensure_ascii=False, separators=(",", ":"))))
         wrap(src, SITE / rid / "index.html",
