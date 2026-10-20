@@ -63,7 +63,7 @@ def _clean(msg):
 
 FETCH_BUDGET = {"KB부동산": 15, "한국은행 금리·가계신용·CSI": 8, "네이버 금융 주가": 5, "구글 트렌드": 15,
                 "한국부동산원 R-ONE": 40, "국토부 실거래": 25, "청약홈": 12, "건축물대장": 15,
-                "수도권·광역시 원자료": 30, "수도권·광역시 실거래": 30}  # 분. 평소: R-ONE 11분, 나머지 1~4분
+                "수도권·광역시 원자료": 45, "수도권·광역시 실거래": 30}  # 분. 평소: R-ONE 11분, 나머지 1~4분
 
 
 def _child(fn, q):
@@ -259,10 +259,11 @@ def refresh_molit(back=4):
     return msg
 
 
-def refresh_region_src():
-    """수도권·광역시: 부동산원 시도·시군구 거래 통계·수급·미분양, KB 시군구 가격지수 (region_src_fetch.py)."""
+def refresh_region_src(refresh=True):
+    """수도권·광역시: 부동산원 시도·시군구 거래 통계·수급·미분양, KB 시군구 가격지수 (region_src_fetch.py).
+    refresh=False면 없는 파일만 받는다 (--skip-fetch 실행에서 Actions 캐시에 없는 KB 시군구 파일 등)."""
     import region_src_fetch
-    msg, missing = region_src_fetch.refresh(refresh=True)
+    msg, missing = region_src_fetch.refresh(refresh=refresh)
     return msg + (f" · 부동산원에 없는 이름 {len(missing)}개는 시도 값으로" if missing else "")
 
 
@@ -339,7 +340,8 @@ COMPUTE = ["molit_indicators.py", "rs_vintage.py", "extra_indicators.py", "build
            "zone_index.py", "zone_v3.py", "export_zone.py", "map/build.py"]
 AFTER_CHECK = ["export_report_v3.py", "report/build.py"]  # 실시간 기록은 점검을 통과한 뒤에
 OPTIONAL = ["apt_score.py", "highs_build.py", "sim_build.py"]  # 단지 검색: 실패해도 지도·보고서는 게시 (알림만)
-REGION = ["region_index.py", "region_v3.py", "export_region.py"]  # 수도권·광역시: 실패하면 지난 결과로 첫 화면·지역 페이지를 만든다
+REGION = ["region_index.py", "region_engine_study.py", "region_v3.py", "export_region.py"]  # 수도권·광역시: 실패하면 지난 결과로 첫 화면·지역 페이지
+# (region_engine_study.py는 7개 지역이 처음 다 모인 실행에서만 엔진을 고정하고, 그 뒤로는 비교 결과만 다시 쓴다)
 FINAL = ["home_build.py", "site_build.py"]
 
 
@@ -433,6 +435,8 @@ def main():
         step("건축물대장", refresh_bldg)
         step("수도권·광역시 원자료", refresh_region_src)
         step("수도권·광역시 실거래", refresh_molit_regions)
+    else:
+        step("수도권·광역시 원자료", lambda: refresh_region_src(refresh=False))
     for rel in COMPUTE:
         if not step(f"계산 {rel}", lambda rel=rel: run_script(rel)):
             log("=== 계산 실패로 중단 (게시 안 함) ===")

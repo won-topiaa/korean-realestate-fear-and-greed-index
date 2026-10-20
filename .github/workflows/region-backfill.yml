@@ -1,0 +1,86 @@
+name: 지역 실거래 채우기
+
+# 수도권·광역시 실거래를 2006년부터 처음 채운다 (하루 호출 한도 약 1만 건이라 며칠에 나눠서, 맥 없이).
+# 받은 만큼 data/molit_kr/partial/에 커밋하고 다음 날 이어받는다 (region_backfill.py).
+# 7개 지역이 다 차면 '월간 자동 갱신'을 자료 받기 없이 불러 지역 엔진을 고정하고 사이트에 반영한다.
+# 다 찬 뒤에는 매일 1분 안에 바로 끝난다 (그때 이 파일을 지워도 됨).
+on:
+  schedule:
+    - cron: "23 15 * * *"   # 00:23 KST (한도가 풀린 직후)
+    - cron: "23 21 * * *"   # 06:23 KST (앞 예약이 빠졌을 때)
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: write   # 다 차면 월간 자동 갱신 부르기
+
+concurrency:
+  group: region-backfill
+  cancel-in-progress: false
+
+jobs:
+  fill:
+    runs-on: ubuntu-latest
+    timeout-minutes: 340
+    env:
+      TZ: Asia/Seoul
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: 이미 다 찼으면 끝
+        id: left
+        run: |
+          python3 - <<'PY' >> "$GITHUB_OUTPUT"
+          import json, glob, gzip, csv, io
+          from regions import REGIONS
+          have = set()
+          for f in glob.glob("data/molit_kr/trades_*.csv.gz"):
+              for row in csv.DictReader(io.TextIOWrapper(gzip.open(f), encoding="utf-8")):
+                  have.add(row["lawd"])
+          left = [r for r, d in REGIONS.items() if not have & set(d["lawd"])]
+          print("left=" + ",".join(left))
+          PY
+
+      - uses: actions/setup-python@v5
+        if: steps.left.outputs.left != ''
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: 패키지 설치
+        if: steps.left.outputs.left != ''
+        run: pip install -r requirements.txt
+
+      - name: 실거래 받기 (한도·시간 한도까지)
+        if: steps.left.outputs.left != ''
+        id: fill
+        env:
+          DATA_GO_KR_KEY: ${{ secrets.DATA_GO_KR_KEY }}
+        run: |
+          printf 'DATA_GO_KR_KEY=%s\n' "$DATA_GO_KR_KEY" > .env
+          set +e
+          python region_backfill.py --minutes 320
+          code=$?
+          set -e
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+          [ "$code" = 0 ] || [ "$code" = 3 ]
+
+      - name: 받은 만큼 커밋
+        if: always() && steps.left.outputs.left != ''
+        run: |
+          rm -f .env
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A data/molit_kr
+          git diff --cached --quiet && exit 0
+          git commit -m "지역 실거래 채우기 $(date +%Y-%m-%d) ($([ '${{ steps.fill.outputs.code }}' = 0 ] && echo 완료 || echo 진행 중))"
+          git pull --rebase -X theirs origin main
+          git push origin HEAD:main
+
+      - name: 다 찼으면 월간 자동 갱신 부르기 (자료 받기 없이 → 엔진 고정·사이트 반영)
+        if: steps.fill.outputs.code == '0'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run monthly-update.yml -R "$GITHUB_REPOSITORY" --ref main -f skip_fetch=true

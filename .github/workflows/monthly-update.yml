@@ -11,12 +11,18 @@ on:
     - cron: "43 0 21 * *"   # 예비: 21일 09:43 KST
     - cron: "43 0 22 * *"   # 예비: 22일 09:43 KST
   workflow_dispatch:         # Actions 탭에서 수동 실행 (확인 없이 바로 갱신)
+    inputs:
+      skip_fetch:
+        description: "자료 받기 없이 재계산만 (지역 실거래 채우기가 끝났을 때 region-backfill.yml이 부름)"
+        type: boolean
+        default: false
 
 permissions:
   contents: write
   pages: write
   id-token: write
   actions: read   # due: 돌고 있는 갱신 확인
+  issues: write   # 지역 엔진을 처음 고정했을 때 알림
 
 jobs:
   due:
@@ -78,7 +84,7 @@ jobs:
           restore-keys: raw-
 
       - name: 자료 갱신 → 재계산 → 점검 → 사이트 빌드
-        run: python update_pipeline.py --no-publish
+        run: python update_pipeline.py --no-publish ${{ inputs.skip_fetch && '--skip-fetch' || '' }}
 
       - name: 실행 기록 보관
         if: always()
@@ -116,6 +122,16 @@ jobs:
           git add -A map report home
           git diff --cached --quiet || git commit -m "화면 다시 빌드 (갱신 중 바뀐 화면 반영)"
           git push origin HEAD:main
+
+      - name: 지역 엔진을 처음 고정했으면 이슈로 알림
+        if: hashFiles('results_region/engine_new.md') != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh issue create -R "$GITHUB_REPOSITORY" --title "수도권·광역시 엔진 고정 ($(TZ=Asia/Seoul date +%Y-%m-%d))" \
+            --body "@${{ github.repository_owner }} 7개 지역 실거래가 다 모여 미리 정한 규칙대로 지역 엔진을 고정하고 사이트에 반영했어요.
+
+          $(cat results_region/engine_new.md)"
 
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3

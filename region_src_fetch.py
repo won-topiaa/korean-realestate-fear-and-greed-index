@@ -49,13 +49,14 @@ def reb_jobs(rid):
         full = f"{sub}>{n.replace(' ', '>')}"
         add("A_2024_00554", f"r_{lawd}_거래량", "분류", full)
         for sid, nm in TRADE:
-            add(sid, f"r_{lawd}_{nm}", "그룹", full)
+            if nm != "매입자연령":  # 시군구 20·30대 비중은 보조 지표라 화면에 안 쓴다 (매달 받는 시간 줄이기)
+                add(sid, f"r_{lawd}_{nm}", "그룹", full)
         if d.get("reb_sum_subs"):
             add("T237973129847263", f"r_{lawd}_미분양", "분류", full, item=10001)
     return jobs, missing
 
 
-def refresh(refresh=True, workers=4):
+def refresh(refresh=True, workers=8):
     jobs, missing = [], []
     for rid in REGIONS:
         j, m = reb_jobs(rid)

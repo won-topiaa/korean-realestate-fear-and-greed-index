@@ -16,8 +16,11 @@
 - 그 규칙 자체의 성적은 한 지역씩 빼고 고른 엔진을 뺀 지역에 써서 잰다 (지역 교차검증). 공개는 이 교차검증 성적이
   처음 정한 기준(정확도 0.40 이상, 5년 구간 중앙값 0.25 이상)을 넘는 지역만.
 - 서울은 학습에 쓰지 않고 마지막 점검용 (서울 엔진은 그대로 둔다). 2011~2018년으로 고르고 2019년~에서 재는 기간 검증도 함께 본다.
-결과: results_region/engine_study.json, 7개 지역이 다 있으면 data/region_engine.json (region_v3.py가 쓰는 고정 엔진)
+결과: results_region/engine_study.json, 7개 지역이 다 있으면 data/region_engine.json (region_v3.py가 쓰는 고정 엔진).
+엔진 파일은 한 번만 만든다 (매달 다시 고르면 기준이 계속 바뀌므로). 다시 고르려면 --refit.
+처음 고정할 때 results_region/engine_new.md에 요약을 남긴다 (월간 갱신이 이슈로 알림).
 """
+import sys
 import json
 
 import numpy as np
@@ -167,14 +170,25 @@ if __name__ == "__main__":
     final, obj = best(regions)
     sr = run(final, "seoul", regions)
     from regions import REGIONS
-    if set(regions) == set(REGIONS):  # 7개 지역이 다 있을 때만 엔진을 고정한다
+    EP = bt.ROOT / "data" / "region_engine.json"
+    if set(regions) == set(REGIONS) and (not EP.exists() or "--refit" in sys.argv):  # 7개 지역이 다 있을 때 한 번만 고정
         pub = {h: bool(r["acc"] >= 0.40 and r["win_median"] >= 0.25) for h, r in loro.items()}
         eng = {**final, "weights": ic_weights(regions, final["window"]) if final.get("learn") else None,
                "chosen": str(pd.Timestamp.now().date()), "regions": regions, "objective": obj,
                "loro": {h: {k: r[k] for k in ("engine", "acc", "win_median", "win_min", "recent")} for h, r in loro.items()},
                "publish": pub, "seoul_check": sr}
-        json.dump(eng, open(bt.ROOT / "data" / "region_engine.json", "w"), ensure_ascii=False, indent=1, default=float)
+        json.dump(eng, open(EP, "w"), ensure_ascii=False, indent=1, default=float)
         print("고정 엔진 저장: data/region_engine.json · 공개", [h for h, v in pub.items() if v])
+        lines = [f"## 지역 엔진 고정: {final['name']}", "", f"- 지역 {len(regions)}곳, 엔진 후보 {len(CONFIGS)}개, 목표 {obj:.3f}",
+                 f"- 교차검증 평균 목표: 고른 엔진 {np.mean([r['obj'] for r in loro.values()]):.3f} · 서울과 같은 엔진 {np.mean([r['base']['obj'] for r in loro.values()]):.3f}",
+                 f"- 서울에 써 보면 정확도 {sr['acc']:.2f} (서울 엔진 {run(base, 'seoul', regions)['acc']:.2f})", "",
+                 "| 지역 | 교차검증 엔진 | 정확도 | 5년 중앙값 | 2019~ | 서울과 같은 엔진 | 공개 |", "|---|---|---|---|---|---|---|"]
+        lines += [f"| {REGIONS[h]['name']} | {r['engine']} | {r['acc']:.2f} | {r['win_median']:.2f} | {r['recent']:.2f} | "
+                  f"{r['base']['acc']:.2f} / {r['base']['win_median']:.2f} | {'공개' if pub[h] else '검증 중'} |" for h, r in loro.items()]
+        if final.get("learn"):
+            top = sorted(eng["weights"].items(), key=lambda x: -x[1])[:8]
+            lines += ["", "비중이 큰 표: " + ", ".join(f"{k} {v:.2f}" for k, v in top)]
+        (bt.ROOT / "results_region" / "engine_new.md").write_text("\n".join(lines) + "\n")
     print(f"\n[모든 지역으로 고른 엔진] {final['name']} (목표 {obj:.3f})")
     print(f"  서울에 써 보면: 정확도 {sr['acc']:.2f}, 5년 중앙 {sr['win_median']:.2f} | 서울 엔진 {run(base, 'seoul', regions)['acc']:.2f}")
     json.dump({"regions": regions, "configs": [c["name"] for c in CONFIGS], "full": full, "loro": loro,
