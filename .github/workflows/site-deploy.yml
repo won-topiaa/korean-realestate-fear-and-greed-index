@@ -1,8 +1,10 @@
 name: 화면만 다시 배포
 
 # 첫 화면·지도·보고서·단지 검색 화면(template.html)을 고치면 자료 갱신 없이 사이트만 다시 만들어 배포한다.
-# 단지 검색 자료(results_apt)는 저장소에 올리지 않으므로 여기서 저장소의 실거래 자료로 다시 계산한다 (1분 안쪽).
-# (월간 자동 갱신의 봇 커밋은 GITHUB_TOKEN으로 올라가서 이 워크플로를 다시 부르지 않는다)
+# 단지 검색·신고가·모의 투자 자료(results_apt 등)는 저장소에 올리지 않으므로 여기서 저장소의 실거래 자료로 서울과 지역마다
+# 다시 계산한다 (셋을 동시에, 몇 분). 서울 밖 한 지역만 실패하면 그 지역은 빼고 배포한다 (종료 코드 2).
+# (월간 자동 갱신의 봇 커밋은 GITHUB_TOKEN으로 올라가서 이 워크플로를 다시 부르지 않는다.
+#  지역 자료 채우기가 단지 이름·정보를 다 채우면 workflow_dispatch로 이 워크플로를 부른다)
 on:
   push:
     branches: [main]
@@ -14,6 +16,7 @@ on:
       - "site_build.py"
       - "apt/template.html"
       - "apt_score.py"
+      - "data/apt_params.json"
       - "assets/**"
       - "highs/**"
       - "sim/**"
@@ -41,7 +44,7 @@ concurrency:  # 월간 자동 갱신과 같은 묶음: 갱신이 끝난 뒤 차�
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 30
     environment:
       name: github-pages
       url: ${{ steps.deploy.outputs.page_url }}
@@ -59,9 +62,14 @@ jobs:
         run: |
           python map/build.py
           python report/build.py
-          python apt_score.py
-          python highs_build.py
-          python sim_build.py
+          python apt_region_study.py --missing || true  # 새로 들어온 지역의 단지 점수 고정값 (월간 갱신이 커밋)
+          ok() { [ "$1" = 0 ] || [ "$1" = 2 ]; }  # 2 = 서울 밖 일부 지역만 실패 (그 지역은 빼고 배포)
+          python apt_score.py > apt.log 2>&1 & a=$!
+          python highs_build.py > highs.log 2>&1 & h=$!
+          python sim_build.py > sim.log 2>&1 & s=$!
+          set +e; wait $a; ca=$?; wait $h; ch=$?; wait $s; cs=$?; set -e
+          cat apt.log highs.log sim.log
+          ok $ca && ok $ch && ok $cs
           python home_build.py
           python site_build.py
       - uses: actions/configure-pages@v5

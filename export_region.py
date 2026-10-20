@@ -11,7 +11,7 @@ import pandas as pd
 
 import backtest as bt
 import v3
-from regions import REGIONS, josa
+from regions import REGIONS, josa, sub_word
 
 RV = pd.read_pickle(bt.ROOT / "results_region" / "region_v3.pkl")
 RC = pd.read_pickle(bt.ROOT / "results_region" / "region_calc.pkl")
@@ -27,7 +27,6 @@ ser = lambda s: [r1(v) for v in s.reindex(idx)]
 f2 = lambda v: "–" if v is None or pd.isna(v) else f"{v:.2f}"
 ym = lambda t: f"{t.year}년 {t.month}월"
 HAI_NAME = {"gyeonggi": "경기", "incheon": "수도권"}
-SUB_WORD = {"gyeonggi": "시·구"}  # 나머지는 구·군
 AUX_LABEL = {"설문_가격전망": "KB 매매가격 전망 (2013~)", "설문_부동산원매매수급": "부동산원 매매수급 (2012~)",
              "전세_가격전망": "KB 전세가격 전망 (2016~)", "전세_부동산원전세수급": "부동산원 전세수급 (2012~)",
              "거래_2030비중": "20·30대 매수 비중 (2019~)", "청약_1순위경쟁률": "청약 1순위 경쟁률 (2020~)",
@@ -87,7 +86,7 @@ ENG_LABEL = f"지역 엔진 {ENG['chosen']}{' 임시' if ENG.get('provisional') 
 for rid, R in RV["regions"].items():
     VMr = R["vote_meta"]  # 이 지역 엔진의 표 구성
     d = REGIONS[rid]
-    name, sw = d["name"], SUB_WORD.get(rid, "구·군")
+    name, sw = d["name"], sub_word(rid)
     geo_src = json.loads((bt.ROOT / "data" / "region_maps" / f"{rid}.json").read_text())
     subs = [l for l in d["lawd"] if l in RV["subs"]]
     names = {l: d["lawd"][l] for l in subs}

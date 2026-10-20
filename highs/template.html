@@ -104,29 +104,30 @@ td a:hover { text-decoration: underline; }
 <div class="wrap">
   <header style="display:grid;gap:6px">
     <div class="topbar">
-      <div class="eyebrow">서울 아파트 · 실거래 신고가</div>
+      <div class="eyebrow" id="eyebrow">아파트 · 실거래 신고가</div>
       <div class="theme-ctl" id="theme-ctl" role="group" aria-label="화면 밝기"><span class="tl" aria-hidden="true">화면</span><button type="button" data-m="auto" aria-pressed="true" title="기기 설정을 따라요">자동</button><button type="button" data-m="light" aria-pressed="false">밝게</button><button type="button" data-m="dark" aria-pressed="false">어둡게</button></div>
     </div>
     <h1>신고가 단지</h1>
-    <p class="sub">같은 단지·같은 크기 집의 지난 모든 거래보다 비싸게 팔린 거래예요. 신고가가 많을수록 시장이 뜨거운 쪽이라, 공포탐욕지수에도 '신고가 비중'이 들어가요. 달과 구를 골라 어떤 단지인지 볼 수 있어요.</p>
+    <p class="sub">같은 단지·같은 크기 집의 지난 모든 거래보다 비싸게 팔린 거래예요. 신고가가 많을수록 시장이 뜨거운 쪽이라, 공포탐욕지수에도 '신고가 비중'이 들어가요. 달과 동네를 골라 어떤 단지인지 볼 수 있어요.</p>
+    <nav class="rg" id="rg" aria-label="지역 고르기"></nav>
   </header>
 
   <section class="panel" aria-label="달 고르기와 요약">
     <div class="seg" id="months" role="group" aria-label="계약한 달"></div>
     <div class="sum" id="sum"><p class="loading">불러오는 중…</p></div>
     <div>
-      <div class="sec-title" style="margin-bottom:6px">서울 신고가 비중 (비교할 수 있는 거래 중 신고가, 최근 36개월)</div>
+      <div class="sec-title" style="margin-bottom:6px"><span id="trend-top">서울</span> 신고가 비중 (비교할 수 있는 거래 중 신고가, 최근 36개월)</div>
       <div class="trend" id="trend"></div>
     </div>
   </section>
 
   <section class="panel" aria-label="구별 신고가">
     <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap">
-      <h2>구별 신고가</h2>
-      <span class="cnt">누르면 그 구 단지만 보여요</span>
+      <h2><span class="subw">구</span>별 신고가</h2>
+      <span class="cnt">누르면 그 <span class="subw">구</span> 단지만 보여요</span>
     </div>
     <div class="gu-grid" id="gus"></div>
-    <button type="button" class="m-fold-btn" id="gus-more">모든 구 보기 ▾</button>
+    <button type="button" class="m-fold-btn" id="gus-more">모든 <span class="subw">구</span> 보기 ▾</button>
   </section>
 
   <section class="panel" aria-label="신고가 거래 목록">
@@ -204,7 +205,7 @@ function renderTrend() {
   const wrap = $("#trend");
   wrap.textContent = "";
   const T = D.trend, W = Math.max(300, wrap.clientWidth), Hh = 130, m = { l: 34, r: 6, t: 8, b: 20 };
-  const svg = S("svg", { viewBox: `0 0 ${W} ${Hh}`, width: W, height: Hh, role: "img", "aria-label": "최근 36개월 서울 신고가 비중 막대그래프" }, wrap);
+  const svg = S("svg", { viewBox: `0 0 ${W} ${Hh}`, width: W, height: Hh, role: "img", "aria-label": `최근 36개월 ${D.top} 신고가 비중 막대그래프` }, wrap);
   const mx = Math.max(0.1, ...T.map((r) => r[1] / r[2]));
   const top = Math.ceil(mx * 10) / 10;
   const bw = (W - m.l - m.r) / T.length;
@@ -242,7 +243,7 @@ function renderGus() {
   const rows = Object.entries(M.gu).map(([c, [h, n]]) => [c, h, n]).sort((a, b) => b[1] - a[1]);
   const mx = Math.max(1, ...rows.map((r) => r[1]));
   const all = H("button", { type: "button", class: "gu-row", "aria-pressed": String(!st.gu) }, box);
-  H("span", {}, all, "서울 전체");
+  H("span", {}, all, `${D.top} 전체`);
   const ab = H("span", { class: "bar" }, all); H("i", { style: "width:100%;opacity:.35" }, ab);
   H("span", { class: "n" }, all, `${M.high.toLocaleString("ko-KR")}건`);
   all.addEventListener("click", () => { st.gu = null; st.shown = PAGE; render(); });
@@ -273,7 +274,7 @@ function renderList() {
     const [seq, name, lawd, dong, area, floor, date, price, prev, prevd, nprev] = r;
     const tr = H("tr", {}, bd);
     const td = H("td", {}, tr);
-    H("a", { href: `../apt/#${seq}:${Math.round(area)}`, title: "단지 검색에서 이 평형 보기" }, td, name || seq);
+    H("a", { href: `../apt/${RG.q}#${seq}:${Math.round(area)}`, title: "단지 검색에서 이 평형 보기" }, td, name || seq);
     H("span", { class: "s" }, td, `${D.gu_names[lawd] || ""} ${dong}`);
     H("span", { class: "s m-only" }, td, `${area}㎡(약 ${pyeong(area)}평형) · ${floor != null ? floor + "층" : "–"} · ${date.slice(5).replace("-", ".")}`);  // 휴대폰: 숨긴 칸을 한 줄로
     const ta = H("td", { class: "n hide-m" }, tr, `${area}㎡`); H("span", { class: "s" }, ta, `약 ${pyeong(area)}평형`);
@@ -297,12 +298,16 @@ function render() {
 $("#q").addEventListener("input", (e) => { st.q = e.target.value; st.shown = PAGE; renderList(); });
 $("#sort").addEventListener("change", (e) => { st.sort = e.target.value; st.shown = PAGE; renderList(); });
 $("#more").addEventListener("click", () => { st.shown += PAGE; renderList(); });
-$("#gus-more").addEventListener("click", (e) => { const o = $("#gus").classList.toggle("m-open"); e.target.textContent = o ? "구 접기 ▴" : "모든 구 보기 ▾"; });
+$("#gus-more").addEventListener("click", (e) => { const o = $("#gus").classList.toggle("m-open"); e.currentTarget.textContent = o ? `${D.sub_word} 접기 ▴` : `모든 ${D.sub_word} 보기 ▾`; });
 let rt;
 new ResizeObserver(() => { clearTimeout(rt); rt = setTimeout(() => D && renderTrend(), 100); }).observe($("#trend"));
 
-fetch("data/highs.json").then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); }).then((j) => {
+fetch(RG.id === "seoul" ? "data/highs.json" : `data/${RG.id}.json`).then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); }).then((j) => {
   D = j;
+  D.top = D.top || "서울"; D.sub_word = D.sub_word || "구";
+  $("#eyebrow").textContent = `${D.top} 아파트 · 실거래 신고가`;
+  $("#trend-top").textContent = D.top;
+  document.querySelectorAll(".subw").forEach((e) => (e.textContent = D.sub_word));
   st.m = D.months.length > 1 && D.months[0].ym === D.asof.slice(0, 7) ? 1 : 0;  // 아직 신고 중인 이번 달 말고 지난달부터
   $("#asof").textContent = `지금은 ${D.asof.replaceAll("-", ".")} 계약분까지 들어 있어요.`;
   render();

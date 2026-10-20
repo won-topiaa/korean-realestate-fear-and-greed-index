@@ -122,11 +122,12 @@ td .nm { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; 
 <div class="wrap">
   <header style="display:grid;gap:6px">
     <div class="topbar">
-      <div class="eyebrow">서울 아파트 · 가상 투자 계산</div>
+      <div class="eyebrow" id="eyebrow">아파트 · 가상 투자 계산</div>
       <div class="theme-ctl" id="theme-ctl" role="group" aria-label="화면 밝기"><span class="tl" aria-hidden="true">화면</span><button type="button" data-m="auto" aria-pressed="true" title="기기 설정을 따라요">자동</button><button type="button" data-m="light" aria-pressed="false">밝게</button><button type="button" data-m="dark" aria-pressed="false">어둡게</button></div>
     </div>
     <h1>모의 투자</h1>
-    <p class="sub">그때 이 단지를 샀다면 지금 얼마가 됐을까요? 2006년부터의 실제 거래 가격으로 계산하는 가상 투자예요. 단지를 2~3개 고르면 같은 기간의 가격 변화를 나란히 비교해요. 산 때와 판 때의 공포탐욕지수도 함께 보여 드려요.</p>
+    <p class="sub">그때 이 단지를 샀다면 지금 얼마가 됐을까요? 2006년부터의 실제 거래 가격으로 계산하는 가상 투자예요. 단지를 2~3개 고르면 같은 기간의 가격 변화를 나란히 비교해요.<span id="sub-fg"> 산 때와 판 때의 공포탐욕지수도 함께 보여 드려요.</span></p>
+    <nav class="rg" id="rg" aria-label="지역 고르기"></nav>
   </header>
 
   <section class="panel search" aria-labelledby="s1">
@@ -205,9 +206,9 @@ td .nm { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; 
   </section>
 
   <footer class="foot">
-    <p><b>가격</b> · 단지·평형(전용 1㎡ 단위)마다 분기별 실거래가의 중앙값이에요. 층 차이는 8~10층 기준으로 맞췄어요(1층은 약 9% 싸고 30층 이상은 약 3% 비싸요). 그 분기에 거래가 없으면 가장 가까운 거래 분기 가격에 그사이 그 구 아파트 실거래지수 변화를 곱해서 추정해요.</p>
-    <p><b>계산</b> · 취득세·양도세·중개수수료·보유세와 전세 보증금은 넣지 않았어요. 대출 이자는 대출금 × 금리 × 보유 기간으로 단순하게 셌어요. 예금은 자기 돈(집값 − 대출)을 연복리로 넣었다고 봤어요. 서울·구 전체 비교는 국토교통부 실거래로 만든 반복매매지수예요.</p>
-    <p><b>공포탐욕</b> · 그 분기 마지막 달의 구 공포탐욕지수(지도와 같은 값)예요. <span id="asof"></span></p>
+    <p><b>가격</b> · 단지·평형(전용 1㎡ 단위)마다 분기별 실거래가의 중앙값이에요. 층 차이는 8~10층 기준으로 맞췄어요(<span id="t-floor">1층은 약 9% 싸고 30층 이상은 약 3% 비싸요</span>). 그 분기에 거래가 없으면 가장 가까운 거래 분기 가격에 그사이 그 <span class="subw">구</span> 아파트 실거래지수 변화를 곱해서 추정해요.</p>
+    <p><b>계산</b> · 취득세·양도세·중개수수료·보유세와 전세 보증금은 넣지 않았어요. 대출 이자는 대출금 × 금리 × 보유 기간으로 단순하게 셌어요. 예금은 자기 돈(집값 − 대출)을 연복리로 넣었다고 봤어요. <span class="top">서울</span>·<span class="subw">구</span> 전체 비교는 국토교통부 실거래로 만든 반복매매지수예요.</p>
+    <p><b>공포탐욕</b> · <span id="t-fg">그 분기 마지막 달의 구 공포탐욕지수(지도와 같은 값)예요.</span> <span id="asof"></span></p>
   </footer>
 </div>
 
@@ -233,6 +234,7 @@ const pctS = (x) => (x >= 0 ? "+" : "−") + Math.abs(x * 100).toFixed(1) + "%";
 const pyeong = (m2) => Math.round((m2 * 1.33) / 3.3058);
 const f0 = (v) => (v == null ? "–" : v.toFixed(0));  // 빈 달이면 '–'
 const fgName = (v) => (v == null ? "자료 없음" : v < 25 ? "극단적 공포" : v < 45 ? "공포" : v < 55 ? "중립" : v < 75 ? "탐욕" : "극단적 탐욕");
+const josa = (w, a, b) => { const c = w.charCodeAt(w.length - 1) - 0xac00; return w + (c >= 0 && c < 11172 && c % 28 ? a : b); };
 const fgColor = (v) => (v == null ? "var(--grid)" : v < 25 ? "var(--fear)" : v < 45 ? "color-mix(in srgb, var(--fear) 45%, var(--surface))" : v < 55 ? "color-mix(in srgb, var(--neutral) 45%, var(--surface))" : v < 75 ? "color-mix(in srgb, var(--greed) 45%, var(--surface))" : "var(--greed)");
 
 /* ---------- 검색 (단지 검색과 같은 방식) ---------- */
@@ -301,7 +303,7 @@ qEl.addEventListener("blur", () => setTimeout(() => { resEl.hidden = true; qEl.s
 /* ---------- 가격 계산 ---------- */
 const GU = {}, GUP = {};
 async function loadGu(code) {
-  if (!GUP[code]) GUP[code] = fetch(`data/gu/${code}.json`).then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); });
+  if (!GUP[code]) GUP[code] = fetch(`${RG.data}gu/${code}.json`).then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); });
   GU[code] = await GUP[code];
   return GU[code];
 }
@@ -318,11 +320,12 @@ function valueAt(ser, q, idx) {
 const qLab = (q) => META.quarters[q].replace(".", "년 ").replace("Q", "분기");
 function fgAt(q, code) {
   // 분기 마지막 달 (아직 없으면 있는 마지막 달)
+  if (!META.fg) return { gu: null, top: null, ym: null };  // 공포탐욕지수를 아직 공개하지 않은 지역
   const y = +META.quarters[q].slice(0, 4), qq = +META.quarters[q].slice(5, 6);
   const ym = `${y}-${String(qq * 3).padStart(2, "0")}`;
   let i = META.fg.dates.indexOf(ym);
   if (i < 0) i = META.fg.dates.length - 1;
-  return { gu: META.fg.gu[code][i], seoul: META.fg.seoul[i], ym: META.fg.dates[i] };
+  return { gu: (META.fg.gu[code] || [])[i] ?? null, top: META.fg.top[i], ym: META.fg.dates[i] };
 }
 
 const nTr = (t) => t[2].reduce((a, p) => a + p[2], 0);
@@ -335,7 +338,7 @@ async function choose(seq, typeA, quiet) {
   if (st.sel.some((x) => x.it.seq === seq)) { pickMsg("이미 고른 단지예요."); return; }
   if (st.sel.length >= MAXSEL) { pickMsg(`최대 ${MAXSEL}개까지 비교할 수 있어요. 하나를 빼고 추가해 주세요.`); return; }
   let g;
-  try { g = await loadGu(seq.slice(0, 5)); } catch (e) { pickMsg("자료를 불러오지 못했어요. 잠시 뒤 다시 해 주세요."); return; }
+  try { g = await loadGu(it.code); } catch (e) { pickMsg("자료를 불러오지 못했어요. 잠시 뒤 다시 해 주세요."); return; }
   const types = (g[seq] || []).filter((t) => t[2][0][0] < LASTQ);  // 산 시기를 고를 수 있는 평형만
   if (!types.length) { pickMsg(`${it.name}은(는) 거래가 너무 적어서 계산할 수 없어요.`); return; }
   pickMsg("");
@@ -400,11 +403,11 @@ function compute() {
   if (st.sel.length > 1) return computeMulti();
   st.it = st.sel[0].it; st.t = st.sel[0].t;
   $("#cards").hidden = false; $("#to-apt").hidden = false;
-  $("#chart-title").textContent = "이 평형 가격 흐름 (8~10층 기준) · 아래 띠는 그 구의 공포탐욕지수";
+  $("#chart-title").textContent = "이 평형 가격 흐름 (8~10층 기준)" + (META.fg ? ` · 아래 띠는 그 ${META.sub_word}의 공포탐욕지수` : "");
   computeOne();
 }
 function computeOne() {
-  const t = st.t, code = st.it.seq.slice(0, 5), idx = META.gu[code].idx;
+  const t = st.t, code = st.it.code, idx = META.gu[code].idx;
   const b = valueAt(t[2], st.buy, idx), s = valueAt(t[2], st.sell, idx);
   const yrs = (st.sell - st.buy) / 4;
   const ltv = +$("#ltv").value / 100, rate = Math.max(0, +$("#rate").value || 0) / 100, dep = Math.max(0, +$("#dep").value || 0) / 100;
@@ -412,17 +415,17 @@ function computeOne() {
   const equity = b.v * (1 - ltv), loan = b.v * ltv, interest = loan * rate * yrs;
   const eqGain = gain - interest, eqRet = eqGain / equity;
   const depGain = equity * (Math.pow(1 + dep, yrs) - 1);
-  const seoul = Math.exp(META.seoul_idx[st.sell] - META.seoul_idx[st.buy]) - 1;
+  const topR = Math.exp(META.top_idx[st.sell] - META.top_idx[st.buy]) - 1;
   const guR = Math.exp(idx[st.sell] - idx[st.buy]) - 1;
   const fb = fgAt(st.buy, code), fs = fgAt(st.sell, code);
-  LAST = { seq: st.it.seq, name: st.it.name, a: t[1], type: t[0], buy: st.buy, sell: st.sell, bv: b.v, sv: s.v, ret, cagr, ltv, eqRet, fgb: fb.gu };
+  LAST = { r: RG.id, seq: st.it.seq, name: st.it.name, a: t[1], type: t[0], buy: st.buy, sell: st.sell, bv: b.v, sv: s.v, ret, cagr, ltv, eqRet, fgb: fb.gu };
 
   $("#buy-l").textContent = qLab(st.buy);
   $("#sell-l").textContent = qLab(st.sell);
   $("#ltv-l").textContent = ltv ? `${ltv * 100}% · 대출 ${won(loan)}` : "대출 없음";
   const gname = META.gu[code].name;
-  $("#buy-fg").textContent = `그때 ${gname} 공포탐욕 ${f0(fb.gu)} · ${fgName(fb.gu)} (서울 ${f0(fb.seoul)})`;
-  $("#sell-fg").textContent = `그때 ${gname} 공포탐욕 ${f0(fs.gu)} · ${fgName(fs.gu)} (서울 ${f0(fs.seoul)})`;
+  $("#buy-fg").textContent = META.fg ? `그때 ${gname} 공포탐욕 ${f0(fb.gu)} · ${fgName(fb.gu)} (${META.top} ${f0(fb.top)})` : "";
+  $("#sell-fg").textContent = META.fg ? `그때 ${gname} 공포탐욕 ${f0(fs.gu)} · ${fgName(fs.gu)} (${META.top} ${f0(fs.top)})` : "";
 
   $("#res-panel").hidden = false;
   const hl = $("#headline");
@@ -442,7 +445,8 @@ function computeOne() {
   card("판 가격", won(s.v), s.est ? "거래 없어 추정" : `그 분기 거래 ${s.n}건 중앙값`);
   card("집값 수익률", pctS(ret), `연평균 ${pctS(cagr)}`, ret >= 0 ? "gain" : "loss");
   if (ltv) card("내 돈 수익률", pctS(eqRet), `내 돈 ${won(equity)} · 이자 ${won(interest)}`, eqRet >= 0 ? "gain" : "loss");
-  else card("그때 공포탐욕", `${f0(fb.gu)} → ${f0(fs.gu)}`, `${fgName(fb.gu)} → ${fgName(fs.gu)}`);
+  else if (META.fg) card("그때 공포탐욕", `${f0(fb.gu)} → ${f0(fs.gu)}`, `${fgName(fb.gu)} → ${fgName(fs.gu)}`);
+  else card(`${gname} 아파트 전체`, pctS(guR), "같은 기간 실거래지수", guR >= 0 ? "gain" : "loss");
 
   const tb = $("#cmp");
   tb.textContent = "";
@@ -453,7 +457,7 @@ function computeOne() {
   row(`이 단지 ${t[1]}㎡`, ret);
   if (ltv) row("이 단지 · 내 돈 기준", eqRet, `대출 ${ltv * 100}%, 금리 ${(rate * 100).toFixed(1)}%`);
   row(`${gname} 아파트 전체`, guR, "실거래 반복매매지수");
-  row("서울 아파트 전체", seoul, "실거래 반복매매지수");
+  row(`${META.top} 아파트 전체`, topR, "실거래 반복매매지수");
   row(`예금 (연 ${(dep * 100).toFixed(1)}%)`, depGain / equity, "내 돈을 연복리로");
 
   const notes = [];
@@ -461,7 +465,7 @@ function computeOne() {
   if (s.est) notes.push(`${qLab(st.sell)}에는 이 평형 거래가 없어서 ${qLab(s.from)} 거래 가격에 그사이 ${gname} 시세 변화를 곱해 추정했어요.`);
   $("#est-note").hidden = !notes.length;
   $("#est-note").textContent = notes.join(" ");
-  $("#to-apt").href = `../apt/#${st.it.seq}:${t[0]}`;
+  $("#to-apt").href = `../apt/${RG.q}#${st.it.seq}:${t[0]}`;
   chart();
 }
 
@@ -470,20 +474,20 @@ function computeMulti() {
   const ltv = +$("#ltv").value / 100, rate = Math.max(0, +$("#rate").value || 0) / 100, dep = Math.max(0, +$("#dep").value || 0) / 100;
   const yrs = (st.sell - st.buy) / 4;
   const rows = st.sel.map((x, i) => {
-    const code = x.it.seq.slice(0, 5), idx = META.gu[code].idx;
+    const code = x.it.code, idx = META.gu[code].idx;
     const b = valueAt(x.t[2], st.buy, idx), e = valueAt(x.t[2], st.sell, idx);
     const ret = e.v / b.v - 1, cagr = Math.pow(e.v / b.v, 1 / yrs) - 1;
     const equity = b.v * (1 - ltv), interest = b.v * ltv * rate * yrs;
     return { x, i, code, b, e, ret, cagr, eqRet: (e.v - b.v - interest) / equity, fb: fgAt(st.buy, code), fs: fgAt(st.sell, code) };
   });
-  LAST = rows.map((r) => ({ seq: r.x.it.seq, name: r.x.it.name, a: r.x.t[1], type: r.x.t[0], buy: st.buy, sell: st.sell, bv: r.b.v, sv: r.e.v, ret: r.ret, cagr: r.cagr, ltv, eqRet: r.eqRet, fgb: r.fb.gu }));
-  const seoul = Math.exp(META.seoul_idx[st.sell] - META.seoul_idx[st.buy]) - 1;
+  LAST = rows.map((r) => ({ r: RG.id, seq: r.x.it.seq, name: r.x.it.name, a: r.x.t[1], type: r.x.t[0], buy: st.buy, sell: st.sell, bv: r.b.v, sv: r.e.v, ret: r.ret, cagr: r.cagr, ltv, eqRet: r.eqRet, fgb: r.fb.gu }));
+  const topR = Math.exp(META.top_idx[st.sell] - META.top_idx[st.buy]) - 1;
   const fb = fgAt(st.buy, rows[0].code), fs = fgAt(st.sell, rows[0].code);
   $("#buy-l").textContent = qLab(st.buy);
   $("#sell-l").textContent = qLab(st.sell);
   $("#ltv-l").textContent = ltv ? `${ltv * 100}%` : "대출 없음";
-  $("#buy-fg").textContent = `그때 서울 공포탐욕 ${f0(fb.seoul)} · ${fgName(fb.seoul)}`;
-  $("#sell-fg").textContent = `그때 서울 공포탐욕 ${f0(fs.seoul)} · ${fgName(fs.seoul)}`;
+  $("#buy-fg").textContent = META.fg ? `그때 ${META.top} 공포탐욕 ${f0(fb.top)} · ${fgName(fb.top)}` : "";
+  $("#sell-fg").textContent = META.fg ? `그때 ${META.top} 공포탐욕 ${f0(fs.top)} · ${fgName(fs.top)}` : "";
 
   const hl = $("#headline");
   hl.textContent = "";
@@ -495,7 +499,7 @@ function computeMulti() {
     sp.append(`${r.x.it.name} `);
     H("b", { class: r.ret >= 0 ? "gain" : "loss" }, sp, pctS(r.ret));
   });
-  hl.append(` · 서울 전체 ${pctS(seoul)}`);
+  hl.append(` · ${META.top} 전체 ${pctS(topR)}`);
   $("#cards").hidden = true;
   $("#to-apt").hidden = true;
 
@@ -504,13 +508,14 @@ function computeMulti() {
   const hr = H("tr", {}, H("thead", {}, tb));
   const cols = [["단지"], ["수익률", "n"], ["연평균", "n"]];  // 좁은 화면에서도 수익률이 먼저 보이게
   if (ltv) cols.push(["내 돈 수익률", "n"]);
-  cols.push(["산 가격", "n m-hide"], ["판 가격", "n m-hide"], ["산 때 공포탐욕", "n m-hide"]);  // 휴대폰: 단지·수익률·연평균만
+  cols.push(["산 가격", "n m-hide"], ["판 가격", "n m-hide"]);  // 휴대폰: 단지·수익률·연평균만
+  if (META.fg) cols.push(["산 때 공포탐욕", "n m-hide"]);
   cols.forEach(([t, c]) => H("th", c ? { class: c } : {}, hr, t));
   const bd = H("tbody", {}, tb);
   rows.forEach((r) => {
     const tr = H("tr", {}, bd);
     const td = H("td", {}, tr);
-    const nm = H("a", { class: "nm", href: `../apt/#${r.x.it.seq}:${r.x.t[0]}`, style: "text-decoration:none", title: "단지 검색에서 보기" }, td);
+    const nm = H("a", { class: "nm", href: `../apt/${RG.q}#${r.x.it.seq}:${r.x.t[0]}`, style: "text-decoration:none", title: "단지 검색에서 보기" }, td);
     H("i", { class: "dot", style: `background:${SER[r.i]}` }, nm); nm.append(r.x.it.name);
     H("span", { class: "s" }, td, `${r.x.t[1]}㎡ · ${META.gu[r.code].name}`);
     H("td", { class: "n " + (r.ret >= 0 ? "gain" : "loss"), style: "font-weight:700" }, tr, pctS(r.ret));
@@ -518,7 +523,7 @@ function computeMulti() {
     if (ltv) H("td", { class: "n " + (r.eqRet >= 0 ? "gain" : "loss") }, tr, pctS(r.eqRet));
     const t1 = H("td", { class: "n m-hide" }, tr, won(r.b.v)); if (r.b.est) H("span", { class: "s" }, t1, "추정");
     const t2 = H("td", { class: "n m-hide" }, tr, won(r.e.v)); if (r.e.est) H("span", { class: "s" }, t2, "추정");
-    const tf = H("td", { class: "n m-hide" }, tr, `${f0(r.fb.gu)}`); H("span", { class: "s" }, tf, fgName(r.fb.gu));
+    if (META.fg) { const tf = H("td", { class: "n m-hide" }, tr, `${f0(r.fb.gu)}`); H("span", { class: "s" }, tf, fgName(r.fb.gu)); }
     H("span", { class: "s m-only" }, td, `${won(r.b.v)} → ${won(r.e.v)}`);  // 휴대폰: 숨긴 가격을 이름 아래에
   });
   const ref = (k, r, sub) => {
@@ -527,14 +532,14 @@ function computeMulti() {
     H("td", { class: "n " + (r >= 0 ? "gain" : "loss") }, tr, pctS(r));
     H("td", { class: "n" }, tr, pctS(Math.pow(1 + r, 1 / yrs) - 1));
     if (ltv) H("td", {}, tr, "");
-    H("td", { class: "m-hide" }, tr, ""); H("td", { class: "m-hide" }, tr, ""); H("td", { class: "m-hide" }, tr, "");
+    H("td", { class: "m-hide" }, tr, ""); H("td", { class: "m-hide" }, tr, ""); if (META.fg) H("td", { class: "m-hide" }, tr, "");
   };
-  ref("서울 아파트 전체", seoul, "실거래 반복매매지수");
+  ref(`${META.top} 아파트 전체`, topR, "실거래 반복매매지수");
   ref(`예금 (연 ${(dep * 100).toFixed(1)}%)`, Math.pow(1 + dep, yrs) - 1, "연복리");
   const est = rows.filter((r) => r.b.est || r.e.est).map((r) => r.x.it.name);
   $("#est-note").hidden = !est.length;
-  $("#est-note").textContent = est.length ? `${est.join(", ")}: 산 때나 판 때 그 평형 거래가 없어서 가장 가까운 거래 가격에 그사이 그 구 시세 변화를 곱해 추정했어요.` : "";
-  $("#chart-title").textContent = "산 때 가격을 0%로 놓고 본 가격 변화 (8~10층 기준) · 점선은 서울 아파트 전체";
+  $("#est-note").textContent = est.length ? `${est.join(", ")}: 산 때나 판 때 그 평형 거래가 없어서 가장 가까운 거래 가격에 그사이 그 ${META.sub_word} 시세 변화를 곱해 추정했어요.` : "";
+  $("#chart-title").textContent = `산 때 가격을 0%로 놓고 본 가격 변화 (8~10층 기준) · 점선은 ${META.top} 아파트 전체`;
   chartMulti();
 }
 
@@ -546,10 +551,10 @@ function chartMulti() {
   const W = Math.max(300, lastW), Hh = narrow ? 240 : 290, m = { l: 48, r: narrow ? 78 : 130, t: 14, b: 26 };
   const qs = []; for (let q = st.buy; q <= st.sell; q++) qs.push(q);
   const ser = st.sel.map((x, i) => {
-    const idx = META.gu[x.it.seq.slice(0, 5)].idx, base = valueAt(x.t[2], st.buy, idx).v;
+    const idx = META.gu[x.it.code].idx, base = valueAt(x.t[2], st.buy, idx).v;
     return { x, i, pts: qs.map((q) => { const v = valueAt(x.t[2], q, idx); return { q, r: v.v / base - 1, v: v.v, est: v.est }; }) };
   });
-  const seoul = qs.map((q) => Math.exp(META.seoul_idx[q] - META.seoul_idx[st.buy]) - 1);
+  const seoul = qs.map((q) => Math.exp(META.top_idx[q] - META.top_idx[st.buy]) - 1);  // 지역 전체 (서울이면 서울)
   const all = [0, ...seoul, ...ser.flatMap((s) => s.pts.map((p) => p.r))];
   let lo = Math.min(...all), hi = Math.max(...all);
   const span = hi - lo || 0.1;
@@ -568,7 +573,7 @@ function chartMulti() {
   S("path", { d: path(seoul), fill: "none", stroke: "var(--muted)", "stroke-width": 1.5, "stroke-dasharray": "4 4" }, svg);
   ser.forEach((s) => S("path", { d: path(s.pts.map((p) => p.r)), fill: "none", stroke: SER[s.i], "stroke-width": 2.5, "stroke-linejoin": "round", "stroke-linecap": "round" }, svg));
   // 오른쪽 끝 이름표 (겹치면 위아래로 띄움)
-  const labs = [...ser.map((s) => ({ c: SER[s.i], t: s.x.it.name, r: s.pts[s.pts.length - 1].r, dot: true })), { c: "var(--muted)", t: "서울 전체", r: seoul[seoul.length - 1] }]
+  const labs = [...ser.map((s) => ({ c: SER[s.i], t: s.x.it.name, r: s.pts[s.pts.length - 1].r, dot: true })), { c: "var(--muted)", t: `${META.top} 전체`, r: seoul[seoul.length - 1] }]
     .map((l) => ({ ...l, y: Y(l.r) })).sort((a, b) => a.y - b.y);
   for (let k = 1; k < labs.length; k++) if (labs[k].y - labs[k - 1].y < 26) labs[k].y = labs[k - 1].y + 26;
   const over = labs.length ? labs[labs.length - 1].y - (Hh - m.b) : 0;
@@ -592,14 +597,14 @@ function chartMulti() {
     tip.hidden = false; tip.textContent = "";
     H("div", { style: "font-weight:600" }, tip, qLab(qs[k]));
     ser.forEach((s) => { const p = s.pts[k]; const d = H("div", {}, tip); H("i", { class: "dot", style: `background:${SER[s.i]};margin-right:5px` }, d); d.append(`${s.x.it.name} `); H("b", {}, d, pctS(p.r)); d.append(` · ${won(p.v)}${p.est ? " (추정)" : ""}`); });
-    const d = H("div", {}, tip, "서울 전체 "); H("b", {}, d, pctS(seoul[k]));
+    const d = H("div", {}, tip, `${META.top} 전체 `); H("b", {}, d, pctS(seoul[k]));
     tip.style.left = Math.min(Math.max((X(qs[k]) / W) * rr.width, 120), rr.width - 120) + "px"; tip.style.top = (m.t / Hh) * rr.height + 40 + "px";
   });
   hit.addEventListener("mouseleave", () => { tip.hidden = true; cross.setAttribute("visibility", "hidden"); });
   const lg = $("#legend");
   lg.textContent = "";
   ser.forEach((s) => { const sp = H("span", {}, lg); H("i", { style: `background:${SER[s.i]};height:3px;vertical-align:3px` }, sp); sp.append(`${s.x.it.name} ${s.x.t[1]}㎡`); });
-  const sp = H("span", {}, lg); H("i", { style: "background:none;border-top:2px dashed var(--muted);height:0;vertical-align:3px" }, sp); sp.append("서울 아파트 전체");
+  const sp = H("span", {}, lg); H("i", { style: "background:none;border-top:2px dashed var(--muted);height:0;vertical-align:3px" }, sp); sp.append(`${META.top} 아파트 전체`);
 }
 
 /* ---------- 가격 흐름 그림 + 공포탐욕 띠 ---------- */
@@ -608,9 +613,10 @@ function chart() {
   const wrap = $("#chart");
   lastW = wrap.clientWidth;
   wrap.textContent = "";
-  const t = st.t, code = st.it.seq.slice(0, 5), idx = META.gu[code].idx;
+  const t = st.t, code = st.it.code, idx = META.gu[code].idx;
   const first = t[2][0][0];
-  const W = Math.max(300, lastW), Hh = W < 480 ? 220 : 260, m = { l: 50, r: 12, t: 12, b: 44 }, band = 12;
+  const band = META.fg ? 12 : 0;  // 공포탐욕지수를 공개하지 않은 지역은 띠 없이
+  const W = Math.max(300, lastW), Hh = (W < 480 ? 220 : 260) - (band ? 0 : 18), m = { l: 50, r: 12, t: 12, b: band ? 44 : 26 };
   const svg = S("svg", { viewBox: `0 0 ${W} ${Hh}`, width: W, height: Hh, role: "img", "aria-label": `${st.it.name} ${t[1]}㎡ 분기별 가격 흐름과 ${META.gu[code].name} 공포탐욕지수` }, wrap);
   const qs = []; for (let q = first; q <= LASTQ; q++) qs.push(q);
   const vals = qs.map((q) => valueAt(t[2], q, idx));
@@ -640,7 +646,7 @@ function chart() {
   // 공포탐욕 띠 (분기 마지막 달 구 점수)
   const by = m.t + ph + 6;
   const bw = (W - m.l - m.r) / Math.max(1, LASTQ - first);
-  qs.forEach((q) => { const f = fgAt(q, code).gu; S("rect", { x: X(q) - bw / 2, y: by, width: bw + 0.5, height: band, fill: fgColor(f) }, svg); });
+  if (band) qs.forEach((q) => { const f = fgAt(q, code).gu; S("rect", { x: X(q) - bw / 2, y: by, width: bw + 0.5, height: band, fill: fgColor(f) }, svg); });
   // 연도 눈금
   const step = (LASTQ - first) / 4 > 12 ? (W < 520 ? 6 : 3) : (W < 520 ? 2 : 1);  // 연도 눈금 간격 (년)
   qs.forEach((q) => { const yr = +META.quarters[q].slice(0, 4); if (q % 4 === 0 && yr % step === 0 && X(q) > m.l + 12 && X(q) < W - m.r - 12) { const tx = S("text", { x: X(q), y: Hh - 6, "text-anchor": "middle", class: "axis-t" }, svg); tx.textContent = yr; } });
@@ -655,14 +661,14 @@ function chart() {
     tip.hidden = false; tip.textContent = "";
     H("div", {}, tip, qLab(q));
     const a = H("div", {}, tip, "가격 "); H("b", {}, a, won(v.v)); a.append(v.est ? " (추정)" : ` (${v.n}건)`);
-    const c = H("div", {}, tip, "공포탐욕 "); H("b", {}, c, f0(f)); c.append(" " + fgName(f));
+    if (band) { const c = H("div", {}, tip, "공포탐욕 "); H("b", {}, c, f0(f)); c.append(" " + fgName(f)); }
     tip.style.left = (X(q) / W) * r.width + "px"; tip.style.top = (Y(v.v) / Hh) * r.height + "px";
   };
   hit.addEventListener("mousemove", move);
   hit.addEventListener("mouseleave", () => (tip.hidden = true));
   const lg = $("#legend");
   lg.textContent = "";
-  {
+  if (band) {
     [["var(--fear)", "극단적 공포"], ["color-mix(in srgb, var(--fear) 45%, var(--surface))", "공포"], ["color-mix(in srgb, var(--neutral) 45%, var(--surface))", "중립"], ["color-mix(in srgb, var(--greed) 45%, var(--surface))", "탐욕"], ["var(--greed)", "극단적 탐욕"]]
       .forEach(([c, n]) => { const s = H("span", {}, lg); H("i", { style: `background:${c}` }, s); s.append(n); });
   }
@@ -688,7 +694,7 @@ function renderLog() {
   l.forEach((r, i) => {
     sb += r.bv; ss += r.sv;
     const tr = H("tr", {}, bd);
-    const td = H("td", {}, tr); H("a", { href: `#${r.seq}:${r.type}`, style: "font-weight:600;text-decoration:none" }, td, r.name); H("span", { class: "s" }, td, `${r.a}㎡`);
+    const td = H("td", {}, tr); H("a", { href: `?r=${r.r || "seoul"}#${r.seq}:${r.type}`, style: "font-weight:600;text-decoration:none" }, td, r.name); H("span", { class: "s" }, td, `${r.a}㎡`);
     const tq = H("td", {}, tr, `${META.quarters[r.buy]} → ${META.quarters[r.sell]}`); H("span", { class: "s" }, tq, `${((r.sell - r.buy) / 4).toFixed(1)}년`);
     H("td", { class: "n" }, tr, won(r.bv));
     H("td", { class: "n" }, tr, won(r.sv));
@@ -716,19 +722,27 @@ $("#save").addEventListener("click", () => {
 $("#clear").addEventListener("click", () => { MEMLOG = null; writeLog([]); renderLog(); });
 
 /* ---------- 시작 ---------- */
-Promise.all([fetch("data/meta.json").then((r) => r.json()), fetch("../apt/data/index.json").then((r) => r.json())]).then(([m, ix]) => {
+Promise.all([fetch(RG.data + "meta.json").then((r) => r.json()), fetch("../apt/" + RG.data + "index.json").then((r) => r.json())]).then(([m, ix]) => {
   META = m;
+  META.top = META.top || "서울"; META.sub_word = META.sub_word || "구";
+  $("#eyebrow").textContent = `${META.top} 아파트 · 가상 투자 계산`;
+  document.querySelectorAll(".top").forEach((e) => (e.textContent = META.top));
+  document.querySelectorAll(".subw").forEach((e) => (e.textContent = META.sub_word));
+  if (META.floor) $("#t-floor").textContent = `1층은 약 ${Math.abs(META.floor[0]).toFixed(0)}% 싸고 30층 이상은 약 ${Math.abs(META.floor[10]).toFixed(0)}% 비싸요`;
+  $("#sub-fg").hidden = !META.fg;
+  $("#t-fg").textContent = META.fg ? `그 분기 마지막 달의 ${META.sub_word} 공포탐욕지수(지도와 같은 값)예요.` : `${josa(META.top, "은", "는")} 아직 공포탐욕지수를 공개하지 않아 가격만 보여 드려요.`;
   // 아직 신고 중인 이번 분기는 빼고, 다 들어온 마지막 분기까지
   const a = META.asof, curQ = (+a.slice(0, 4) - +META.quarters[0].slice(0, 4)) * 4 + Math.floor((+a.slice(5, 7) - 1) / 3);
   LASTQ = Math.min(META.quarters.length - 1, curQ - 1);
   Object.entries(META.gu).forEach(([c, g]) => (GUNAME[c] = g.name));
-  IDX = ix.items.map(([seq, name, dong, built, last, has, old]) => {
-    const key = norm(name + "|" + old), gu = GUNAME[seq.slice(0, 5)] || "";
-    return { seq, name, dong, built, last, has, gu, key, ck: cho(key), dk: norm(dong), gk: norm(gu), nk: norm(name) };
+  IDX = ix.items.map(([seq, name, dong, built, last, has, old, code]) => {
+    code = code || seq.slice(0, 5);  // 화면용 지역 코드 (단지 검색과 같은 파일 나눔)
+    const key = norm(name + "|" + old), gu = GUNAME[code] || "";
+    return { seq, name, dong, built, last, has, code, gu, key, ck: cho(key), dk: norm(dong), gk: norm(gu), nk: norm(name) };
   });
   $("#asof").textContent = `${META.asof.replaceAll("-", ".")} 계약분까지 들어 있어요.`;
   const qk = $("#quick");
-  ["11680-218", "11710-6346", "11470-23", "11350-159", "11650-5126"].forEach((seq) => {
+  (RG.id === "seoul" ? ["11680-218", "11710-6346", "11470-23", "11350-159", "11650-5126"] : ix.meta.quick || []).forEach((seq) => {
     const it = IDX.find((x) => x.seq === seq);
     if (!it) return;
     const b = H("button", { type: "button" }, qk, it.name);

@@ -78,6 +78,13 @@ body { overflow-x: clip; }  /* 화면 폭 띠가 가로 스크롤을 만들지 �
 .sk-hero .sub, .sk-hero .lede, .sk-hero .change { color: var(--ink-2); line-height: 1.75; }
 .sk-hero .change { background: rgba(255, 255, 255, 0.08); }
 .sk-hero b { color: var(--ink); }
+/* 단지 검색·신고가·모의 투자의 지역 고르기 (site_build.py PICK이 채움) */
+.rg { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 2px; }
+.rg > span:first-child { font-size: 12.5px; color: var(--muted); margin-right: 4px; }
+.rg a, .rg .off { font-size: 13.5px; line-height: 1; padding: 7px 13px; border-radius: 999px; border: 1px solid var(--line); color: var(--ink); text-decoration: none; white-space: nowrap; }
+.rg a:hover { background: var(--hl); }
+.rg a[aria-current] { background: var(--ink); color: var(--on-ink); border-color: var(--ink); font-weight: 600; }
+.rg .off { color: var(--muted); border: 1px dashed var(--hair); cursor: default; }
 .sk-hero .sk-dot { position: absolute; z-index: -1; display: block; border-radius: 50%; border: 2px solid rgba(255, 255, 255, 0.5); pointer-events: none; }
 .sk-hero .sk-dot.a { width: 120px; height: 120px; right: calc(50% - 50vw + 56px); top: 34px; }  /* 화면 오른쪽 끝 기준 (글과 겹치지 않게) */
 .sk-hero .sk-dot.b { width: 52px; height: 52px; right: calc(50% - 50vw + 210px); bottom: 36px; background: rgba(255, 255, 255, 0.85); border: 0; }

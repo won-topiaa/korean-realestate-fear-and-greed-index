@@ -5,8 +5,12 @@
 총괄표제부(단지 전체)가 있으면 그 값을, 없으면 표제부(동별)를 합친다. 최고층은 표제부에서.
 처음엔 9천여 단지라 여러 번에 나눠 받고(받은 만큼 바로 저장), 이후엔 새 단지만 받는다.
 data.go.kr에서 '국토교통부_건축HUB_건축물대장정보 서비스' 활용신청이 필요하다 (키는 DATA_GO_KR_KEY 그대로).
+수도권·광역시(--regions): 지역 단지 표(data/molit_kr/complexes.csv) → data/molit_kr/buildings.csv. 건축물대장은 지금 지역 코드를
+쓰므로(2026-10 확인: 광주 충장고운라피네는 옛 29110으로는 없고 12210으로 나옴) 그 단지 거래가 들어온 지금 코드로 먼저 묻고,
+없으면 단지 번호 앞자리(옛 코드)로 한 번 더 묻는다.
 
-사용: python bldg_fetch.py [최대 단지 수]
+사용: python bldg_fetch.py [--regions] [최대 단지 수]
+      python bldg_fetch.py fill|land [--regions]
 """
 import datetime as dt
 import json
@@ -24,6 +28,7 @@ import molit_store
 
 ROOT = Path(__file__).parent
 OUT = ROOT / "data" / "molit" / "buildings.csv"
+OUT_KR = ROOT / "data" / "molit_kr" / "buildings.csv"  # 수도권·광역시
 BJ = ROOT / "data" / "molit" / "bjdong.csv"  # 서울 법정동 코드표 (구·동 이름 → 코드)
 URL = "https://apis.data.go.kr/1613000/BldRgstHubService"
 COLS = ["aptSeq", "lot", "via", "regNm", "hhld", "dong", "vlRat", "bcRat", "platArea", "totArea", "pkng", "useApr", "maxFlr", "src", "landSrc", "fetched", "status"]
@@ -99,9 +104,28 @@ def num(v):
         return 0.0
 
 
+def complexes(region=False):
+    """단지 표 + 건축물대장 조회용 시군구 코드(sgg). 서울은 단지 번호 앞 5자리, 지역은 그 단지 거래가 가장 많이 들어온 지금 지역 코드
+    (지역 저장소에 아직 없는 단지는 단지 번호 앞자리)."""
+    if not region:
+        cx = molit_store.load_complexes()
+        return cx.assign(sgg=cx["aptSeq"].str[:5])
+    import region_store
+    cx = region_store.load_complexes()
+    home = pd.Series(dtype=str)
+    if region_store.exists():
+        home = region_store.load().groupby("aptSeq")["lawd"].agg(lambda x: x.value_counts().index[0])
+    return cx.assign(sgg=cx["aptSeq"].map(home).fillna(cx["aptSeq"].str[:5]))
+
+
+def other_code(p, seq):
+    """지금 코드로 없을 때 한 번 더 물을 옛 코드 조회 값 (같으면 None)."""
+    return {**p, "sigunguCd": seq[:5]} if p and p["sigunguCd"] != seq[:5] else None
+
+
 def lot(row, umd):
     """complexes.csv 한 줄 → 건축물대장 조회 값. 법정동 코드가 없으면 같은 구의 동 이름으로 찾는다."""
-    sgg = row["aptSeq"][:5]
+    sgg = row.get("sgg") or row["aptSeq"][:5]
     bj = row["umdCd"] or umd.get((sgg, row["umdNm"]), "")
     if row["bonbun"]:
         bun, ji, gb = row["bonbun"], row["bubun"] or "0000", "1" if row["jibun"].strip().startswith("산") else "0"
@@ -160,10 +184,12 @@ def fetch_one(params, key):
     return r
 
 
-def bjdong_codes(key, cx):
-    """(구 코드, 동 이름) → 법정동 코드. 실거래 자료에 있는 것 + 코드표(없으면 건축물대장에 동 코드를 하나씩 물어 만든다)."""
-    umd = {(r.aptSeq[:5], r.umdNm): r.umdCd for r in cx.itertuples() if r.umdCd}
-    need = {(r.aptSeq[:5], r.umdNm) for r in cx.itertuples()} - set(umd)
+def bjdong_codes(key, cx, region=False):
+    """(구 코드, 동 이름) → 법정동 코드. 실거래 자료에 있는 것 + 코드표(없으면 건축물대장에 동 코드를 하나씩 물어 만든다, 서울만)."""
+    umd = {(r.sgg, r.umdNm): r.umdCd for r in cx.itertuples() if r.umdCd}
+    need = {(r.sgg, r.umdNm) for r in cx.itertuples()} - set(umd)
+    if region:
+        return umd
     if not BJ.exists() and need:
         def probe(sc):
             for op in ("getBrRecapTitleInfo", "getBrTitleInfo"):
@@ -213,13 +239,16 @@ def name_match(names, items):
     return best if top >= 0.85 else None
 
 
-def fill(workers=2, budget_s=None, retry_days=90):
+def fill(workers=2, budget_s=None, retry_days=90, region=False):
     """지번으로 못 찾은 단지를 그 동네 건축물대장 전체에서 이름으로 다시 찾는다 (총괄표제부 → 표제부 순).
     이름으로도 없으면 status=missing (새 단지는 대장에 늦게 올라오므로 retry_days 뒤 다시 찾는다)."""
     key = _key()
-    cx = molit_store.load_complexes().set_index("aptSeq")
-    umd = bjdong_codes(key, cx.reset_index())
-    old = pd.read_csv(OUT, dtype=str, keep_default_na=False)
+    out = OUT_KR if region else OUT
+    if not out.exists():
+        return "건축물대장 다시 찾기: 아직 받은 단지 없음"
+    cx = complexes(region).set_index("aptSeq")
+    umd = bjdong_codes(key, cx.reset_index(), region)
+    old = pd.read_csv(out, dtype=str, keep_default_na=False)
     rows = {r["aptSeq"]: r for r in old.to_dict("records")}
     cut = (dt.date.today() - dt.timedelta(days=retry_days)).isoformat()
     miss = [s for s, r in rows.items() if s in cx.index and
@@ -241,17 +270,20 @@ def fill(workers=2, budget_s=None, retry_days=90):
 
     def one_(seq):
         c = cx.loc[seq]
-        bj = c["umdCd"] or umd.get((seq[:5], c["umdNm"]), "")
+        bj = c["umdCd"] or umd.get((c["sgg"], c["umdNm"]), "")
         if not bj:
             return seq, None, "nocode"
         p = lot({**c.to_dict(), "aptSeq": seq}, umd)
         got = fetch_one(p, key) if p else None  # 코드표로 동 코드가 새로 생긴 단지는 지번으로 먼저
+        if not got and other_code(p, seq):
+            p = other_code(p, seq)
+            got = fetch_one(p, key)
         if got:
             got.update(lot="-".join(p.values()), via="지번")
             return seq, got, "ok"
         names = [_nm(n) for n in [c["aptNm"], *str(c["names"]).split("|")] if n]
         for op in ("getBrRecapTitleInfo", "getBrTitleInfo"):
-            items = area_items(op, seq[:5], bj)
+            items = area_items(op, c["sgg"], bj)
             if op == "getBrTitleInfo":
                 items = [t for t in items if num(t.get("hhldCnt")) > 0]
             m = name_match(names, items)
@@ -263,7 +295,7 @@ def fill(workers=2, budget_s=None, retry_days=90):
                     return seq, got, "ok"
         return seq, None, "missing"
 
-    miss.sort(key=lambda s: (s[:5], cx.loc[s, "umdNm"]))  # 같은 동네끼리 붙여서 (동네 목록을 한 번만 받게)
+    miss.sort(key=lambda s: (cx.loc[s, "sgg"], cx.loc[s, "umdNm"]))  # 같은 동네끼리 붙여서 (동네 목록을 한 번만 받게)
     t0, done, found, msg = time.time(), 0, 0, ""
     try:
         with ThreadPoolExecutor(workers) as ex:
@@ -275,10 +307,10 @@ def fill(workers=2, budget_s=None, retry_days=90):
                     rows[seq] = {"aptSeq": seq, **(got or {}), "fetched": today, "status": status}
                     done += 1
                     found += status == "ok"
-                save(list(rows.values()))
+                save(list(rows.values()), out)
     except QuotaExceeded:
         msg = " (하루 호출 한도로 중단, 다음 실행에 이어서)"
-    save(list(rows.values()))
+    save(list(rows.values()), out)
     left = sum(1 for r in rows.values() if r["status"] != "ok")
     return f"건축물대장 다시 찾기: {done}/{len(miss)}곳 확인, {found}곳 찾음{msg} · 아직 정보 없는 단지 {left}"
 
@@ -304,7 +336,7 @@ def land_area(lot, vkey):
     raise RuntimeError(f"토지 면적: 응답 해석 실패 · {out.replace(vkey, '***')[:120]}")
 
 
-def fill_land(workers=3, budget_s=None):
+def fill_land(workers=3, budget_s=None, region=False):
     """오래된 단지(구대장)는 대장에 대지면적·용적률·건폐율이 0이다. 토지대장 면적으로 채운다.
     1단계: 대지 = 대표 지번 + 대장의 부속지번 토지대장 면적 합 (대지면적이 있는 단지 80곳으로 시험: 99%가 ±5% 안).
            지번 중 하나라도 토지대장에 없으면 채우지 않는다.
@@ -313,7 +345,10 @@ def fill_land(workers=3, budget_s=None):
     '·층별'이 붙으면 대장 하루 한도로 층별개요 합을 쓴 어림값 (다음 실행에 대장 값으로 다시 계산)."""
     vkey = _env().get("VWORLD_KEY", "").strip()  # 없으면(자동 갱신 등) 1단계는 건너뛰고 2단계만
     key = _key()
-    old = pd.read_csv(OUT, dtype=str, keep_default_na=False)
+    out = OUT_KR if region else OUT
+    if not out.exists():
+        return "토지 면적으로 채우기: 아직 받은 단지 없음"
+    old = pd.read_csv(out, dtype=str, keep_default_na=False)
     rows = {r["aptSeq"]: r for r in old.to_dict("records")}
     ok = [r for r in rows.values() if r["status"] == "ok" and r["lot"]]
     params = lambda r: dict(zip(("sigunguCd", "bjdongCd", "platGbCd", "bun", "ji"), r["lot"].split("-")))
@@ -395,7 +430,7 @@ def fill_land(workers=3, budget_s=None):
                     rows[seq]["platArea"] = plat or ""
                     rows[seq]["landSrc"] = "면적" if plat else "없음"
                     n_area += bool(plat)
-                save(list(rows.values()))
+                save(list(rows.values()), out)
             todo = [r for r in ok if r["platArea"] and (((not r["vlRat"] or not r["bcRat"]) and r.get("landSrc", "") in ("", "면적"))
                                                         or r.get("landSrc", "").endswith("·층별"))]  # 층별 어림값은 대장 값으로 다시
             for i in range(0, len(todo), 30):
@@ -414,28 +449,29 @@ def fill_land(workers=3, budget_s=None):
                     r["bcRat"] = bc if redo and bc != "" else r["bcRat"] or bc
                     r["landSrc"] = how
                     n_ratio += bool(vl)
-                save(list(rows.values()))
+                save(list(rows.values()), out)
     except QuotaExceeded as e:
         msg = f" (건축물대장 하루 호출 한도로 중단, 다음 실행에 이어서 · {e})"
-    save(list(rows.values()))
+    save(list(rows.values()), out)
     still = sum(1 for r in rows.values() if r["status"] == "ok" and not r["vlRat"])
     return f"토지 면적으로 채우기: 대지면적 {n_area}곳, 용적률 {n_ratio}곳 채움{msg} · 용적률 빈 단지 {still}"
 
 
-def save(rows):
+def save(rows, out=OUT):
     df = pd.DataFrame(rows).reindex(columns=COLS).fillna("").astype(str).sort_values("aptSeq")
     df = df.apply(lambda c: c.str.replace(r"\.0$", "", regex=True))  # 정수가 84.0으로 저장되지 않게
-    tmp = OUT.with_suffix(".csv.tmp")
+    tmp = out.with_suffix(".csv.tmp")
     df.to_csv(tmp, index=False)
-    tmp.replace(OUT)
+    tmp.replace(out)
 
 
-def run(limit=None, budget_s=None, workers=4):
+def run(limit=None, budget_s=None, workers=4, region=False):
     """아직 안 받은 단지를 최근 거래 순으로 받는다 (workers곳씩 동시에). 반환: 요약 문장."""
     key = _key()
-    cx = molit_store.load_complexes()
-    umd = bjdong_codes(key, cx)
-    old = pd.read_csv(OUT, dtype=str, keep_default_na=False) if OUT.exists() else pd.DataFrame(columns=COLS)
+    out = OUT_KR if region else OUT
+    cx = complexes(region)
+    umd = bjdong_codes(key, cx, region)
+    old = pd.read_csv(out, dtype=str, keep_default_na=False) if out.exists() else pd.DataFrame(columns=COLS)
     rows = {r["aptSeq"]: r for r in old.to_dict("records")}
     todo = [r for r in cx.sort_values("last", ascending=False).to_dict("records")
             if rows.get(r["aptSeq"], {}).get("status") not in ("ok", "none", "missing")]
@@ -450,6 +486,9 @@ def run(limit=None, budget_s=None, workers=4):
             return r["aptSeq"], None, "nocode"
         try:
             got = fetch_one(p, key)
+            if not got and other_code(p, r["aptSeq"]):  # 지역: 지금 코드로 없으면 옛 코드로
+                p = other_code(p, r["aptSeq"])
+                got = fetch_one(p, key)
         except RuntimeError:  # 한 단지의 이상한 응답 때문에 전체를 멈추지 않는다 (다음 실행에 다시 시도)
             return r["aptSeq"], None, "error"
         if got:
@@ -467,21 +506,39 @@ def run(limit=None, budget_s=None, workers=4):
                     err += status == "error"
                     done += status not in ("nocode", "error")
                     ok += status == "ok"
-                save(list(rows.values()))
+                save(list(rows.values()), out)
     except NotRegistered:
         return "건축물대장: 활용신청 전이라 건너뜀 (data.go.kr '국토교통부_건축HUB_건축물대장정보 서비스')"
     except QuotaExceeded:
-        save(list(rows.values()))
-        return f"건축물대장: 하루 호출 한도 — {done}곳 받고 중단 (다음 실행에 이어받음)"
+        save(list(rows.values()), out)
+        return f"{'지역 ' if region else ''}건축물대장: 하루 호출 한도 — {done}곳 받고 중단 (다음 실행에 이어받음)"
     have = sum(1 for v in rows.values() if v.get("status") == "ok")
     left = sum(1 for r in cx["aptSeq"] if rows.get(r, {}).get("status") not in ("ok", "none", "missing"))
-    return f"건축물대장: 이번에 {done}곳 조회 ({ok}곳 찾음, 주소 코드 없음 {nocode}, 오류 {err}) · 전체 {have:,}곳 보유 · 남은 단지 {left:,}"
+    return (f"{'지역 ' if region else ''}건축물대장: 이번에 {done}곳 조회 ({ok}곳 찾음, 주소 코드 없음 {nocode}, 오류 {err}) · "
+            f"전체 {have:,}곳 보유 · 남은 단지 {left:,}")
+
+
+def left(region=False):
+    """아직 할 일이 남은 단지 수: 조회 전·오류, 또는 지번으로 못 찾아 이름으로 다시 찾을 단지(none) (워크플로가 볼 때)."""
+    out = OUT_KR if region else OUT
+    old = pd.read_csv(out, dtype=str, keep_default_na=False) if out.exists() else pd.DataFrame(columns=COLS)
+    st = dict(zip(old["aptSeq"], old["status"]))
+    return sum(1 for s in complexes(region)["aptSeq"] if st.get(s) not in ("ok", "missing", "nocode"))
 
 
 if __name__ == "__main__":
-    if sys.argv[1:] == ["fill"]:
-        print(fill())
-    elif sys.argv[1:] == ["land"]:
-        print(fill_land())
+    import argparse
+    ap = argparse.ArgumentParser()
+    ap.add_argument("what", nargs="?", default="run", help="run(기본) · fill · land · left · 최대 단지 수")
+    ap.add_argument("--regions", action="store_true", help="수도권·광역시 단지 (data/molit_kr)")
+    ap.add_argument("--minutes", type=float, help="시간 한도 (분)")
+    a = ap.parse_args()
+    budget = a.minutes * 60 if a.minutes else None
+    if a.what == "fill":
+        print(fill(budget_s=budget, region=a.regions))
+    elif a.what == "land":
+        print(fill_land(budget_s=budget, region=a.regions))
+    elif a.what == "left":
+        print(left(a.regions))
     else:
-        print(run(int(sys.argv[1]) if len(sys.argv) > 1 else None))
+        print(run(None if a.what == "run" else int(a.what), budget_s=budget, region=a.regions))

@@ -53,20 +53,21 @@ def save(df, years=None, d=DIR):
         tmp.replace(tmp.with_suffix(""))
 
 
-def load_complexes():
-    if not COMPLEX.exists():
+def load_complexes(path=COMPLEX):
+    if not path.exists():
         return pd.DataFrame(columns=CCOLS)
-    return pd.read_csv(COMPLEX, dtype=str, keep_default_na=False)
+    return pd.read_csv(path, dtype=str, keep_default_na=False)
 
 
-def update_complexes(rows):
-    """새로 받은 거래 행으로 단지 표를 고친다: 가장 최근 거래의 이름·주소를 쓰고, 예전 이름은 names에 남긴다 (검색용)."""
+def update_complexes(rows, path=COMPLEX):
+    """새로 받은 거래 행으로 단지 표를 고친다: 가장 최근 거래의 이름·주소를 쓰고, 예전 이름은 names에 남긴다 (검색용).
+    path: 단지 표 파일 (지역 저장소는 data/molit_kr/complexes.csv)."""
     new = pd.DataFrame([r for r in rows if r.get("aptSeq")])
     if new.empty:
-        return len(load_complexes())
+        return len(load_complexes(path))
     new = new.reindex(columns=[c for c in CCOLS if c not in ("names", "last")] + ["dealYear", "dealMonth"]).fillna("")
     new["last"] = new["dealYear"] + new["dealMonth"].str.zfill(2)
-    old = load_complexes()
+    old = load_complexes(path)
     both = pd.concat([old.assign(_o=0), new.drop(columns=["dealYear", "dealMonth"]).assign(_o=1)], ignore_index=True).fillna("")
     both = both.sort_values(["aptSeq", "last", "_o"], kind="mergesort")
     both["_n"] = both["names"].where(both["names"] != "", both["aptNm"])
@@ -78,9 +79,9 @@ def update_complexes(rows):
         out[c] = known.reindex(out.index).fillna("")
     out["names"] = names.reindex(out.index)
     out = out.reset_index().reindex(columns=CCOLS).sort_values("aptSeq")
-    tmp = COMPLEX.with_suffix(".csv.tmp")
+    tmp = path.with_suffix(".csv.tmp")
     out.to_csv(tmp, index=False)
-    tmp.replace(COMPLEX)
+    tmp.replace(path)
     return len(out)
 
 

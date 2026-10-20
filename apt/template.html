@@ -184,9 +184,10 @@ details.more[open] > summary { margin-bottom: 10px; }
       <a class="back" href="../seoul/">← 서울 아파트 공포탐욕지도</a>
       <div class="theme-ctl" id="theme-ctl" role="group" aria-label="화면 밝기"><span class="tl" aria-hidden="true">화면</span><button type="button" data-m="auto" aria-pressed="true" title="기기 설정을 따라요">자동</button><button type="button" data-m="light" aria-pressed="false">밝게</button><button type="button" data-m="dark" aria-pressed="false">어둡게</button></div>
     </div>
-    <div class="eyebrow">서울 아파트 · 단지별 실거래 위치</div>
+    <div class="eyebrow" id="eyebrow">아파트 · 단지별 실거래 위치</div>
     <h1>단지 검색</h1>
     <p class="sub">우리 단지에서 가장 최근에 거래된 가격이 최근 2년 거래들과 비교해 <b>비싼 편인지, 싼 편인지</b> 0~100점으로 보여드려요.</p>
+    <nav class="rg" id="rg" aria-label="지역 고르기"></nav>
     <ol class="steps m-hide" aria-label="사용 방법">
       <li><b>1</b>단지 이름 검색</li>
       <li><b>2</b>평형(면적) 고르기</li>
@@ -210,15 +211,15 @@ details.more[open] > summary { margin-bottom: 10px; }
       <summary>점수 계산 방법 자세히 보기</summary>
       <div style="display:grid;gap:6px">
         <p><b>점수</b> · (가장 최근 거래의 비교용 가격 − 비교한 거래 중 가장 싼 값) ÷ (가장 비싼 값 − 가장 싼 값) × 100이에요. 주식의 스토캐스틱(%K)과 같은 방식이에요. 비교하는 거래는 같은 단지·같은 평형(전용 1㎡ 단위)의 최근 10건이에요(2년 안, 최근 거래 포함). 같은 평형 거래가 5건이 안 되면 같은 단지의 다른 평형 거래를 이 평형 가격으로 환산해서 10건까지 채워요. 그래도 5건이 안 되면 점수를 내지 않아요.</p>
-        <p><b>비교용 가격</b> · 같은 단지라도 저층은 싸고, 1년 전 가격은 지금 시세와 달라요. 그래서 모든 거래를 '최근 거래가 있던 달 · 8~10층' 가격으로 바꿔서 비교해요. 시기 차이는 그 구 전체의 실거래 반복매매지수로, 층 차이는 아래 표로 맞춰요. 최근 거래가 9층이면 비교용 가격과 실제 거래가가 같아요. 해제된 거래와 직거래는 빼요.
+        <p><b>비교용 가격</b> · 같은 단지라도 저층은 싸고, 1년 전 가격은 지금 시세와 달라요. 그래서 모든 거래를 '최근 거래가 있던 달 · 8~10층' 가격으로 바꿔서 비교해요. 시기 차이는 <span id="t-mk">그 구 전체의 실거래 반복매매지수로</span>, 층 차이는 아래 표로 맞춰요<span id="t-floor"></span>. 최근 거래가 9층이면 비교용 가격과 실제 거래가가 같아요. 해제된 거래와 직거래는 빼요.
           <span class="ftab" id="ftab"></span></p>
-        <p><b>평형 환산</b> · 같은 단지 안에서 평형 간 가격 비율을 최근 3년 거래로 구하고, 거래가 적은 평형은 서울 평균 비율(면적 1% 차이 → 가격 0.8% 차이)에 가깝게 써요. 2021년 이후 거래로 시험했을 때 환산 오차는 중앙값 4.6%로, 같은 평형끼리 비교할 때(3.3%)보다 커요. 그래서 같은 평형이 충분하면 환산하지 않아요.</p>
-        <p><b>검증</b> · 2014~2026년 실거래 82만 건으로 시험했어요. 80점 이상이었던 거래 뒤 6개월 안 같은 평형 거래는 평균 2.0% 낮았고, 20점 이하였던 거래 뒤에는 4.6% 높았어요(시장 전체 변화를 뺀 값).</p>
+        <p><b>평형 환산</b> · 같은 단지 안에서 평형 간 가격 비율을 최근 3년 거래로 구하고, 거래가 적은 평형은 <span id="t-b">서울 평균 비율(면적 1% 차이 → 가격 0.8% 차이)</span>에 가깝게 써요. 2021년 이후 서울 거래로 시험했을 때 환산 오차는 중앙값 4.6%로, 같은 평형끼리 비교할 때(3.3%)보다 커요. 그래서 같은 평형이 충분하면 환산하지 않아요.</p>
+        <p><b>검증</b> · <span id="t-check">2014~2026년 서울 실거래 82만 건으로 시험했어요. 80점 이상이었던 거래 뒤 6개월 안 같은 평형 거래는 평균 2.0% 낮았고, 20점 이하였던 거래 뒤에는 4.6% 높았어요(시장 전체 변화를 뺀 값).</span></p>
         <p><b>평형</b> · 'N평형'은 공급면적(전용 + 계단·복도 등) 기준의 어림값으로, 전용면적 × 1.33 ÷ 3.3058로 계산했어요. 단지마다 공용면적 비율이 달라서 1~2평 차이가 날 수 있어요. 점수는 전용면적으로 나눠서 계산해요.</p>
-        <p><b>단지 기본 정보</b> · 국토교통부 건축물대장(건축HUB)의 총괄표제부, 없으면 동별 표제부를 합친 값이에요. 동수는 세대가 있는 동만 세요. 오래된 단지는 대장에 대지면적이 비어 있어서, 대장의 대표 지번과 부속지번의 토지대장 면적(브이월드)을 더해 대지면적으로 쓰고 용적률(용적률 산정 연면적 ÷ 대지)과 건폐율(건축면적 ÷ 대지)을 계산했어요. 대지면적이 있는 단지 80곳으로 시험했을 때 79곳이 ±5% 안으로 맞았어요. 일부 단지는 건물 면적도 층별 면적의 합(지상층 합 ≈ 용적률 산정 연면적, 1층 합 ≈ 건축면적)으로 어림했어요. 은마는 이렇게 203%, 대장 연면적으로는 204%예요. 계산 결과가 용적률 60% 미만·1,000% 초과이거나 건폐율 90% 초과면 지번 짝이 일부만 맞은 것으로 보고 비워 둬요.</p>
+        <p id="t-info"><b>단지 기본 정보</b> · 국토교통부 건축물대장(건축HUB)의 총괄표제부, 없으면 동별 표제부를 합친 값이에요. 동수는 세대가 있는 동만 세요. 오래된 단지는 대장에 대지면적이 비어 있어서, 대장의 대표 지번과 부속지번의 토지대장 면적(브이월드)을 더해 대지면적으로 쓰고 용적률(용적률 산정 연면적 ÷ 대지)과 건폐율(건축면적 ÷ 대지)을 계산했어요. 대지면적이 있는 단지 80곳으로 시험했을 때 79곳이 ±5% 안으로 맞았어요. 일부 단지는 건물 면적도 층별 면적의 합(지상층 합 ≈ 용적률 산정 연면적, 1층 합 ≈ 건축면적)으로 어림했어요. 은마는 이렇게 203%, 대장 연면적으로는 204%예요. 계산 결과가 용적률 60% 미만·1,000% 초과이거나 건폐율 90% 초과면 지번 짝이 일부만 맞은 것으로 보고 비워 둬요.</p>
       </div>
     </details>
-    <p><b>자료</b> · 국토교통부 아파트 매매 실거래가(서울, 2006년~)와 건축물대장. 실거래는 계약 후 30일 안에 신고되므로 최근 한 달 거래는 아직 덜 들어왔을 수 있어요. <span id="asof"></span> 매달 20일에 지도와 함께 갱신해요.</p>
+    <p><b>자료</b> · 국토교통부 아파트 매매 실거래가(<span id="t-src">서울</span>, 2006년~)와 건축물대장. 실거래는 계약 후 30일 안에 신고되므로 최근 한 달 거래는 아직 덜 들어왔을 수 있어요. <span id="asof"></span> 매달 20일에 지도와 함께 갱신해요.</p>
   </footer>
 </div>
 
@@ -264,10 +265,11 @@ const GU = {}, GUP = {};
 const RECENT = (() => { const d = new Date(); d.setFullYear(d.getFullYear() - 2); return d.getFullYear() * 100 + d.getMonth() + 1; })();
 
 function prep(items) {
-  return items.map(([seq, name, dong, built, last, has, old]) => {
-    const g = (META.gu[seq.slice(0, 5)] || {}).name || "";
+  return items.map(([seq, name, dong, built, last, has, old, code]) => {
+    code = code || seq.slice(0, 5);  // 화면용 지역 코드 (지역 단지는 단지 번호 앞자리가 옛 코드일 수 있음)
+    const g = (META.gu[code] || {}).name || "";
     const key = norm(name + "|" + old);
-    return { seq, name, dong, built, last, has, old, gu: g, key, ck: cho(key), dk: norm(dong), gk: norm(g), nk: norm(name) };
+    return { seq, name, dong, built, last, has, old, code, gu: g, key, ck: cho(key), dk: norm(dong), gk: norm(g), nk: norm(name) };
   });
 }
 function search(q) {
@@ -340,7 +342,7 @@ qEl.addEventListener("blur", () => setTimeout(() => { resEl.hidden = true; qEl.s
 const state = { seq: null, type: null };
 async function loadGu(code) {
   if (GU[code]) return GU[code];
-  if (!GUP[code]) GUP[code] = fetch(`data/gu/${code}.json`).then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); });
+  if (!GUP[code]) GUP[code] = fetch(`${RG.data}gu/${code}.json`).then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); });
   GU[code] = await GUP[code];
   return GU[code];
 }
@@ -355,7 +357,7 @@ async function choose(seq, type) {
   det.textContent = "";
   H("p", { class: "loading" }, det, "불러오는 중…");
   let g;
-  try { g = await loadGu(seq.slice(0, 5)); } catch (e) { det.textContent = ""; H("p", { class: "note" }, det, "단지 자료를 불러오지 못했어요. 잠시 뒤 다시 시도해 주세요."); return; }
+  try { g = await loadGu(it.code); } catch (e) { det.textContent = ""; H("p", { class: "note" }, det, "단지 자료를 불러오지 못했어요. 잠시 뒤 다시 시도해 주세요."); return; }
   const d = g[seq];
   state.seq = seq;
   const types = (d && d.types) || [];
@@ -380,9 +382,9 @@ function renderDetail(it, d) {
   const addr = [it.gu, it.dong, d && d.jibun].filter(Boolean).join(" ");
   H("p", { class: "d-sub" }, head, addr + (it.built ? ` · ${it.built}년 준공` : ""));
   const chips = H("div", { class: "chips" }, head);
-  const gm = META.gu[it.seq.slice(0, 5)] || {};
-  if (gm.score != null) {
-    const a = H("a", { class: "chip", href: "../seoul/#" + encodeURIComponent(gm.name), title: "지도에서 이 구의 공포탐욕지수 보기" }, chips);
+  const gm = META.gu[it.code] || {};
+  if (gm.score != null && META.fg_page) {
+    const a = H("a", { class: "chip", href: "../" + META.fg_page + "#" + encodeURIComponent(gm.name), title: "지도에서 이곳의 공포탐욕지수 보기" }, chips);
     a.append(`${gm.name} 공포탐욕 `);
     H("b", {}, a, gm.score.toFixed(1));
     a.append(` · ${fgName(gm.score)} (${+gm.month.slice(5)}월)`);
@@ -586,14 +588,36 @@ function chart(parent, t) {
   }
 }
 
+/* ---------- 지역에 맞춘 설명 (서울 밖은 apt_region_study.py 결과) ---------- */
+function explain() {
+  $("#eyebrow").textContent = `${META.top} 아파트 · 단지별 실거래 위치`;
+  $("#t-src").textContent = META.top;
+  if (RG.id === "seoul") return;
+  const names = IDX.filter((x) => META.quick.includes(x.seq)).slice(0, 2).map((x) => x.name);
+  if (names.length) qEl.placeholder = `단지 이름이나 동 (예: ${names.join(", ")})`;
+  const sw = META.sub_word, c = META.check;
+  $("#t-mk").textContent = `그 ${sw}의 실거래 반복매매지수로(거래가 적은 달은 ${META.top} 전체 지수의 변화로 이어서)`;
+  $("#t-b").textContent = `${META.top} 평균 비율(면적 1% 차이 → 가격 ${META.B}% 차이)`;
+  $("#t-floor").textContent = ` (${META.top} 거래로 따로 잰 표와 서울 표 중 2019년 이후 거래에 더 잘 맞는 쪽)`;
+  if (!c) $("#t-check").textContent = `${META.top} 거래로는 아직 시험하지 않았어요. 다음 갱신 때 시험해 여기에 적어요.`;
+  else $("#t-check").textContent = `${c.from.slice(0, 4)}~${c.to.slice(0, 4)}년 ${META.top} 실거래로 시험했어요. 점수를 매긴 뒤 6개월 안 같은 평형 거래가 다시 있었던 ${c.n.toLocaleString("ko-KR")}건 중 80점 이상이었던 거래 뒤에는 평균 ${Math.abs(c.after_high).toFixed(1)}% ${c.after_high < 0 ? "낮았고" : "높았고"}, 20점 이하였던 거래 뒤에는 ${Math.abs(c.after_low).toFixed(1)}% ${c.after_low > 0 ? "높았어요" : "낮았어요"}(시장 전체 변화를 뺀 값).`;
+  const ti = $("#t-info");
+  ti.textContent = "";
+  H("b", {}, ti, "단지 기본 정보");
+  ti.append(META.has_info
+    ? " · 국토교통부 건축물대장(건축HUB)의 총괄표제부, 없으면 동별 표제부를 합친 값이에요. 동수는 세대가 있는 동만 세요. 대장에 대지면적이 비어 있는 오래된 단지는 용적률·건폐율을 비워 둬요."
+    : " · 세대수·용적률 같은 정보는 건축물대장을 받는 대로 채워요.");
+}
+
 /* ---------- 시작 ---------- */
-fetch("data/index.json").then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); }).then((j) => {
+fetch(RG.data + "index.json").then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); }).then((j) => {
   META = j.meta;
   IDX = prep(j.items);
-  hint.textContent = `서울 아파트 ${META.n_complex.toLocaleString("ko-KR")}개 단지 · 실거래 ${dstr(META.asof)} 신고분까지`;
+  hint.textContent = `${META.top} 아파트 ${META.n_complex.toLocaleString("ko-KR")}개 단지 · 실거래 ${dstr(META.asof)} 신고분까지`;
   $("#asof").textContent = `지금은 ${dstr(META.asof)} 계약분까지 들어 있어요.`;
+  explain();
   const qk = $("#quick");
-  ["11680-218", "11710-8865", "11710-6346", "11650-5126", "11470-23"].forEach((seq) => {
+  (META.quick || []).forEach((seq) => {
     const it = IDX.find((x) => x.seq === seq);
     if (!it) return;
     const b = H("button", { type: "button" }, qk, it.name);

@@ -4,15 +4,20 @@
 - 해제·직거래 제외. 그 집 크기의 첫 거래(비교할 이전 거래 없음)는 세지 않는다.
 - 직전 최고가보다 2배 넘게 비싼 거래는 입력 오류일 수 있어 목록에서 빼고 개수만 남긴다.
 - 최근 4개 달 목록 + 최근 36개 달 서울 신고가 비중(비교 가능한 거래 중 신고가 비율).
+수도권·광역시: 지역 저장소에 들어온 지역마다 results_highs/{지역id}.json (같은 방식, 단지 이름은 지역 단지 표).
+
+사용: python highs_build.py [seoul|지역id ...]   (없으면 서울과 저장소에 있는 모든 지역)
 """
 import json
+import sys
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 
-import molit_store
+import apt_score as A
 from apt_score import LAWD2GU
+from regions import REGIONS, sub_word
 
 ROOT = Path(__file__).parent
 OUT = ROOT / "results_highs"
@@ -20,8 +25,8 @@ MONTHS, TREND = 4, 36
 JUMP = 2.0  # 직전 최고가의 2배 초과는 목록에서 뺌
 
 
-def trades():
-    df = molit_store.load()
+def trades(rid=None):
+    df = A.store(rid)
     df = df[(df["cdealType"] == "") & (df["dealingGbn"] != "직거래")].copy()
     df["price"] = pd.to_numeric(df["dealAmount"].str.replace(",", ""), errors="coerce")
     df["area"] = pd.to_numeric(df["excluUseAr"], errors="coerce").round(2)
@@ -41,10 +46,10 @@ def trades():
     return df
 
 
-def main():
+def main(rid=None):
     OUT.mkdir(exist_ok=True)
-    df = trades()
-    cx = molit_store.load_complexes().set_index("aptSeq")
+    df = trades(rid)
+    cx = A.complexes(rid).set_index("aptSeq")
     yms = sorted(df["ym"].unique())
     cmp_ = df[df["n_prev"] > 0]
     by = cmp_.groupby("ym")["high"].agg(["sum", "count"])
@@ -66,12 +71,15 @@ def main():
             gu[code] = [int(sub["high"].sum()), int(len(sub))]
         months.append({"ym": ym, "n": int(len(m)), "cmp": int(len(c)), "high": int((~jump).sum()), "jump": int(jump.sum()),
                        "complexes": int(h[~jump]["aptSeq"].nunique()), "gu": gu, "rows": rows})
-    out = {"asof": df["date"].max().strftime("%Y-%m-%d"), "gu_names": LAWD2GU, "months": months, "trend": trend}
-    (OUT / "highs.json").write_text(json.dumps(out, ensure_ascii=False, separators=(",", ":")))
+    out = {"asof": df["date"].max().strftime("%Y-%m-%d"), "region": rid or "seoul", "top": "서울" if rid is None else REGIONS[rid]["name"],
+           "sub_word": "구" if rid is None else sub_word(rid),
+           "gu_names": LAWD2GU if rid is None else REGIONS[rid]["lawd"], "months": months, "trend": trend}
+    path = OUT / ("highs.json" if rid is None else f"{rid}.json")
+    path.write_text(json.dumps(out, ensure_ascii=False, separators=(",", ":")))
     m = months[1] if len(months) > 1 else months[0]  # 다 들어온 지난달 (없으면 이번 달)
-    print(f"신고가: {m['ym']} 신고가 {m['high']:,}건 (비교 가능 {m['cmp']:,}건의 {m['high'] / max(1, m['cmp']):.0%}, 단지 {m['complexes']:,}곳, "
-          f"2배 초과 제외 {m['jump']}) · {(OUT / 'highs.json').stat().st_size / 1e3:.0f} KB")
+    print(f"신고가 {out['top']}: {m['ym']} 신고가 {m['high']:,}건 (비교 가능 {m['cmp']:,}건의 {m['high'] / max(1, m['cmp']):.0%}, 단지 {m['complexes']:,}곳, "
+          f"2배 초과 제외 {m['jump']}) · {path.stat().st_size / 1e3:.0f} KB", flush=True)
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(A.run_all(main, sys.argv[1:]))

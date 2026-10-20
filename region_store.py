@@ -1,9 +1,11 @@
 """수도권·광역시 실거래 저장소 (data/molit_kr/trades_YYYY.csv.gz). 서울 저장소(molit_store)와 같은 열·형식이고, lawd는 지금 지역 코드.
 
 region_fetch.py가 받은 구·월 JSON(data/raw/molit/apt_kr)을 지역 단위로 옮긴다. 2006년 1월부터 빠진 달이 없는 지역만 넣는다
-(반쯤 받은 지역이 지수에 섞이지 않게). 단지 검색용 단지 표는 만들지 않는다.
+(반쯤 받은 지역이 지수에 섞이지 않게). 단지 검색·신고가·모의 투자용 단지 표(이름·동·지번·준공)는 data/molit_kr/complexes.csv
+(서울 단지 표와 같은 열). 실거래를 받을 때마다 새 거래 행으로 고친다.
 
 사용: python region_store.py [끝YYYYMM]
+      python region_store.py --complexes   # 맥에 받아 둔 구·월 JSON으로 단지 표를 만든다 (한 번만)
 """
 import datetime as dt
 import json
@@ -17,6 +19,7 @@ import region_fetch as F
 from regions import REGIONS
 
 DIR = Path(__file__).parent / "data" / "molit_kr"
+COMPLEX = DIR / "complexes.csv"
 
 
 def exists():
@@ -26,6 +29,23 @@ def exists():
 def load(rid=None):
     df = S.load(DIR)
     return df[df["lawd"].isin(REGIONS[rid]["lawd"])] if rid else df
+
+
+def load_complexes():
+    return S.load_complexes(COMPLEX)
+
+
+def update_complexes(rows):
+    return S.update_complexes(rows, COMPLEX)
+
+
+def complexes_from_json():
+    """맥에 받아 둔 구·월 JSON(region_fetch.py)의 모든 거래 행으로 단지 표를 만든다."""
+    rows = []
+    for lawd in [c for d in REGIONS.values() for c in d["lawd"]]:
+        for f in sorted(F.OUT.glob(f"{lawd}_*.json")):
+            rows += json.loads(f.read_text())
+    return update_complexes(rows)
 
 
 def regions_in_store():
@@ -61,10 +81,14 @@ def replace_months(new_by_month):
     add = [S._frame(rows, lawd) for m in new_by_month.values() for lawd, rows in m]
     df = pd.concat([df] + add, ignore_index=True).fillna("")
     S.save(df, years={m[:4] for m in new_by_month}, d=DIR)
+    update_complexes([r for m in new_by_month.values() for _, rows in m for r in rows])
     return len(df)
 
 
 if __name__ == "__main__":
+    if sys.argv[1:] == ["--complexes"]:
+        print("단지 표:", complexes_from_json())
+        sys.exit(0)
     end = sys.argv[1] if len(sys.argv) > 1 else dt.date.today().strftime("%Y%m")
     done, n = consolidate(end)
     fs = S.files(DIR)

@@ -1,6 +1,6 @@
 """GitHub Pages용 정적 사이트: site/index.html (첫 화면: 대한민국 지도), site/seoul/ (서울 지도), site/{지역id}/ (공개한
-수도권·광역시 지도, 서울과 같은 템플릿), site/report/ (보고서), site/apt/ (단지 검색),
-site/api/ (데이터 API 안내 페이지 + api_build.py가 만드는 JSON·CSV).
+수도권·광역시 지도, 서울과 같은 템플릿), site/report/ (보고서), site/apt/·highs/·sim/ (단지 검색·신고가·모의 투자:
+주소 뒤 ?r=지역id로 지역을 고르고, 자료는 data/ 아래 지역별), site/api/ (데이터 API 안내 페이지 + api_build.py가 만드는 JSON·CSV).
 
 아티팩트용 HTML에는 문서 머리말이 없어서, 문자 인코딩·뷰포트·doctype을 감싸 정식 문서로 만든다.
 페이지마다 공통 겉모습(assets/skin.css: 레퍼런스 'Legacy Homes' 스타일)과 머리글·첫 화면 사진 띠(어둡게 깐 배경)·바닥글을 입힌다.
@@ -16,7 +16,7 @@ from urllib.parse import quote
 import api_build
 import home_build
 from map.build import render as map_render
-from regions import josa
+from regions import REGIONS, josa
 
 ROOT = Path(__file__).parent
 SITE = ROOT / "site"
@@ -39,8 +39,8 @@ SITE_URL = "https://won-topiaa.github.io/korean-realestate-fear-and-greed-index/
 # 링크 미리보기 (카카오톡·문자·SNS): 사이트 폴더 → (미리보기 그림 assets/og/*.jpg, 제목). 그림은 og_build.py로 만든다
 SITE_NAME = "아파트 공포탐욕지도"
 OG = {"": ("home", "아파트 공포탐욕지도 · 서울·수도권·광역시"), "seoul/": ("seoul", "서울 아파트 공포탐욕지도"),
-      "apt/": ("apt", "단지 검색 · 서울 아파트 공포탐욕지도"),
-      "highs/": ("highs", "신고가 단지 · 서울 아파트 공포탐욕지도"), "sim/": ("sim", "모의 투자 · 서울 아파트 공포탐욕지도"),
+      "apt/": ("apt", "단지 검색 · 아파트 공포탐욕지도"),
+      "highs/": ("highs", "신고가 단지 · 아파트 공포탐욕지도"), "sim/": ("sim", "모의 투자 · 아파트 공포탐욕지도"),
       "report/": ("report", "백테스트 보고서 · 서울 아파트 공포탐욕지도"), "api/": ("home", "데이터 API · 아파트 공포탐욕지도")}
 
 
@@ -69,14 +69,19 @@ CONTACT = "wontopiaaa@gmail.com"
 MAILTO = f"mailto:{CONTACT}?subject=" + quote(f"[{SITE_NAME}] 문의")
 
 
-def nav(base, cur):
-    links = "".join(f'<a href="{base}{h}"' + (' aria-current="page"' if n == cur else "") + f">{n}</a>"
+TOOLS = ("apt/", "highs/", "sim/")  # 지역을 고를 수 있는 화면 (주소 뒤 ?r=지역id)
+
+
+def nav(base, cur, rq=""):
+    """rq: 지역 페이지에서 도구 링크에 붙일 지역 (예: ?r=busan)."""
+    q = lambda h: h + (rq if h in TOOLS else "")
+    links = "".join(f'<a href="{base}{q(h)}"' + (' aria-current="page"' if n == cur else "") + f">{n}</a>"
                     for h, n in PAGES if n != "보고서")  # 보고서·문의는 바닥글에만
     cta = ("", "지도 보기") if cur == "단지 검색" else ("apt/", "단지 검색")
     return (f'<header class="sk-nav"><div class="sk-in"><a class="sk-logo" href="{base}" aria-label="{SITE_NAME} 처음으로">'
             f'<span>KOREA FEAR &amp; GREED</span><span class="ko">{SITE_NAME}</span></a><nav class="sk-menu" aria-label="사이트 메뉴">{links}</nav>'
             f'<div class="sk-right" id="sk-right"><button type="button" class="sk-theme-m" id="sk-theme-m">화면: 자동</button>'
-            f'<a class="sk-cta" href="{base}{cta[0]}">{cta[1]}</a></div></div></header>\n')
+            f'<a class="sk-cta" href="{base}{q(cta[0])}">{cta[1]}</a></div></div></header>\n')
 
 
 def hero_bg(base, name, y):
@@ -86,7 +91,7 @@ def hero_bg(base, name, y):
             '<i class="sk-dot a" aria-hidden="true"></i><i class="sk-dot b" aria-hidden="true"></i>\n')
 
 
-def footer(base):
+def footer(base, rq=""):
     cr = json.loads((ROOT / "assets" / "img" / "credits.json").read_text())
     seen, who = set(), []
     for v in cr.values():  # 같은 촬영자는 한 번만
@@ -94,7 +99,7 @@ def footer(base):
             seen.add(v["artist"])
             who.append(f'<a href="{v["page"]}">{v["artist"]}</a>')
     who = ", ".join(who)
-    links = "".join(f'<li><a href="{base}{h}">{n}</a></li>' for h, n in
+    links = "".join(f'<li><a href="{base}{h}{rq if h in TOOLS else ""}">{n}</a></li>' for h, n in
                     [("", "전국 지도"), ("seoul/", "서울 지도"), ("apt/", "단지 검색"), ("highs/", "신고가 단지"), ("sim/", "모의 투자"), ("report/", "백테스트 보고서"), ("api/", "데이터 API")])
     return (f'\n<footer class="sk-foot"><div class="sk-foot-bg" aria-hidden="true" style="background-image:url(\'{base}assets/img/footer.jpg{ver("assets/img/footer.jpg")}\')"></div><div class="sk-in">'
             f'<div class="sk-about"><a class="sk-logo" href="{base}">KOREA FEAR &amp; GREED</a>'
@@ -107,8 +112,9 @@ def footer(base):
             f'<p class="sk-copy">사진: 위키미디어 공용 CC0·퍼블릭 도메인 (저작권 없음) — {who}</p></div></footer>\n')
 
 
-def skin(html, base, cur, hero, h1, photo_args, maxw, intro=None):
-    """페이지 html에 공통 겉모습을 입힌다. hero=(여는 태그, 닫는 태그): 첫 화면 묶음, h1=(원래, 바꿀 것)."""
+def skin(html, base, cur, hero, h1, photo_args, maxw, intro=None, rq=""):
+    """페이지 html에 공통 겉모습을 입힌다. hero=(여는 태그, 닫는 태그): 첫 화면 묶음, h1=(원래, 바꿀 것).
+    rq: 머리글·바닥글의 단지 검색·신고가·모의 투자 링크에 붙일 지역 (지역 지도 페이지에서 그 지역으로 열리게)."""
     css = f'{FONTS}\n<link rel="stylesheet" href="{base}assets/skin.css{ver("assets/skin.css")}">\n<style>:root{{--sk-max:{maxw}px}}</style>\n'
     i = html.index("</style>") + len("</style>")  # 페이지 스타일 바로 뒤 (덮어쓰기)
     html = html[:i] + "\n" + css + html[i:]
@@ -118,7 +124,7 @@ def skin(html, base, cur, hero, h1, photo_args, maxw, intro=None):
         name = photo_args[0]
         pagebg = (f'<div class="sk-pagebg" aria-hidden="true" style="background-image:url(\'{base}assets/img/{name}.jpg'
                   f'{ver(f"assets/img/{name}.jpg")}\')"></div>\n')
-    html = html[:j] + pagebg + nav(base, cur) + html[j:]
+    html = html[:j] + pagebg + nav(base, cur, rq) + html[j:]
     op, cl = hero
     assert html.count(op) == 1, op
     a = html.index(op)
@@ -146,10 +152,10 @@ def skin(html, base, cur, hero, h1, photo_args, maxw, intro=None):
         tail += ('<script>(() => { const el = document.querySelector(' + json.dumps(intro) + '); if (!el) return;'
                  ' const f = () => document.body.classList.toggle("sk-intro", el.hidden); f();'
                  ' new MutationObserver(f).observe(el, { attributes: true, attributeFilter: ["hidden"] }); })();</script>\n')
-    return html + footer(base) + tail
+    return html + footer(base, rq) + tail
 
 
-def wrap(src, dst, desc, inject=None, skin_args=None, intro=None):
+def wrap(src, dst, desc, inject=None, skin_args=None, intro=None, rq=""):
     html = src.read_text()
     m = re.search(r"<title>.*?</title>", html)
     title = m.group(0) if m else ""
@@ -158,9 +164,82 @@ def wrap(src, dst, desc, inject=None, skin_args=None, intro=None):
         assert html.count(a) == 1, a
         html = html.replace(a, b)
     if skin_args:
-        html = skin(html, *skin_args, intro=intro)
+        html = skin(html, *skin_args, intro=intro, rq=rq)
     dst.parent.mkdir(parents=True, exist_ok=True)
     dst.write_text(HEAD.format(desc=desc, title=title, og=og_meta(dst, desc), body_attr=' class="sk-intro"' if intro else "") + html + TAIL)
+
+
+TOOL_FILES = {"apt": lambda r: f"results_apt/{'' if r == 'seoul' else r + '/'}index.json",
+              "highs": lambda r: "results_highs/" + ("highs.json" if r == "seoul" else f"{r}.json"),
+              "sim": lambda r: f"results_sim/{'' if r == 'seoul' else r + '/'}meta.json"}
+
+
+def tool_ready(page, rid):
+    need = [TOOL_FILES[page](rid)] + ([TOOL_FILES["apt"](rid)] if page == "sim" else [])  # 모의 투자는 단지 목록을 단지 검색 자료에서 읽는다
+    return all((ROOT / f).exists() for f in need)
+
+
+def tool_regions(page):
+    """도구 화면의 지역 목록: 서울 + 수도권·광역시 (자료를 만든 곳만 ready). pre: 그 지역 단지 번호 앞 5자리 (지역 없이 #단지번호만 있는 예전 링크용)."""
+    out = []
+    for rid in ["seoul", *REGIONS]:
+        idx = ROOT / TOOL_FILES["apt"](rid)
+        pre = sorted({it[0][:5] for it in json.loads(idx.read_text())["items"]}) if idx.exists() else []
+        out.append({"id": rid, "name": "서울" if rid == "seoul" else REGIONS[rid]["name"], "ready": tool_ready(page, rid), "pre": pre})
+    return out
+
+
+# 단지 검색·신고가·모의 투자: 주소의 ?r=지역id → 없으면 #단지번호 앞자리 → 지난번 고른 지역 → 서울. 화면 맨 위 지역 버튼도 여기서 그린다.
+PICK = r"""<script>
+(() => {
+  const L = __LIST__, ok = (id) => L.some((x) => x.id === id && x.ready);
+  const q = new URLSearchParams(location.search).get("r");
+  let id = ok(q) ? q : null;
+  if (!id) {  // 예전 링크 (지역 없이 #단지번호): 단지 번호 앞자리로 지역을 찾는다
+    const h = decodeURIComponent(location.hash.slice(1)).split(/[:,]/)[0].slice(0, 5);
+    const hit = h && L.find((x) => x.ready && x.pre.includes(h));
+    if (hit) id = hit.id;
+  }
+  if (!id) { try { const s = localStorage.getItem("fgi-region"); if (ok(s)) id = s; } catch (e) {} }
+  id = id || "seoul";
+  try { localStorage.setItem("fgi-region", id); } catch (e) {}
+  const rg = L.find((x) => x.id === id);
+  window.RG = { id, name: rg.name, q: "?r=" + id, data: id === "seoul" ? "data/" : "data/" + id + "/" };
+  document.title = document.title + " · " + rg.name;
+  const nav = document.getElementById("rg");
+  if (nav) {
+    nav.textContent = "";
+    const lab = document.createElement("span"); lab.textContent = "지역"; nav.appendChild(lab);
+    L.forEach((x) => {
+      const a = document.createElement(x.ready ? "a" : "span");
+      a.textContent = x.name;
+      if (x.ready) { a.href = "?r=" + x.id; if (x.id === id) a.setAttribute("aria-current", "page"); }
+      else { a.className = "off"; a.title = "실거래 자료를 받는 중이에요"; }
+      nav.appendChild(a);
+    });
+  }
+  document.querySelectorAll(".sk-menu a, .sk-cta").forEach((a) => {  // 머리글의 다른 도구도 같은 지역으로
+    const h = a.getAttribute("href");
+    if (/(apt|highs|sim)\/$/.test(h)) a.setAttribute("href", h + window.RG.q);
+  });
+})();
+</script>
+"""
+MAIN_JS = "<script>\nconst $ = (s) => document.querySelector(s);"
+
+
+def pick(page):
+    """도구 템플릿 본 스크립트 앞에 지역 고르기를 넣는 치환 (wrap의 inject)."""
+    return [(MAIN_JS, PICK.replace("__LIST__", json.dumps(tool_regions(page), ensure_ascii=False, separators=(",", ":"))) + MAIN_JS)]
+
+
+def tool_links(rid, name):
+    """지도 페이지에 넣을 단지 검색·신고가·모의 투자 링크 (그 지역 자료가 있는 것만)."""
+    have = [(p, n) for p, n in (("apt", "단지 검색"), ("highs", "신고가 단지"), ("sim", "모의 투자")) if tool_ready(p, rid)]
+    foot = " · ".join(f'<a href="../{p}/?r={rid}" style="color:var(--ink)">{name} {n} →</a>' for p, n in have)
+    btn = (f'<a class="btn" href="../apt/?r={rid}" style="text-decoration:none;display:inline-block">{name} 단지 검색 · 최근 실거래가 위치 보기 →</a>'
+           if tool_ready("apt", rid) else "")
+    return foot, btn
 
 
 def region_fill(d):
@@ -182,13 +261,19 @@ if __name__ == "__main__":
          skin_args=("", "지도", ('<header style="display:grid;gap:6px">', "</header>"),
                     ("<h1>아파트 공포탐욕지도</h1>", '<h1><span class="sk-h1a">지역별 아파트</span><span class="sk-h1b">공포탐욕지도</span></h1>'),
                     ("bg-map", "50%"), 1180))
+    FOOT, HERO = '<footer class="foot m-fold" data-fold="계산 방법·출처 보기">', '<p class="hero-now" id="hero-now" aria-live="polite"></p>'
+
+    def map_links(rid, name, report=False):
+        foot, btn = tool_links(rid, name)
+        foot += ' · <a href="../report/" style="color:var(--ink)">백테스트 보고서 보기 →</a>' if report else ""
+        out = [(FOOT, FOOT + f"\n    <p>{foot}</p>")] if foot else []
+        return out + ([(HERO, HERO + f'\n    <p class="m-hide" style="margin:2px 0 4px">{btn}</p>')] if btn else [])
     wrap(ROOT / "map" / "index.html", SITE / "seoul" / "index.html",
          "서울 아파트 시장의 공포와 탐욕을 0~100으로. 5대 권역·25개 구 지도와 2006년부터의 추이, 매달 20일 갱신.",
-         inject=[('<footer class="foot m-fold" data-fold="계산 방법·출처 보기">', '<footer class="foot m-fold" data-fold="계산 방법·출처 보기">\n    <p><a href="../apt/" style="color:var(--ink)">단지 검색 (최근 실거래 위치) →</a> · <a href="../report/" style="color:var(--ink)">백테스트 보고서 보기 →</a></p>'),
-                 ('<p class="hero-now" id="hero-now" aria-live="polite"></p>', '<p class="hero-now" id="hero-now" aria-live="polite"></p>\n    <p class="m-hide" style="margin:2px 0 4px"><a class="btn" href="../apt/" style="text-decoration:none;display:inline-block">단지 검색 · 최근 실거래가 위치 보기 →</a></p>')],
+         inject=map_links("seoul", "서울", report=True),
          skin_args=("../", "지도", ('<header style="display:grid;gap:6px">', "</header>"),
                     ("<h1>서울 아파트 공포탐욕지도</h1>", '<h1><span class="sk-h1a">서울 아파트</span><span class="sk-h1b">공포탐욕지도</span></h1>'),
-                    ("bg-map", "50%"), 1180))
+                    ("bg-map", "50%"), 1180), rq="?r=seoul")
     for rid in home_build.published():  # 공개 기준을 넘은 수도권·광역시 (같은 지도 템플릿)
         d = json.loads((ROOT / "results_region" / f"{rid}.json").read_text())
         nm, sw, n = d["top"], d["sub_word"], len(d["gu_order"])
@@ -197,12 +282,13 @@ if __name__ == "__main__":
         src.write_text(map_render(region_fill(d), json.dumps(d, ensure_ascii=False, separators=(",", ":"))))
         wrap(src, SITE / rid / "index.html",
              f"{nm} 아파트 시장의 공포와 탐욕을 0~100으로. {n}개 {sw} 지도와 2006년부터의 추이, 매달 20일 갱신.",
+             inject=map_links(rid, nm), rq=f"?r={rid}",
              skin_args=("../", "지도", ('<header style="display:grid;gap:6px">', "</header>"),
                         (f"<h1>{nm} 아파트 공포탐욕지도</h1>", f'<h1><span class="sk-h1a">{nm} 아파트</span><span class="sk-h1b">공포탐욕지도</span></h1>'),
                         (f"bg-{rid}" if (ROOT / "assets" / "img" / f"bg-{rid}.jpg").exists() else "bg-map", "50%"), 1180))  # 지역 사진이 없으면 서울 사진
     wrap(ROOT / "apt" / "template.html", SITE / "apt" / "index.html",
-         "우리 단지 최근 실거래가가 비싼 편인지 싼 편인지 0~100점으로. 세대수·용적률 같은 단지 정보도 함께.",
-         skin_args=("../", "단지 검색", ('<header style="display:grid;gap:6px">', "</header>"),
+         "우리 단지 최근 실거래가가 비싼 편인지 싼 편인지 0~100점으로. 서울·수도권·광역시, 세대수·용적률 같은 단지 정보도 함께.",
+         inject=pick("apt"), skin_args=("../", "단지 검색", ('<header style="display:grid;gap:6px">', "</header>"),
                     ("<h1>단지 검색</h1>", '<h1><span class="sk-h1a">최근 실거래가, 비싼 편일까?</span><span class="sk-h1b">단지 검색</span></h1>'),
                     ("bg-apt", "40%"), 960), intro="#detail")
     for res, page, script in [("results_apt", "apt", "apt_score.py"), ("results_highs", "highs", "highs_build.py"), ("results_sim", "sim", "sim_build.py")]:
@@ -213,13 +299,13 @@ if __name__ == "__main__":
         else:
             print(f"알림: {res}가 없어 {page} 자료 없이 빌드 (python {script} 먼저)")
     wrap(ROOT / "highs" / "template.html", SITE / "highs" / "index.html",
-         "이번 달 서울 아파트 신고가 단지. 같은 단지·같은 평형의 지난 모든 거래보다 비싸게 팔린 거래를 구별로.",
-         skin_args=("../", "신고가 단지", ('<header style="display:grid;gap:6px">', "</header>"),
+         "이번 달 아파트 신고가 단지 (서울·수도권·광역시). 같은 단지·같은 평형의 지난 모든 거래보다 비싸게 팔린 거래를 구·시군별로.",
+         inject=pick("highs"), skin_args=("../", "신고가 단지", ('<header style="display:grid;gap:6px">', "</header>"),
                     ("<h1>신고가 단지</h1>", '<h1><span class="sk-h1a">이번 달 가장 비싸게 팔린 집</span><span class="sk-h1b">신고가 단지</span></h1>'),
                     ("bg-highs", "45%"), 1040))
     wrap(ROOT / "sim" / "template.html", SITE / "sim" / "index.html",
-         "그때 이 단지를 샀다면 지금 얼마일까? 실거래로 계산하는 가상 투자. 단지 2~3개를 같은 기간으로 비교.",
-         skin_args=("../", "모의 투자", ('<header style="display:grid;gap:6px">', "</header>"),
+         "그때 이 단지를 샀다면 지금 얼마일까? 서울·수도권·광역시 실거래로 계산하는 가상 투자. 단지 2~3개를 같은 기간으로 비교.",
+         inject=pick("sim"), skin_args=("../", "모의 투자", ('<header style="display:grid;gap:6px">', "</header>"),
                     ("<h1>모의 투자</h1>", '<h1><span class="sk-h1a">그때 샀다면 지금 얼마?</span><span class="sk-h1b">모의 투자</span></h1>'),
                     ("bg-sim", "38%"), 960), intro="#res-panel")
     wrap(ROOT / "report" / "index.html", SITE / "report" / "index.html",

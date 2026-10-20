@@ -65,7 +65,7 @@ def _clean(msg):
 
 
 FETCH_BUDGET = {"KB부동산": 15, "한국은행 금리·가계신용·CSI": 8, "네이버 금융 주가": 5, "구글 트렌드": 15,
-                "한국부동산원 R-ONE": 40, "국토부 실거래": 25, "청약홈": 12, "건축물대장": 15,
+                "한국부동산원 R-ONE": 40, "국토부 실거래": 25, "청약홈": 12, "건축물대장": 20,
                 "수도권·광역시 부동산원": 45, "수도권·광역시 KB 시군구": 5, "수도권·광역시 원자료": 10,
                 "수도권·광역시 실거래": 30}  # 분. 평소: R-ONE 11분, 나머지 1~4분
 
@@ -312,16 +312,19 @@ def refresh_molit_regions(back=4):
 
 
 def refresh_bldg():
-    """단지 기본정보(세대수·용적률 등). 새 단지만 지번으로 받고, 못 찾은 단지는 이름으로 다시 찾는다.
-    받은 만큼 바로 저장하므로 시간 한도 전에 스스로 멈춘다 (데이터는 data/molit/buildings.csv에 쌓인다)."""
+    """단지 기본정보(세대수·용적률 등). 새 단지만 지번으로 받고, 못 찾은 단지는 이름으로 다시 찾는다. 서울 다음에 수도권·광역시 새 단지도
+    (처음 채우기는 region-backfill.yml이 매일). 받은 만큼 바로 저장하므로 시간 한도 전에 스스로 멈춘다
+    (data/molit/buildings.csv, data/molit_kr/buildings.csv)."""
     import time
     import bldg_fetch
     t0 = time.time()
-    left = lambda end: max(30, end * 60 - (time.time() - t0))  # 전체 한도(15분) 안에서 단계별 마감(분)
+    left = lambda end: max(30, end * 60 - (time.time() - t0))  # 전체 한도(20분) 안에서 단계별 마감(분)
     out = []
-    for name, fn in [("새 단지", lambda: bldg_fetch.run(budget_s=left(8))),
-                     ("다시 찾기", lambda: bldg_fetch.fill(budget_s=left(11))),
-                     ("용적률", lambda: bldg_fetch.fill_land(budget_s=left(13.5)))]:  # 토지대장 면적으로 채운 단지의 용적률·건폐율
+    for name, fn in [("새 단지", lambda: bldg_fetch.run(budget_s=left(6))),
+                     ("지역 새 단지", lambda: bldg_fetch.run(budget_s=left(11), region=True)),
+                     ("다시 찾기", lambda: bldg_fetch.fill(budget_s=left(14))),
+                     ("지역 다시 찾기", lambda: bldg_fetch.fill(budget_s=left(16), region=True)),
+                     ("용적률", lambda: bldg_fetch.fill_land(budget_s=left(18.5)))]:  # 토지대장 면적으로 채운 단지의 용적률·건폐율
         try:
             r = fn()
         except Exception as e:  # noqa: BLE001  (한 단계가 실패해도 받은 만큼은 저장돼 있고, 다음 단계는 돈다)
@@ -343,7 +346,7 @@ def refresh_applyhome():
 COMPUTE = ["molit_indicators.py", "rs_vintage.py", "extra_indicators.py", "build_indicators.py", "v3.py",
            "zone_index.py", "zone_v3.py", "export_zone.py", "map/build.py"]
 AFTER_CHECK = ["export_report_v3.py", "report/build.py"]  # 실시간 기록은 점검을 통과한 뒤에
-OPTIONAL = ["apt_score.py", "highs_build.py", "sim_build.py"]  # 단지 검색: 실패해도 지도·보고서는 게시 (알림만)
+OPTIONAL = ["apt_score.py", "highs_build.py", "sim_build.py"]  # 단지 검색·신고가·모의 투자 (서울·지역): 실패해도 지도·보고서는 게시 (알림만)
 REGION = ["region_index.py", "region_engine_study.py", "region_v3.py", "export_region.py"]  # 수도권·광역시: 실패하면 지난 결과로 첫 화면·지역 페이지
 # (region_engine_study.py는 7개 지역이 처음 다 모인 실행에서만 엔진을 고정하고, 그 뒤로는 비교 결과만 다시 쓴다)
 FINAL = ["home_build.py", "site_build.py"]
@@ -359,7 +362,7 @@ def run_script(rel):
     if r.returncode != 0:
         last = (r.stderr or r.stdout).strip().splitlines()[-1:] or [""]
         raise RuntimeError(f"{rel} 종료코드 {r.returncode}: {_scrub(last[0])[:200]}")  # 원인을 공개 상태 파일에서도 보이게
-    return (r.stdout.strip().splitlines() or [""])[-1][:200] if rel in OPTIONAL else ""
+    return " / ".join(r.stdout.strip().splitlines()[-9:])[:290] if rel in OPTIONAL else ""  # 지역마다 한 줄
 
 
 # ---------------- 점검 ----------------
@@ -515,9 +518,15 @@ def main():
             log("=== 계산 실패로 중단 (게시 안 함) ===")
             write_status()
             return 1
-    for rel in OPTIONAL:
-        if not step(f"계산 {rel}", lambda rel=rel: run_script(rel)):
-            log(f"알림: {rel} 실패 — 지도·보고서는 그대로 게시")
+    # 새로 들어온 지역의 단지 점수 고정값(층 효과·면적 탄력성)을 먼저 한 번 고른다 (셋이 같은 값을 쓰게)
+    step("계산 apt_region_study.py --missing", lambda: run_script("apt_region_study.py --missing"))
+    # 셋은 서로 기다릴 필요가 없어 동시에 (서울과 지역마다 돌아 차례로 하면 몇 분 더 걸림)
+    from concurrent.futures import ThreadPoolExecutor
+    with ThreadPoolExecutor(len(OPTIONAL)) as ex:
+        done = list(ex.map(lambda rel: (rel, step(f"계산 {rel}", lambda: run_script(rel))), OPTIONAL))
+    for rel, ok in done:
+        if not ok:
+            log(f"알림: {rel} 실패 — 지도·보고서는 그대로 게시 (서울 밖 한 지역만 실패면 그 지역만 빠짐)")
     region_ok = True
     for rel in REGION:
         if not step(f"계산 {rel}", lambda rel=rel: run_script(rel)):

@@ -61,6 +61,11 @@ REGIONS = {
 # outsider_break: 시도 통합으로 매입자 거주지 '관할시도외'의 뜻이 바뀐 달 (그 달부터 외지인 비중을 비움),
 # kb: KB 시도 이름, kb_code: KB 시군구 가격지수의 지역코드, kb_sub_lawd_only: 그 코드의 시군구 중 이 지역(lawd 이름)만 씀
 LAWD2REGION = {c: r for r, d in REGIONS.items() for c in d["lawd"]}
+SUB_WORD = {"gyeonggi": "시·구"}  # 지역 아래 단위를 부르는 말 (나머지는 구·군)
+
+
+def sub_word(rid):
+    return SUB_WORD.get(rid, "구·군")
 
 
 def josa(word, a="을", b="를"):

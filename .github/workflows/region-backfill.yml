@@ -1,25 +1,53 @@
 name: 지역 실거래 채우기
 
-# 수도권·광역시 실거래를 2006년부터 처음 채운다 (하루 호출 한도 약 1만 건이라 며칠에 나눠서, 맥 없이).
-# 받은 만큼 data/molit_kr/partial/에 커밋하고 다음 날 이어받는다 (region_backfill.py).
-# 7개 지역이 다 차면 '월간 자동 갱신'을 자료 받기 없이 불러 지역 엔진을 고정하고 사이트에 반영한다.
-# 그 갱신이 실패해 엔진이 아직 임시면 다음 차례(하루 두 번)에 다시 부른다. 최종 엔진이 고정된 뒤에는 1분 안에 끝난다 (그때 이 파일을 지워도 됨).
+# 수도권·광역시 자료를 처음 채운다 (하루 호출 한도가 있어 며칠에 나눠서, 맥 없이). 할 일이 없으면 1~2분 안에 끝난다.
+#  - 실거래 (2006년부터): 받은 만큼 data/molit_kr/partial/에 커밋하고 다음 날 이어받는다 (region_backfill.py)
+#  - 단지 이름: 이름을 남기기 전에 받은 거래의 단지는 그 단지가 거래된 달을 다시 받아 채운다 (같은 스크립트, 실거래가 다 찬 뒤)
+#  - 건축물대장 (세대수·용적률 등, 실거래와 다른 호출 한도): 따로 동시에 (bldg_fetch.py --regions)
+# 7개 지역 실거래가 다 차면 '월간 자동 갱신'을 자료 받기 없이 불러 지역 엔진을 고정하고 사이트에 반영한다.
+# 그 갱신이 실패해 엔진이 아직 임시면 다음 차례에 다시 부른다. 단지 이름·정보가 새로 다 차면 '화면만 다시 배포'를 부른다.
+# 월간 갱신을 앞뒀거나 아직 못 끝낸 날(KST 18~22일)은 그날 호출 한도를 월간 갱신 몫으로 남긴다 (갱신이 한도에 막히지 않게).
 on:
   schedule:
     - cron: "23 15 * * *"   # 00:23 KST (한도가 풀린 직후)
-    - cron: "23 21 * * *"   # 06:23 KST (앞 예약이 빠졌을 때)
+    - cron: "47 18 * * *"   # 03:47 KST (앞 예약이 빠졌을 때: 2026-10-21 00:23 실행이 안 떴음)
+    - cron: "23 21 * * *"   # 06:23 KST
   workflow_dispatch:
 
 permissions:
   contents: write
-  actions: write   # 다 차면 월간 자동 갱신 부르기
+  actions: write   # 월간 자동 갱신·화면 배포 부르기
 
 concurrency:
   group: region-backfill
   cancel-in-progress: false
 
 jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    outputs:
+      left: ${{ steps.c.outputs.left }}
+      names: ${{ steps.c.outputs.names }}
+      bldg: ${{ steps.c.outputs.bldg }}
+      fix: ${{ steps.c.outputs.fix }}
+      busy: ${{ steps.c.outputs.busy }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - name: 남은 일
+        id: c
+        run: python automation/backfill_left.py | tee -a "$GITHUB_OUTPUT"
+
   fill:
+    needs: check
+    if: needs.check.outputs.left != '' || needs.check.outputs.names != '0'
     runs-on: ubuntu-latest
     timeout-minutes: 340
     env:
@@ -28,52 +56,28 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: main
-
-      - name: 이미 다 찼으면 끝
-        id: left
-        run: |
-          python3 - <<'PY' >> "$GITHUB_OUTPUT"
-          import json, glob, gzip, csv, io
-          from regions import REGIONS
-          have = set()
-          for f in glob.glob("data/molit_kr/trades_*.csv.gz"):
-              for row in csv.DictReader(io.TextIOWrapper(gzip.open(f), encoding="utf-8")):
-                  have.add(row["lawd"])
-          left = [r for r, d in REGIONS.items() if not have & set(d["lawd"])]
-          print("left=" + ",".join(left))
-          try:
-              eng = json.load(open("data/region_engine.json"))
-          except FileNotFoundError:
-              eng = {"provisional": True}
-          print("fix=" + ("true" if eng.get("provisional") else "false"))  # 최종 엔진이 아직 없음
-          PY
-
       - uses: actions/setup-python@v5
-        if: steps.left.outputs.left != ''
         with:
           python-version: "3.12"
           cache: pip
+      - run: pip install -r requirements.txt
 
-      - name: 패키지 설치
-        if: steps.left.outputs.left != ''
-        run: pip install -r requirements.txt
-
-      - name: 실거래 받기 (한도·시간 한도까지)
-        if: steps.left.outputs.left != ''
+      - name: 실거래·단지 이름 받기 (한도·시간 한도까지)
         id: fill
         env:
           DATA_GO_KR_KEY: ${{ secrets.DATA_GO_KR_KEY }}
         run: |
           printf 'DATA_GO_KR_KEY=%s\n' "$DATA_GO_KR_KEY" > .env
           set +e
-          python region_backfill.py --minutes 280   # 재시도가 길어져도 작업 한도(340분) 안에서 저장·커밋
+          # 재시도가 길어져도 작업 한도(340분) 안에서 저장·커밋. 월간 갱신 무렵엔 하루 한도(약 1만)의 일부만
+          python region_backfill.py --minutes 280 ${{ needs.check.outputs.busy == 'true' && '--max-calls 6000' || '' }}
           code=$?
           set -e
           echo "code=$code" >> "$GITHUB_OUTPUT"
           [ "$code" = 0 ] || [ "$code" = 3 ]
 
       - name: 받은 만큼 커밋
-        if: always() && steps.left.outputs.left != ''
+        if: always()
         run: |
           rm -f .env
           git config user.name "github-actions[bot]"
@@ -81,11 +85,75 @@ jobs:
           git add -A data/molit_kr
           git diff --cached --quiet && exit 0
           git commit -m "지역 실거래 채우기 $(date +%Y-%m-%d) ($([ '${{ steps.fill.outputs.code }}' = 0 ] && echo 완료 || echo 진행 중))"
-          git pull --rebase -X theirs origin main
-          git push origin HEAD:main
+          for i in 1 2 3; do  # 건축물대장 작업과 동시에 올릴 수 있어 밀리면 다시
+            git pull --rebase -X theirs origin main && git push origin HEAD:main && exit 0
+            sleep $((i * 15))
+          done
+          exit 1
 
-      - name: 다 찼으면 월간 자동 갱신 부르기 (자료 받기 없이 → 엔진 고정·사이트 반영)
-        if: steps.fill.outputs.code == '0' || (steps.left.outputs.left == '' && steps.left.outputs.fix == 'true')
+  bldg:
+    needs: check
+    if: needs.check.outputs.bldg != '0'
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      TZ: Asia/Seoul
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+
+      - name: 지역 건축물대장 (지번으로 → 못 찾으면 이름으로, 한도·시간 한도까지)
+        env:
+          DATA_GO_KR_KEY: ${{ secrets.DATA_GO_KR_KEY }}
+        run: |
+          printf 'DATA_GO_KR_KEY=%s\n' "$DATA_GO_KR_KEY" > .env
+          # 월간 갱신 무렵엔 그 갱신의 서울 새 단지 몫을 남긴다
+          python bldg_fetch.py ${{ needs.check.outputs.busy == 'true' && '1500' || 'run' }} --regions --minutes 70
+          python bldg_fetch.py fill --regions --minutes 30
+          python bldg_fetch.py land --regions --minutes 10   # 대장에 대지가 있는 단지의 용적률·건폐율 (토지대장은 키가 없어 건너뜀)
+
+      - name: 받은 만큼 커밋
+        if: always()
+        run: |
+          rm -f .env
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/molit_kr/buildings.csv
+          git diff --cached --quiet && exit 0
+          git commit -m "지역 건축물대장 채우기 $(date +%Y-%m-%d)"
+          for i in 1 2 3; do  # 실거래 작업과 동시에 올릴 수 있어 밀리면 다시
+            git pull --rebase -X theirs origin main && git push origin HEAD:main && exit 0
+            sleep $((i * 15))
+          done
+          exit 1
+
+  finish:
+    needs: [check, fill, bldg]
+    if: always() && needs.check.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main   # 위 작업들이 올린 뒤의 main
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - name: 다시 확인
+        id: after
+        run: python automation/backfill_left.py | tee -a "$GITHUB_OUTPUT"
+
+      - name: 실거래가 다 찼으면 월간 자동 갱신 부르기 (자료 받기 없이 → 엔진 고정·사이트 반영)
+        id: monthly
+        if: steps.after.outputs.left == '' && (needs.check.outputs.left != '' || steps.after.outputs.fix == 'true')
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -93,3 +161,11 @@ jobs:
             --jq '[.workflow_runs[] | select(.status != "completed")] | length')
           if [ "$busy" != 0 ]; then echo "월간 자동 갱신이 돌고 있어 다음 차례에 다시 확인"; exit 0; fi
           gh workflow run monthly-update.yml -R "$GITHUB_REPOSITORY" --ref main -f skip_fetch=true
+          echo "called=true" >> "$GITHUB_OUTPUT"
+
+      # 단지 검색·신고가·모의 투자 자료는 사이트를 만들 때 계산하므로, 새로 다 찬 지역 자료를 화면에 올린다 (월간 갱신을 불렀으면 거기서)
+      - name: 단지 이름·정보가 새로 다 찼으면 화면 다시 배포
+        if: steps.monthly.outputs.called != 'true' && ((needs.check.outputs.names != '0' && steps.after.outputs.names == '0') || (needs.check.outputs.bldg != '0' && steps.after.outputs.bldg == '0') || (needs.check.outputs.left != steps.after.outputs.left))
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run site-deploy.yml -R "$GITHUB_REPOSITORY" --ref main

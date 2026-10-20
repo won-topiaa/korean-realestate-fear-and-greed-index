@@ -13,7 +13,13 @@ from pathlib import Path
 ROOT = Path(__file__).parent
 OUT = ROOT / "data" / "raw" / "molit" / "apt"
 OUT.mkdir(parents=True, exist_ok=True)
-KEY = dict(l.split("=", 1) for l in (ROOT / ".env").read_text().split())["DATA_GO_KR_KEY"]
+
+
+def _key():
+    """키는 부를 때 읽는다 (단지 검색 등 키 없이 도는 화면 배포가 이 모듈을 거쳐 불러도 멈추지 않게)."""
+    return dict(l.split("=", 1) for l in (ROOT / ".env").read_text().split() if "=" in l)["DATA_GO_KR_KEY"]
+
+
 URL = "https://apis.data.go.kr/1613000/RTMSDataSvcAptTradeDev/getRTMSDataSvcAptTradeDev"
 SEOUL = {"11110": "종로구", "11140": "중구", "11170": "용산구", "11200": "성동구", "11215": "광진구",
          "11230": "동대문구", "11260": "중랑구", "11290": "성북구", "11305": "강북구", "11320": "도봉구",
@@ -30,6 +36,7 @@ class QuotaExceeded(Exception):
 
 
 def fetch(lawd, ym):
+    KEY = _key()
     items, page = [], 1
     while True:
         url = f"{URL}?serviceKey={KEY}&LAWD_CD={lawd}&DEAL_YMD={ym}&numOfRows=1000&pageNo={page}"
