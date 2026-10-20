@@ -1,47 +1,53 @@
 {
- "run": "20261015_0103",
+ "run": "20261020_1333",
  "steps": [
   {
    "step": "KB부동산",
    "ok": true,
-   "sec": 131,
+   "sec": 129,
    "detail": "KB 최신 202609"
   },
   {
    "step": "한국은행 금리·가계신용·CSI",
-   "ok": true,
-   "sec": 12,
-   "detail": "한국은행 기준금리 202609, 국고채10년 202609, 주담대금리 202608, 가계신용 2026Q2, 명목GDP 2026Q2, 주택가격전망CSI 202609"
+   "ok": false,
+   "sec": 345,
+   "detail": "RuntimeError(\"RuntimeError('ECOS 응답 해석 실패 · curl: (28) Connection timed out after 60001 milliseconds\\\\n')\")"
   },
   {
    "step": "네이버 금융 주가",
    "ok": true,
-   "sec": 10,
+   "sec": 9,
    "detail": "건설주·KOSPI"
   },
   {
    "step": "구글 트렌드",
    "ok": true,
-   "sec": 229,
+   "sec": 69,
    "detail": "검색어 8/8개 갱신 (실패분은 지난달 자료 유지)"
   },
   {
    "step": "한국부동산원 R-ONE",
    "ok": true,
-   "sec": 860,
-   "detail": "부동산원 143/145개 시계열 갱신 · 거래량 최신 202608 · 실패 예: gu_매입자거주지_용산구: SttsApiTblData.do {'STATBL_ID': 'A_2024_00609', 'DTACYCLE_CD': 'MM', 'pIndex': 2, 'pSize': 1000, 'GRP_ID': 910005, 'ITM_ID': 100001}: "
+   "sec": 1469,
+   "detail": "부동산원 141/145개 시계열 갱신 · 거래량 최신 202608 · 실패 예: gu_거래량_은평구: SttsApiTblData.do {'STATBL_ID': 'A_2024_00554', 'DTACYCLE_CD': 'MM', 'pIndex': 1, 'pSize': 1000, 'CLS_ID': 510014, 'ITM_ID': 100001}: "
   },
   {
    "step": "국토부 실거래",
-   "ok": false,
-   "sec": 1500,
-   "detail": "TimeoutError('25분 한도를 넘겨 중단 (지난 자료 유지)')"
+   "ok": true,
+   "sec": 155,
+   "detail": "실거래 202606~202610: 5개월 갱신 (125회 호출) · 저장소 1,443,632건"
   },
   {
    "step": "청약홈",
    "ok": true,
-   "sec": 118,
+   "sec": 124,
    "detail": "청약홈 (보조 지표)"
+  },
+  {
+   "step": "건축물대장",
+   "ok": true,
+   "sec": 255,
+   "detail": "건축물대장: 이번에 25곳 조회 (7곳 찾음, 주소 코드 없음 0, 오류 0) · 전체 9,009곳 보유 · 남은 단지 0 / 건축물대장 다시 찾기: 18/18곳 확인, 1곳 찾음 · 아직 정보 없는 단지 264 / 토지 면적으로 채우기: 대지면적 0곳, 용적률 0곳 채움 · 용적률 빈 단지 17"
   },
   {
    "step": "계산 molit_indicators.py",
@@ -76,7 +82,7 @@
   {
    "step": "계산 zone_index.py",
    "ok": true,
-   "sec": 43,
+   "sec": 41,
    "detail": ""
   },
   {
@@ -101,7 +107,7 @@
    "step": "점검",
    "ok": true,
    "sec": 0,
-   "detail": "기준월 2026-09 · 서울 48.8 · 도심권 51.7, 동북권 52.1, 서북권 50.2, 서남권 51.2, 동남권 42.3 · 구 25개 35.8~57.1"
+   "detail": "기준월 2026-09 · 서울 48.7 · 도심권 48.5, 동북권 54.3, 서북권 50.1, 서남권 48.8, 동남권 42.4 · 구 25개 35.9~56.5"
   },
   {
    "step": "실시간 기록",
@@ -120,6 +126,24 @@
    "ok": true,
    "sec": 0,
    "detail": ""
+  },
+  {
+   "step": "계산 apt_score.py",
+   "ok": true,
+   "sec": 22,
+   "detail": "기준일 2026-10-18 · 단지 9,274 · 최근 2년 거래 평형 14,898 중 점수 10,650 (다른 평형 섞임 3,927) · 9.0 MB"
+  },
+  {
+   "step": "계산 highs_build.py",
+   "ok": true,
+   "sec": 14,
+   "detail": "신고가: 2026-09 신고가 879건 (비교 가능 2,791건의 31%, 단지 725곳, 2배 초과 제외 24) · 422 KB"
+  },
+  {
+   "step": "계산 sim_build.py",
+   "ok": true,
+   "sec": 20,
+   "detail": "모의 투자: 단지 8,771 · 평형 22,468 · 분기 2006.1Q~2026.4Q · 6.7 MB + meta 52 KB"
   },
   {
    "step": "계산 site_build.py",
