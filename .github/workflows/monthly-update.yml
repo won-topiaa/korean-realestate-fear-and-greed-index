@@ -114,7 +114,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A data results_zone results_v2 results_region map report home
+          git add -A data results_zone results_v2 results_region map report home README.md
           git diff --cached --quiet || git commit -m "월간 자동 갱신 $(TZ=Asia/Seoul date +%Y-%m-%d)"
           # 실행 중에 누가 화면 등을 올렸으면: 그 위에 얹고(자료는 이번 실행 값 우선), 새 화면으로 다시 빌드
           git pull --rebase -X theirs origin main

@@ -467,6 +467,7 @@ def main():
             break
     if region_ok and (os.environ.get("CI") or a.record):
         step("실시간 기록 (지역)", lambda: run_script("live_track.py --regions"))
+    step("README 갱신", lambda: run_script("readme_build.py"))  # 현재 점수·지역 결과 칸 (실패해도 게시는 계속)
     for rel in FINAL:
         if not step(f"계산 {rel}", lambda rel=rel: run_script(rel)):
             log("=== 계산 실패로 중단 (게시 안 함) ===")
