@@ -751,23 +751,21 @@ function drawSingles() {
 function drawQuality() {
   const a = $("#q-presale");
   let hr = H("tr", {}, H("thead", {}, a));
-  [["연도", ""], ["KB", "n"], ["청약홈 실제", "n"], ["배수", "n"]].forEach(([h, c]) => H("th", { class: c }, hr, h));
+  [["연도", ""], ["KB ÷ 청약홈 실제", "n"]].forEach(([h, c]) => H("th", { class: c }, hr, h));
   let tb = H("tbody", {}, a);
   D.quality.presale.forEach((r) => {
     const tr = H("tr", {}, tb);
     H("td", {}, tr, String(r.y) + (r.y === 2026 ? " (9월까지)" : ""));
-    H("td", { class: "n" }, tr, nm(r.kb));
-    H("td", { class: "n" }, tr, nm(r.ah));
-    H("td", { class: "n", style: r.kb / r.ah > 5 ? "font-weight:600" : "" }, tr, (r.kb / r.ah).toFixed(1) + "배");
+    H("td", { class: "n", style: r.ratio > 5 ? "font-weight:600" : "" }, tr, r.ratio.toFixed(1) + "배");
   });
   const b = $("#q-reb");
   hr = H("tr", {}, H("thead", {}, b));
-  [["연도", ""], ["실거래", "n"], ["KB", "n"], ["부동산원", "n"]].forEach(([h, c]) => H("th", { class: c }, hr, h));
+  [["연도", ""], ["실거래", "n"], ["부동산원", "n"]].forEach(([h, c]) => H("th", { class: c }, hr, h));
   tb = H("tbody", {}, b);
   D.quality.reb.forEach((r) => {
     const tr = H("tr", {}, tb);
     H("td", {}, tr, String(r.y));
-    [r.rs, r.kb, r.reb].forEach((v, i) => H("td", { class: "n", style: i === 2 ? "font-weight:600" : "" }, tr, (v >= 0 ? "+" : "−") + Math.abs(v).toFixed(1)));
+    [r.rs, r.reb].forEach((v, i) => H("td", { class: "n", style: i === 1 ? "font-weight:600" : "" }, tr, (v >= 0 ? "+" : "−") + Math.abs(v).toFixed(1)));
   });
 }
 

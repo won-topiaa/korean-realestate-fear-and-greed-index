@@ -125,20 +125,18 @@ now = {"date": v2_now.index[-1].strftime("%Y-%m"), "v2": r3(v2_now.iloc[-1]), "p
        "speed_n": {v: int((Dk["속도"] == v).sum()) for v in ["선행", "동행", "후행"]}}
 
 tg = pd.read_csv(bt.ROOT / "data" / "targets_extra.csv", index_col=0, parse_dates=True)
-kbp = pd.read_csv(bt.ROOT / "data" / "indicators.csv", index_col=0, parse_dates=True)["__price"]
 rs = tg["실거래지수"]
 idx = v2_now.index[(v2_now.index >= "2006-01-01")]
 series = {"dates": [d.strftime("%Y-%m") for d in idx], "v2": [r3(v) for v in v2_now.reindex(idx)],
-          "rs": [r3(v) for v in rs.reindex(idx)], "kb": [r3(v) for v in kbp.reindex(idx)],
+          "rs": [r3(v) for v in rs.reindex(idx)],
           "fwd12": [r3(v) for v in y.reindex(idx)]}
 tps = [(str(d.date())[:7], t) for d, t in bt.turning_points(rs.dropna())]
 
 yr = lambda s: (np.log(s).resample("YE").last().diff() * 100)
-quality = {
-    "presale": [{"y": 2022, "kb": 26332, "ah": 9100}, {"y": 2023, "kb": 28533, "ah": 9468}, {"y": 2024, "kb": 27920, "ah": 10123},
-                {"y": 2025, "kb": 36943, "ah": 4014}, {"y": 2026, "kb": 67239, "ah": 5222}],
-    "reb": [{"y": int(d.year), "kb": r3(a), "reb": r3(b), "rs": r3(c)} for d, a, b, c in
-            zip(yr(kbp).loc["2017":"2021"].index, yr(kbp).loc["2017":"2021"], yr(tg["부동산원지수"]).loc["2017":"2021"], yr(rs).loc["2017":"2021"])],
+quality = {  # KB 원값(분양 세대수·연간 상승률)은 싣지 않고 청약홈 대비 배수만 (2026-10-21)
+    "presale": [{"y": 2022, "ratio": 2.9}, {"y": 2023, "ratio": 3.0}, {"y": 2024, "ratio": 2.8}, {"y": 2025, "ratio": 9.2}, {"y": 2026, "ratio": 12.9}],
+    "reb": [{"y": int(d.year), "reb": r3(b), "rs": r3(c)} for d, b, c in
+            zip(yr(tg["부동산원지수"]).loc["2017":"2021"].index, yr(tg["부동산원지수"]).loc["2017":"2021"], yr(rs).loc["2017":"2021"])],
 }
 snap_dates = ["2006-11", "2008-12", "2012-12", "2015-06", "2018-09", "2020-07", "2021-09", "2022-11", "2024-05", "2025-06"]
 snaps = [{"date": d, "v2": r3(v2_now.get(pd.Timestamp(d + "-01"))), "fwd12": r3(np.expm1(y.get(pd.Timestamp(d + "-01"))))} for d in snap_dates]
