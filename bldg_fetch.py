@@ -40,8 +40,50 @@ class NotRegistered(Exception):
     pass
 
 
-class QuotaExceeded(Exception):
+class Stop(Exception):
+    """이번 실행을 멈추고 다음 실행에 이어서 (받은 만큼은 저장돼 있다)."""
+
+
+class QuotaExceeded(Stop):
     pass
+
+
+class TimeUp(Stop):
+    pass
+
+
+class Unreachable(Stop):
+    pass
+
+
+# call()이 호출마다 확인: 이번 실행의 마감 시각 · 멈춘 까닭(한 스레드가 멈추면 나머지도 다음 호출에서 같이 멈춤) · 응답을 연달아 못 받은 호출 수
+_until, _stop, _bad = None, None, 0
+BAD_MAX = 8  # 이만큼 연달아 응답이 이상하면 서버 문제로 보고 멈춘다 (2026-10-21: 응답 없는 서버에 단지 150곳을 붙잡고 98분, 시간 한도도 넘김)
+
+
+def start(budget_s=None):
+    """이번 실행의 마감. 응답이 느려도 단지 묶음 사이가 아니라 호출마다 확인해 마감을 넘기지 않는다."""
+    global _until, _stop, _bad
+    _until, _stop, _bad = (time.time() + budget_s if budget_s else None), None, 0
+
+
+def halt(e):
+    global _stop
+    _stop = e
+    raise e
+
+
+def bad(msg):
+    """응답 이상 한 번이면 그 단지만 건너뛰게 RuntimeError, BAD_MAX번 연달아면 이번 실행을 멈춘다."""
+    global _bad
+    _bad += 1
+    if _bad >= BAD_MAX:
+        halt(Unreachable(f"{msg} ({_bad}번 연달아)"))
+    raise RuntimeError(msg)
+
+
+def why(e):
+    return {QuotaExceeded: "하루 호출 한도", TimeUp: "시간 한도"}.get(type(e), "서버 오류")
 
 
 def _env():
@@ -54,9 +96,14 @@ def _key():
 
 def call(op, params, key, page=1, rows=100, maxpage=10, _try=0):
     """한 페이지(rows건) 조회. 더 있으면 maxpage까지 다음 페이지를 이어 붙인다 (동이 많은 대단지)."""
+    global _bad
     q = "&".join(f"{k}={v}" for k, v in params.items())
     url = f"{URL}/{op}?serviceKey={key}&{q}&numOfRows={rows}&pageNo={page}&_type=json"
     for attempt in range(4):
+        if _stop:
+            raise type(_stop)(*_stop.args)
+        if _until and time.time() > _until:
+            halt(TimeUp(f"{op}: 시간 한도"))
         out = subprocess.run(["curl", "-sS", "--http1.1", "-m", "30", url], capture_output=True, text=True).stdout
         try:
             d = json.loads(out)
@@ -65,29 +112,30 @@ def call(op, params, key, page=1, rows=100, maxpage=10, _try=0):
             if "SERVICE_KEY_IS_NOT_REGISTERED" in out:
                 raise NotRegistered
             if "LIMITED_NUMBER_OF_SERVICE_REQUESTS" in out:
-                raise QuotaExceeded(f"{op}: LIMITED_NUMBER_OF_SERVICE_REQUESTS")
+                halt(QuotaExceeded(f"{op}: LIMITED_NUMBER_OF_SERVICE_REQUESTS"))
             time.sleep(2 * 2 ** attempt)
     else:
-        raise RuntimeError(f"{op}: 응답 해석 실패 · {out.replace(key, '***')[:120]}")
+        bad(f"{op}: 응답 해석 실패 · {out.replace(key, '***')[:120]}")
     err = d.get("OpenAPI_ServiceResponse", {}).get("cmmMsgHeader")
     if err:
         code = str(err.get("returnReasonCode", ""))
         if code == "30" or "NOT_REGISTERED" in str(err.get("errMsg", "")):
             raise NotRegistered
         if code == "22":
-            raise QuotaExceeded(f"{op}: {err.get('errMsg')}")
+            halt(QuotaExceeded(f"{op}: {err.get('errMsg')}"))
         if "PER_SECOND" in str(err.get("errMsg", "")):
             if _try < 5:  # 초당 한도: 잠깐 쉬고 다시 (1+2+3+4+5초)
                 time.sleep(1 + _try)
                 return call(op, params, key, page, rows, maxpage, _try + 1)
-            raise QuotaExceeded(f"{op}: {err.get('errMsg')} (6번 연속)")  # 계속이면 하루 한도가 찬 것 (서버가 하루 한도도 초당 한도로 답할 때가 있다) → 다음 실행에
-        raise RuntimeError(f"{op}: {err.get('errMsg')}")
+            halt(QuotaExceeded(f"{op}: {err.get('errMsg')} (6번 연속)"))  # 계속이면 하루 한도가 찬 것 (서버가 하루 한도도 초당 한도로 답할 때가 있다) → 다음 실행에
+        bad(f"{op}: {err.get('errMsg')}")
     resp = d.get("response", {})
     code = str(resp.get("header", {}).get("resultCode", ""))
     if code not in ("00", "000"):
         if code == "22":
-            raise QuotaExceeded(f"{op}: code 22")
-        raise RuntimeError(f"{op}: code {code} {resp.get('header', {}).get('resultMsg')}")
+            halt(QuotaExceeded(f"{op}: code 22"))
+        bad(f"{op}: code {code} {resp.get('header', {}).get('resultMsg')}")
+    _bad = 0
     body = resp.get("body", {}) or {}
     items = body.get("items") or {}
     items = items.get("item", []) if isinstance(items, dict) else []
@@ -243,6 +291,7 @@ def fill(workers=2, budget_s=None, retry_days=90, region=False):
     """지번으로 못 찾은 단지를 그 동네 건축물대장 전체에서 이름으로 다시 찾는다 (총괄표제부 → 표제부 순).
     이름으로도 없으면 status=missing (새 단지는 대장에 늦게 올라오므로 retry_days 뒤 다시 찾는다)."""
     key = _key()
+    start(budget_s)
     out = OUT_KR if region else OUT
     if not out.exists():
         return "건축물대장 다시 찾기: 아직 받은 단지 없음"
@@ -308,8 +357,8 @@ def fill(workers=2, budget_s=None, retry_days=90, region=False):
                     done += 1
                     found += status == "ok"
                 save(list(rows.values()), out)
-    except QuotaExceeded:
-        msg = " (하루 호출 한도로 중단, 다음 실행에 이어서)"
+    except Stop as e:
+        msg = f" ({why(e)}로 중단, 다음 실행에 이어서)"
     save(list(rows.values()), out)
     left = sum(1 for r in rows.values() if r["status"] != "ok")
     return f"건축물대장 다시 찾기: {done}/{len(miss)}곳 확인, {found}곳 찾음{msg} · 아직 정보 없는 단지 {left}"
@@ -345,6 +394,7 @@ def fill_land(workers=3, budget_s=None, region=False):
     '·층별'이 붙으면 대장 하루 한도로 층별개요 합을 쓴 어림값 (다음 실행에 대장 값으로 다시 계산)."""
     vkey = _env().get("VWORLD_KEY", "").strip()  # 없으면(자동 갱신 등) 1단계는 건너뛰고 2단계만
     key = _key()
+    start(budget_s)
     out = OUT_KR if region else OUT
     if not out.exists():
         return "토지 면적으로 채우기: 아직 받은 단지 없음"
@@ -450,8 +500,8 @@ def fill_land(workers=3, budget_s=None, region=False):
                     r["landSrc"] = how
                     n_ratio += bool(vl)
                 save(list(rows.values()), out)
-    except QuotaExceeded as e:
-        msg = f" (건축물대장 하루 호출 한도로 중단, 다음 실행에 이어서 · {e})"
+    except Stop as e:
+        msg = f" (건축물대장 {why(e)}로 중단, 다음 실행에 이어서 · {e})"
     save(list(rows.values()), out)
     still = sum(1 for r in rows.values() if r["status"] == "ok" and not r["vlRat"])
     return f"토지 면적으로 채우기: 대지면적 {n_area}곳, 용적률 {n_ratio}곳 채움{msg} · 용적률 빈 단지 {still}"
@@ -468,6 +518,7 @@ def save(rows, out=OUT):
 def run(limit=None, budget_s=None, workers=4, region=False):
     """아직 안 받은 단지를 최근 거래 순으로 받는다 (workers곳씩 동시에). 반환: 요약 문장."""
     key = _key()
+    start(budget_s)
     out = OUT_KR if region else OUT
     cx = complexes(region)
     umd = bjdong_codes(key, cx, region)
@@ -509,9 +560,9 @@ def run(limit=None, budget_s=None, workers=4, region=False):
                 save(list(rows.values()), out)
     except NotRegistered:
         return "건축물대장: 활용신청 전이라 건너뜀 (data.go.kr '국토교통부_건축HUB_건축물대장정보 서비스')"
-    except QuotaExceeded:
+    except Stop as e:
         save(list(rows.values()), out)
-        return f"{'지역 ' if region else ''}건축물대장: 하루 호출 한도 — {done}곳 받고 중단 (다음 실행에 이어받음)"
+        return f"{'지역 ' if region else ''}건축물대장: {why(e)} — {done}곳 받고 중단 (다음 실행에 이어받음)"
     have = sum(1 for v in rows.values() if v.get("status") == "ok")
     left = sum(1 for r in cx["aptSeq"] if rows.get(r, {}).get("status") not in ("ok", "none", "missing"))
     return (f"{'지역 ' if region else ''}건축물대장: 이번에 {done}곳 조회 ({ok}곳 찾음, 주소 코드 없음 {nocode}, 오류 {err}) · "

@@ -330,7 +330,7 @@ def refresh_bldg():
         except Exception as e:  # noqa: BLE001  (한 단계가 실패해도 받은 만큼은 저장돼 있고, 다음 단계는 돈다)
             r = f"{name} 실패: {e!r}"
         out.append(r)
-        if "활용신청" in r:
+        if "활용신청" in r or "서버 오류" in r:  # 서버가 답하지 않으면 나머지 단계도 같은 서버라 건너뛴다
             break
     return " / ".join(out)
 
