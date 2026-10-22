@@ -12,6 +12,8 @@ import pandas as pd
 from scipy.sparse import csr_matrix
 from scipy.sparse.linalg import lsqr
 
+import timing
+
 ROOT = Path(__file__).parent
 SRC = ROOT / "data" / "raw" / "molit" / "apt"
 
@@ -103,9 +105,9 @@ if __name__ == "__main__":
     hi, dr, _ = high_low(df_all)
     cnt = df.groupby("date").size()
     out = pd.DataFrame({"index": idx, "pairs": npairs, "trades": cnt})
-    # 지표는 신고 기한(2020년 2월부터 30일, 그 전 60일) 때문에 늦게 확정 → 2개월 늦춰서 사용
-    out["거래_신고가비중"] = hi.rolling(3).mean().shift(2)
-    out["거래_급락거래역수"] = -dr.rolling(3).mean().shift(2)
+    # 지표는 신고 기한(2020년 2월부터 30일, 그 전 60일) 때문에 늦게 확정 → 기준월 t 발표(t+1월 20일)에 다 들어온 달까지 (timing.trade_lag)
+    out["거래_신고가비중"] = timing.trade_lag(hi.rolling(3).mean())
+    out["거래_급락거래역수"] = timing.trade_lag(-dr.rolling(3).mean())
     # 같은 이유로 최근 2개월 지수는 표본이 덜 차서 제외
     out.loc[out.index[-2:], "index"] = np.nan
     out.to_csv(ROOT / "data" / "repeat_sales.csv")

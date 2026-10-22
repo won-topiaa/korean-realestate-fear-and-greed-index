@@ -21,6 +21,7 @@ if __name__ == "__main__":
             try:
                 py.build_payload([kw], timeframe=f"2004-01-01 {dt.date.today().isoformat()}", geo="KR")
                 df = py.interest_over_time()
+                df = df[df.index < pd.Timestamp(dt.date.today()).to_period("M").to_timestamp()]  # 아직 안 끝난 이번 달은 버림
                 df[[kw]].to_csv(path)
                 print("OK", kw, len(df), df.index.min().date(), df.index.max().date(), flush=True)
                 break

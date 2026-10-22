@@ -181,16 +181,17 @@ def build():
     ind["자금_기준금리수준"] = -base
     ind["자금_기준금리변화"] = -base.diff(6)
     ind["자금_국고채10년변화"] = -ecos("국고채10년").diff(6)
-    ind["자금_주담대금리변화"] = lag(-ecos("주담대금리").diff(6), 2)  # 신규취급액 금리는 다음 달 말 공개 → 20일 기준 2개월 늦춤
+    ind["자금_주담대금리변화"] = lag(-ecos("주담대금리").diff(6), 1)  # 신규취급액 금리는 다음 달 말 공개 → 기준월 t 발표(t+1월 20일)엔 t−1월까지
     hh = ecos("가계신용") / ecos("명목GDP").rolling(4).sum() * 100  # 가계신용 / 최근 4분기 명목 GDP (%)
     hh_m = hh.diff(4).resample("MS").ffill()
-    hh_m.index = hh_m.index + pd.DateOffset(months=5)  # 분기 끝 + 3개월 (가계신용 8월 하순, 명목 GDP 9월 초 공개 → 2분기는 9월부터)
+    hh_m.index = hh_m.index + pd.DateOffset(months=4)  # 분기 끝 + 2개월 기준월부터 (가계신용 8월 하순, 명목 GDP 9월 초 공개 → 2분기는 8월 점수(9월 20일 발표)부터)
     ind["자금_가계신용증가"] = hh_m
     ind["설문_주택가격전망CSI"] = ecos("주택가격전망CSI")  # 보조 지표 (2013~), 시차는 timing.py
     rate, hai = kb_hai()
 
-    ind["부담_PIR"] = lag(kb_pir(), 3)  # 소득 통계 발표 시차
-    ind["부담_구매력역수"] = lag(-hai, 3)
+    import timing
+    ind["부담_PIR"] = timing.quarterly_release(kb_pir())  # 분기마다 공개된 달부터 (소득 통계 발표 시차)
+    ind["부담_구매력역수"] = timing.quarterly_release(-hai)
     ind["부담_전세가율역수"] = -kb_aligned("전세가율_아파트")
 
     for k, kw in [("관심_아파트", "아파트"), ("관심_부동산", "부동산"), ("관심_집값", "집값"),

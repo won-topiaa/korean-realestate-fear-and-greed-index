@@ -150,6 +150,7 @@ def refresh_stocks():
 
 
 def refresh_trends():
+    import pandas as pd
     from pytrends.request import TrendReq
     import fetch_trends as T
     py = TrendReq(hl="ko-KR", tz=-540, timeout=(10, 60))
@@ -160,6 +161,7 @@ def refresh_trends():
             try:
                 py.build_payload([kw], timeframe=f"2004-01-01 {end}", geo="KR")
                 df = py.interest_over_time()
+                df = df[df.index < pd.Timestamp(dt.date.today()).to_period("M").to_timestamp()]  # 아직 안 끝난 이번 달은 버림 (그달 값으로 쓰므로)
                 if len(df) > 200:
                     tmp = T.OUT / f"{kw}.csv.tmp"
                     df[[kw]].to_csv(tmp)

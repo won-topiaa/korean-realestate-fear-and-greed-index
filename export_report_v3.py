@@ -105,14 +105,14 @@ for lo, hi, lab in [(0, 25, "극단적 공포"), (25, 45, "공포"), (45, 55, "�
 # 5년 이동 구간: 현재 버전 vs 단순 기준
 raw_ = pd.read_csv(bt.ROOT / "data" / "indicators.csv", index_col=0, parse_dates=True)
 raw_ = raw_[raw_.index <= raw_["__price"].last_valid_index()]
+vint = pd.read_csv(bt.ROOT / "data" / "repeat_sales_rt.csv", index_col=0, parse_dates=True)["d6"]
 bench = {
     f"{v3.VERSION} 지수": f,
     "KB 매수우위지수 하나": bt.pct_score(raw_["설문_매수우위"]),
     "KB 3개월 가격 변화": bt.pct_score(np.log(raw_["__price"]).diff(3)),
     # 반복매매지수는 나중 거래로 과거 값이 다시 추정되므로, 그달에 알 수 있던 값으로 (rs_vintage.py)
-    # 발표하는 날(기준월 + PUB_OFFSET의 20일)에 알 수 있던 값: 그날 만든 반복매매지수(신고 기한이 지난 달까지)
-    "실거래 6개월 가격 변화 (그때 알 수 있던 값)": bt.pct_score(pd.read_csv(bt.ROOT / "data" / "repeat_sales_rt.csv", index_col=0, parse_dates=True)["d6"]
-                                                    .shift(-timing.PUB_OFFSET).reindex(raw_.index)),
+    # 발표하는 날(기준월 다음 달 20일)에 알 수 있던 값: 그날 만든 반복매매지수 = 다음 달 행 (신고 기한 60일이던 2020년 2월 전은 그달 행)
+    "실거래 6개월 가격 변화 (그때 알 수 있던 값)": bt.pct_score(vint.shift(-1).where(vint.index >= "2020-03-01", vint).reindex(raw_.index)),
 }
 starts = pd.date_range("2008-01-01", "2020-01-01", freq="12MS")
 D["rolling"] = {"starts": [s.year for s in starts], "rows": []}

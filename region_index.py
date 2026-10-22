@@ -128,8 +128,8 @@ def region_indicators(rid, common, cols):
     ind["전세_매매선호"] = buy / js
     ind["전세_3개월모멘텀"] = np.log(B.kb_aligned("아파트전세지수_월간", nm)).diff(3)
     ind["부담_전세가율역수"] = -B.kb_aligned("전세가율_아파트", nm)
-    ind["부담_PIR"] = B.lag(B.kb_pir(region="전국"), 3)
-    ind["부담_구매력역수"] = B.lag(-B.kb_hai(HAI_REGION.get(rid, "6개광역시"))[1], 3)
+    ind["부담_PIR"] = timing.quarterly_release(B.kb_pir(region="전국"))  # 분기마다 공개된 달부터 (서울과 같게)
+    ind["부담_구매력역수"] = timing.quarterly_release(-B.kb_hai(HAI_REGION.get(rid, "6개광역시"))[1])
     subs = [f"r_{lawd}" for lawd in d["lawd"]] if d.get("reb_sum_subs") else None
     trade_cols(ind, subs or f"r_{rid}")
     unsold = reb([f"{p}_미분양" for p in subs] if subs else f"r_{rid}_미분양")
@@ -184,8 +184,8 @@ def build_target(ind, sub, sub_all, idx):
     """실거래 → 신고가·급락 지표(2개월 늦춤)와 정답(반복매매지수, 최근 2개월 제외)."""
     rs, pairs = MI.repeat_sales(sub)
     hi, dr, _ = MI.high_low(sub_all)
-    ind["거래_신고가비중"] = hi.rolling(3).mean().shift(2).reindex(idx)
-    ind["거래_급락거래역수"] = (-dr.rolling(3).mean().shift(2)).reindex(idx)
+    ind["거래_신고가비중"] = timing.trade_lag(hi.rolling(3).mean()).reindex(idx)  # 신고 기한만큼 (2020년 2월 전 2개월, 뒤 1개월)
+    ind["거래_급락거래역수"] = timing.trade_lag(-dr.rolling(3).mean()).reindex(idx)
     rs.iloc[-2:] = np.nan
     rs = rs.reindex(idx)
     y = timing.fwd(rs)  # 발표한 달부터 12개월

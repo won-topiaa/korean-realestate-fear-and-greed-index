@@ -31,6 +31,7 @@ if __name__ == "__main__":
         print(k, len(s), s.index.min().date(), s.index.max().date())
     df = pd.DataFrame(out)
     df.index = df.index.to_period("M").to_timestamp()
+    df = df[df.index < pd.Timestamp(dt.date.today()).to_period("M").to_timestamp()]  # 아직 안 끝난 이번 달 월봉은 버림 (그달 값으로 쓰므로, v3.5)
     tmp = OUT / "stocks_monthly.csv.tmp"
     df.to_csv(tmp)
     tmp.replace(OUT / "stocks_monthly.csv")  # 다 받은 뒤에만 바꿔 씀

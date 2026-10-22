@@ -128,8 +128,8 @@ def main():
     def build(name, sub, sub_all, ind, ref_ind):
         rs, _ = MI.repeat_sales(sub)
         hi, dr, _ = MI.high_low(sub_all)
-        ind["거래_신고가비중"] = hi.rolling(3).mean().shift(2).reindex(idx)
-        ind["거래_급락거래역수"] = (-dr.rolling(3).mean().shift(2)).reindex(idx)
+        ind["거래_신고가비중"] = timing.trade_lag(hi.rolling(3).mean()).reindex(idx)  # 신고 기한만큼 (2020년 2월 전 2개월, 뒤 1개월)
+        ind["거래_급락거래역수"] = timing.trade_lag(-dr.rolling(3).mean()).reindex(idx)
         # 지역 자료가 늦게 시작하는 지표(구별 전세가율 2013~ 등)는 그 전까지 상위(서울·권역) 값으로 → 표 구성이 서울과 같게
         ref = ref_ind.reindex(idx)
         for c in [c for c in meta.index if c in ind.columns and c in ref.columns]:

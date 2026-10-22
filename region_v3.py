@@ -89,7 +89,7 @@ for rid, o in R["regions"].items():
     m = idx >= st
     win = windows(f, y, st)
     kb_buy = o["ind"]["설문_매수우위"]
-    rs6 = (np.log(o["rs"]).diff(6)).shift(2 - timing.PUB_OFFSET)  # 발표할 때 신고가 다 찬 달까지 (기준월 t 발표 = t+1월 20일 → t−1월)
+    rs6 = timing.trade_lag(np.log(o["rs"]).diff(6))  # 발표할 때 신고가 다 찬 달까지 (기준월 t 발표 = t+1월 20일)
     r.update({"rs": o["rs"], "fwd12": y, "pairs": o["pairs"], "n_trades": o["n_trades"], "start": st,
               "acc": acc(f, y, m), "acc_seoul": acc(seoul["final"].reindex(idx), y, m), "acc_kb": acc(kb_buy, y, m),
               "acc_rs6": acc(rs6, y, m), "win": win})
