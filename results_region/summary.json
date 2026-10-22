@@ -19,7 +19,8 @@
    "seoul": 0.293
   },
   "engine": "2026-10-22",
-  "cross_validated": true
+  "cross_validated": true,
+  "extra": []
  },
  "daejeon": {
   "name": "대전",
@@ -41,7 +42,8 @@
    "seoul": 0.241
   },
   "engine": "2026-10-22",
-  "cross_validated": true
+  "cross_validated": true,
+  "extra": []
  },
  "ulsan": {
   "name": "울산",
@@ -63,16 +65,17 @@
    "seoul": 0.004
   },
   "engine": "2026-10-22",
-  "cross_validated": true
+  "cross_validated": true,
+  "extra": []
  },
  "daegu": {
   "name": "대구",
   "publish": true,
   "month": "2026-09",
-  "score": 40.1,
-  "prev": 43.7,
-  "acc": 0.613,
-  "win_median": 0.249,
+  "score": 45.7,
+  "prev": 49.0,
+  "acc": 0.627,
+  "win_median": 0.313,
   "win_min": -0.472,
   "acc_seoul": 0.051,
   "acc_kb": 0.563,
@@ -80,12 +83,15 @@
   "n_sub": 9,
   "sub_word": "구·군",
   "sub_acc_mean": {
-   "sub": 0.618,
-   "region": 0.599,
+   "sub": 0.627,
+   "region": 0.609,
    "seoul": 0.061
   },
   "engine": "2026-10-22",
-  "cross_validated": true
+  "cross_validated": true,
+  "extra": [
+   "공급_착공물량역수"
+  ]
  },
  "incheon": {
   "name": "인천",
@@ -107,7 +113,8 @@
    "seoul": 0.494
   },
   "engine": "2026-10-22",
-  "cross_validated": true
+  "cross_validated": true,
+  "extra": []
  },
  "busan": {
   "name": "부산",
@@ -129,7 +136,8 @@
    "seoul": 0.333
   },
   "engine": "2026-10-22",
-  "cross_validated": true
+  "cross_validated": true,
+  "extra": []
  },
  "gyeonggi": {
   "name": "경기",
@@ -151,6 +159,7 @@
    "seoul": 0.389
   },
   "engine": "2026-10-22",
-  "cross_validated": true
+  "cross_validated": true,
+  "extra": []
  }
 }
