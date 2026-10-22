@@ -70,7 +70,7 @@ def refresh(refresh=True, workers=8, reb=True, kb=True):
         try:
             R.data(sid, "MM", name=name, refresh=refresh, **f)
         except Exception as e:  # noqa: BLE001  (실패한 시계열은 지난 파일 유지)
-            errors.append(f"{name}: {str(e)[:160]}")
+            errors.append(f"{name}: {str(e).replace(R.KEY, '***')[:160]}")  # 키를 지운 뒤에 자른다
 
     with ThreadPoolExecutor(max_workers=workers) as ex:
         list(ex.map(one, jobs))

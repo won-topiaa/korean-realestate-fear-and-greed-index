@@ -21,7 +21,7 @@ def call(endpoint, **params):
             return json.loads(out.stdout)
         except json.JSONDecodeError:
             time.sleep(3 * (attempt + 1))
-    raise RuntimeError(f"{endpoint} {params}: {out.stdout[:200]}")
+    raise RuntimeError(f"{endpoint} {params}: {out.stdout.replace(KEY, '***')[:200]}")  # 키를 지운 뒤에 자른다 (오류 화면이 요청 주소를 되풀이할 때)
 
 
 def rows(j, name):

@@ -27,7 +27,7 @@ def get(path, page, per=1000, **cond):
             return json.loads(out.stdout)
         except json.JSONDecodeError:
             time.sleep(3 * (attempt + 1))
-    raise RuntimeError(out.stdout[:300].replace(KEY, "***"))
+    raise RuntimeError(out.stdout.replace(KEY, "***")[:300])  # 키를 지운 뒤에 자른다 (잘린 키 앞부분이 남지 않게)
 
 
 def fetch_all(name, refresh=False):
@@ -38,7 +38,7 @@ def fetch_all(name, refresh=False):
     while True:
         j = get(APIS[name], page)
         if "data" not in j:
-            raise RuntimeError(f"{name}: {str(j)[:200]}")
+            raise RuntimeError(f"{name}: {str(j).replace(KEY, '***')[:200]}")
         rows += j["data"]
         print(f"{name} p{page} {len(rows)}/{j.get('totalCount')}", flush=True)
         if len(rows) >= j.get("totalCount", 0):

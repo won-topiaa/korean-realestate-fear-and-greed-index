@@ -25,7 +25,7 @@ def get(path):
             return json.loads(out.stdout)
         except json.JSONDecodeError:
             time.sleep(3 * (attempt + 1))
-    raise RuntimeError(f"ECOS 응답 해석 실패 · {(out.stdout or out.stderr)[:160].replace(KEY, '***')}")
+    raise RuntimeError(f"ECOS 응답 해석 실패 · {(out.stdout or out.stderr).replace(KEY, '***')[:160]}")  # 키를 지운 뒤에 자른다 (잘린 키 앞부분이 남지 않게)
 
 
 def fetch(name, end):
@@ -35,7 +35,7 @@ def fetch(name, end):
     j = get(f"StatisticSearch/{KEY}/json/kr/1/2000/{code}/{cycle}/{start}/{end}/" + "/".join(items))
     rows = j.get("StatisticSearch", {}).get("row")
     if not rows:
-        raise RuntimeError(f"{name}: {json.dumps(j.get('RESULT', j), ensure_ascii=False)[:200].replace(KEY, '***')}")
+        raise RuntimeError(f"{name}: {json.dumps(j.get('RESULT', j), ensure_ascii=False).replace(KEY, '***')[:200]}")
     data = [{"date": r["TIME"], "value": float(r["DATA_VALUE"]), "unit": r.get("UNIT_NAME"), "item": r.get("ITEM_NAME1")} for r in rows]
     tmp = OUT / f"{name}.json.tmp"
     tmp.write_text(json.dumps(data, ensure_ascii=False))
