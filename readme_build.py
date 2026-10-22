@@ -24,6 +24,17 @@ def load(rel):
     return json.loads(p.read_text()) if p.exists() else None
 
 
+def seoul_month(m):
+    """서울 최신 달 (map_data.json에서 점수가 있는 마지막 달)."""
+    return m["dates"][max(i for i, v in enumerate(m["regions"]["서울"]["score"]) if v is not None)]
+
+
+def old(x, ym):
+    """지역 계산이 실패해 지난 결과가 남은 지역은 그 달을 붙인다 (첫 화면 카드의 'YYYY년 M월 점수'와 같은 말)."""
+    m = x.get("month")
+    return f" ({m[:4]}년 {int(m[5:7])}월 점수)" if m and m != ym else ""
+
+
 def current():
     m = load("results_zone/map_data.json")
     R, run = m["regions"], load("results_zone/update_summary.json")["run"]
@@ -40,7 +51,7 @@ def current():
              f"| 25개 구 | {f1(gus[lo])}({lo}) ~ {f1(gus[hi])}({hi}) | |"]
     summ = load("results_region/summary.json") or {}
     live = sorted(((x["score"], r) for r, x in summ.items() if x["publish"]), reverse=True)
-    lines += [f"| {REGIONS[r]['name']} ({summ[r]['n_sub']}개 {summ[r]['sub_word']}) | {f1(v)} | {band(v)} |" for v, r in live]
+    lines += [f"| {REGIONS[r]['name']} ({summ[r]['n_sub']}개 {summ[r]['sub_word']}) | {f1(v)}{old(summ[r], ym)} | {band(v)} |" for v, r in live]
     wait = [REGIONS[r]["name"] for r in REGIONS if not summ.get(r, {}).get("publish")]
     lines += [""]
     if rk:
@@ -53,7 +64,8 @@ def current():
 
 def regional():
     eng, summ, st = load("data/region_engine.json"), load("results_region/summary.json") or {}, load("results_region/engine_study.json")
-    seoul_acc = load("results_zone/map_data.json")["regions"]["서울"]["acc"]
+    m = load("results_zone/map_data.json")
+    seoul_acc, ym = m["regions"]["서울"]["acc"], seoul_month(m)
     if not eng:
         return ["**지역 엔진**: 아직 고정 전이라 서울과 같은 엔진을 써요."]
     kind = "임시" if eng.get("provisional") else "최종"
@@ -76,7 +88,7 @@ def regional():
     for r, lo in rows:
         x, b = summ.get(r, {}), base.get(r, {}).get("base", {})
         score = x.get("score") if x.get("publish") else None  # 공개 기준을 못 넘은 지역은 점수를 쓰지 않는다
-        lines.append(f"| {REGIONS[r]['name']} | {f1(score)} | {f2(lo.get('acc'))} | {f2(lo.get('win_median'))} | {f2(lo.get('recent'))} | "
+        lines.append(f"| {REGIONS[r]['name']} | {f1(score)}{old(x, ym) if score is not None else ''} | {f2(lo.get('acc'))} | {f2(lo.get('win_median'))} | {f2(lo.get('recent'))} | "
                      f"{f2(b.get('acc'))} / {f2(b.get('win_median'))} | {f2(x.get('acc_seoul'))} | {'공개' if x.get('publish') else '검증 중'} |")
     for why, rest in (("엔진 확정 대기", [REGIONS[r]["name"] for r in REGIONS if r not in loro and r in summ]),
                       ("실거래 받는 중", [REGIONS[r]["name"] for r in REGIONS if r not in loro and r not in summ])):

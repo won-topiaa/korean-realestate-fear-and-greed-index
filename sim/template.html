@@ -233,9 +233,11 @@ const eok = (v) => (v >= 10000 ? (+(v / 10000).toFixed(v >= 100000 ? 1 : 2)) + "
 const pctS = (x) => (x >= 0 ? "+" : "−") + Math.abs(x * 100).toFixed(1) + "%";
 const pyeong = (m2) => Math.round((m2 * 1.33) / 3.3058);
 const f0 = (v) => (v == null ? "–" : v.toFixed(0));  // 빈 달이면 '–'
-const fgName = (v) => (v == null ? "자료 없음" : v < 25 ? "극단적 공포" : v < 45 ? "공포" : v < 55 ? "중립" : v < 75 ? "탐욕" : "극단적 탐욕");
+// 구간은 화면에 보이는 정수 점수(f0)로 정한다 (44.8 → '45 · 중립', 범례 45~55와 맞게)
+const fgBand = (v) => { const r = Math.round(v); return r < 25 ? 0 : r < 45 ? 1 : r < 55 ? 2 : r < 75 ? 3 : 4; };
+const fgName = (v) => (v == null ? "자료 없음" : ["극단적 공포", "공포", "중립", "탐욕", "극단적 탐욕"][fgBand(v)]);
 const josa = (w, a, b) => { const c = w.charCodeAt(w.length - 1) - 0xac00; return w + (c >= 0 && c < 11172 && c % 28 ? a : b); };
-const fgColor = (v) => (v == null ? "var(--grid)" : v < 25 ? "var(--fear)" : v < 45 ? "color-mix(in srgb, var(--fear) 45%, var(--surface))" : v < 55 ? "color-mix(in srgb, var(--neutral) 45%, var(--surface))" : v < 75 ? "color-mix(in srgb, var(--greed) 45%, var(--surface))" : "var(--greed)");
+const fgColor = (v) => (v == null ? "var(--grid)" : ["var(--fear)", "color-mix(in srgb, var(--fear) 45%, var(--surface))", "color-mix(in srgb, var(--neutral) 45%, var(--surface))", "color-mix(in srgb, var(--greed) 45%, var(--surface))", "var(--greed)"][fgBand(v)]);
 
 /* ---------- 검색 (단지 검색과 같은 방식) ---------- */
 const CHO = "ㄱㄲㄴㄷㄸㄹㅁㅂㅃㅅㅆㅇㅈㅉㅊㅋㅌㅍㅎ";

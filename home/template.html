@@ -57,6 +57,7 @@ p { margin: 0; }
 .pin:hover, .pin.hot { background: var(--ink); color: var(--surface); }
 .pin:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
 .pin.small { padding: 1px 6px 2px; } .pin.small .v { font-size: 15px; }
+.pin .m { font-size: 10.5px; font-weight: 500; opacity: 0.75; white-space: nowrap; }  /* 지난 달 결과를 보여 줄 때 그 달 */
 .tag { position: absolute; transform: translate(-50%, -50%); font-size: 11.5px; color: var(--muted); pointer-events: none; white-space: nowrap; }
 .tag.wait { color: var(--ink-2); font-weight: 600; background: var(--surface); border: 1px dashed var(--muted); border-radius: 6px; padding: 0 5px; }
 .legend { display: flex; gap: 6px 16px; flex-wrap: wrap; font-size: 13px; color: var(--ink-2); align-items: center; }
@@ -140,12 +141,15 @@ function H(tag, attrs, parent, text) {
 }
 // 예전 주소(서울 지도가 첫 화면이던 때의 #강남구 같은 주소)는 서울 페이지로 보낸다
 try { const h = decodeURIComponent(location.hash.slice(1)); if (h && D.seoul_names.includes(h)) location.replace("seoul/#" + encodeURIComponent(h)); } catch (e) {}
-const zoneName = (v) => (v < 25 ? "극단적 공포" : v < 45 ? "공포" : v < 55 ? "중립" : v < 75 ? "탐욕" : "극단적 탐욕");
-const side = (v) => (v < 45 ? "var(--fear)" : v < 55 ? "var(--neutral)" : "var(--greed)");
+// 구간은 화면에 보이는 반올림 점수로 정한다 (44.8 → '45 · 중립', 범례 45~55와 맞게). 막대 위치는 원래 값 그대로
+const bandIdx = (v) => { const r = Math.round(v); return r < 25 ? 0 : r < 45 ? 1 : r < 55 ? 2 : r < 75 ? 3 : 4; };
+const zoneName = (v) => ["극단적 공포", "공포", "중립", "탐욕", "극단적 탐욕"][bandIdx(v)];
+const side = (v) => ["var(--fear)", "var(--fear)", "var(--neutral)", "var(--greed)", "var(--greed)"][bandIdx(v)];
 const ym = (s) => s.slice(0, 4) + "년 " + String(+s.slice(5, 7)) + "월";
+const old = (r) => (r.month && r.month !== D.month ? `${ym(r.month)} 점수` : "");  // 지역 계산이 실패해 지난 결과를 보여 주는 달
 // 지수가 있는 지역 색: 구간 색(공포 파랑·중립 회색·탐욕 빨강)을 최소 45% 섞어, 중립이어도 빈 지역보다 진하게
 function fill(v) {
-  const base = v < 45 ? "var(--fear)" : v < 55 ? "var(--neutral)" : "var(--greed)", p = 45 + Math.min(45, (Math.abs(v - 50) / 40) * 45);
+  const base = side(v), p = 45 + Math.min(45, (Math.abs(v - 50) / 40) * 45);
   return `color-mix(in oklab, ${base} ${p.toFixed(0)}%, var(--surface))`;
 }
 const g = D.map, live = D.regions.filter((r) => r.status === "live"), wait = D.regions.filter((r) => r.status === "wait");
@@ -181,7 +185,7 @@ function drawProv(parent, name, scaled) {
   path.style.fill = fill(r.score);
   path.setAttribute("tabindex", scaled ? "-1" : "0");
   path.setAttribute("role", "link");
-  path.setAttribute("aria-label", `${r.name} ${Math.round(r.score)}점 ${zoneName(r.score)}, 눌러서 자세히 보기`);
+  path.setAttribute("aria-label", `${r.name} ${Math.round(r.score)}점 ${zoneName(r.score)}${old(r) ? ` (${old(r)})` : ""}, 눌러서 자세히 보기`);
   const go = () => (location.href = r.url);
   path.addEventListener("click", go);
   path.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); go(); } });
@@ -189,7 +193,7 @@ function drawProv(parent, name, scaled) {
     hot(r.id, true);
     tip.replaceChildren();
     H("b", {}, tip, `${r.name} ${Math.round(r.score)} · ${zoneName(r.score)}`);
-    tip.append(" — 눌러서 자세히");
+    tip.append((old(r) ? ` (${old(r)})` : "") + " — 눌러서 자세히");
     Object.assign(tip.style, at(labelAt(name)));
     tip.hidden = false;
   });
@@ -214,6 +218,7 @@ Object.entries(g.provinces).forEach(([name, p]) => {
     Object.assign(a.style, at(q));
     H("span", { class: "n" }, a, name);
     H("span", { class: "v" }, a, String(Math.round(r.score)));
+    if (old(r)) H("span", { class: "m" }, a, old(r));
     a.style.borderColor = side(r.score);
     a.addEventListener("mouseenter", () => hot(r.id, true));
     a.addEventListener("mouseleave", () => hot(r.id, false));
@@ -245,8 +250,7 @@ live.slice().sort((a, b) => b.score - a.score).forEach((r) => {
   H("u", { style: `left:${Math.max(1, Math.min(99, r.score))}%` }, bar);
   const meta = H("div", { class: "meta" }, c);
   const d = r.prev == null ? null : r.score - r.prev;
-  const old = r.month && r.month !== D.month ? `${ym(r.month)} 점수 · ` : "";  // 지역 계산이 실패해 지난 결과를 보여 주는 달
-  H("span", {}, meta, old + (d == null ? "" : `지난달 ${Math.round(r.prev)}에서 ${d >= 0 ? "▲" : "▼"} ${Math.abs(Math.round(d))} · `) + `정확도 ${r.acc.toFixed(2)}`);
+  H("span", {}, meta, (old(r) ? old(r) + " · " : "") + (d == null ? "" : `지난달 ${Math.round(r.prev)}에서 ${d >= 0 ? "▲" : "▼"} ${Math.abs(Math.round(d))} · `) + `정확도 ${r.acc.toFixed(2)}`);
   H("span", { class: "go" }, meta, "자세히 →");
   c.addEventListener("mouseenter", () => hot(r.id, true));
   c.addEventListener("mouseleave", () => hot(r.id, false));

@@ -358,8 +358,10 @@ const TOP = D.top || "서울", TOPF = D.top_full || "서울 전체", SUBW = D.su
 const N = D.dates.length;
 const BANDS = [[0, 25, "극단적 공포", "var(--band-fear-strong)"], [25, 45, "공포", "var(--band-fear-soft)"], [45, 55, "중립", "var(--band-neutral)"], [55, 75, "탐욕", "var(--band-greed-soft)"], [75, 100, "극단적 탐욕", "var(--band-greed-strong)"]];
 const LABEL_POS = { 도심권: [450, 372], 서북권: [296, 258], 동북권: [560, 205], 서남권: [236, 470], 동남권: [612, 498] };
-const zoneName = (v) => (v < 25 ? "극단적 공포" : v < 45 ? "공포" : v < 55 ? "중립" : v < 75 ? "탐욕" : "극단적 탐욕");
-const side = (v) => (v < 45 ? "var(--fear)" : v < 55 ? "var(--neutral)" : "var(--greed)");
+// 구간은 화면에 보이는 반올림 점수로 정한다 (44.8 → '45 · 중립', 범례 45~55와 맞게). 바늘·막대 위치는 원래 값 그대로
+const bandIdx = (v) => { const r = Math.round(v); return r < 25 ? 0 : r < 45 ? 1 : r < 55 ? 2 : r < 75 ? 3 : 4; };
+const zoneName = (v) => (v == null ? "자료 없음" : BANDS[bandIdx(v)][2]);
+const side = (v) => (v == null ? "var(--neutral)" : ["var(--fear)", "var(--fear)", "var(--neutral)", "var(--greed)", "var(--greed)"][bandIdx(v)]);
 const ym = (s) => s.slice(0, 4) + "년 " + String(+s.slice(5, 7)) + "월";
 (() => {  // 첫 화면: 가장 최근 달 서울 점수
   const el = document.getElementById("hero-now"), R = D.regions[TOP], i = D.dates.length - 1, v = R.score[i], pv = R.score[i - 1];
@@ -543,7 +545,7 @@ function history_(el, R) {
 function renderRead() {
   const R = D.regions[state.region], t = state.t, el = $("#read");
   el.replaceChildren();
-  const [v, ti] = lastValid(R.score, t);
+  const v = R.score[t];  // 고른 달 값만 (비어 있으면 지난 달 값을 끌어오지 않고 '자료 없음')
   const isSeoul = state.region === TOP;  // 이 페이지의 맨 위 지역 (서울 페이지에서는 서울)
   H("div", { class: "eyebrow" }, el, isSeoul ? `${TOPF} · ${ym(D.dates[t])}` : `${state.region} · ${ym(D.dates[t])}`);
   if (R.level === "gu") H("p", { style: "font-size:13px;color:var(--ink-2);margin-top:-10px" }, el, `${R.zone ? R.zone + " · " : ""}${D.n_votes}표 중 ${R.own_votes}표가 이 ${SUBW} 값`);
@@ -551,7 +553,7 @@ function renderRead() {
   else H("p", { style: "font-size:13px;color:var(--ink-2);margin-top:-10px" }, el, `${TOPF} 지표 ${D.n_ind}개(같은 출처끼리 묶어 ${D.n_votes}표)로 계산한 ${D.version} 지수`);
   const row = H("div", { class: "row" }, el);
   H("span", { class: "hero-num" }, row, v == null ? "–" : String(Math.round(v)));
-  if (v != null) H("span", { class: "zone-chip" }, row, zoneName(v));
+  H("span", { class: "zone-chip" }, row, zoneName(v));
   const p3 = t >= 3 ? R.score[t - 3] : null;
   if (v != null && p3 != null) { const dd = v - p3; H("span", { class: "delta" }, row, `3개월 전보다 ${dd >= 0 ? "▲" : "▼"} ${Math.abs(dd).toFixed(1)}`); }
   const gg = H("div", { class: "gauge", role: "img", "aria-label": v == null ? "값 없음" : `${Math.round(v)}, ${zoneName(v)}` }, el);
@@ -773,7 +775,7 @@ function setGauge(g, v, label) {
   const deg = has ? (v / 100) * 180 - 90 : -90;
   g.needle.style.transform = `rotate(${deg}deg)`;
   g.needle.style.opacity = has ? 1 : 0.2;
-  const bi = has ? BANDS.findIndex(([a, b]) => v >= a && (v < b || b === 100)) : -1;
+  const bi = has ? bandIdx(v) : -1;
   g.arcs.forEach((p, i) => (p.style.opacity = i === bi ? BAND_STYLE[i][1] : 0.18));
   g.num.textContent = has ? String(Math.round(v)) : "–";
   if (g.zl) g.zl.textContent = has ? zoneName(v) : "자료 없음";
