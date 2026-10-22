@@ -35,3 +35,6 @@ results_region/region_failed.md
 # 공공판 시험용 원자료 (KOSIS·HOUSTAT, 올릴지 정하기 전까지 로컬에만)
 data/raw/kosis/
 data/raw/houstat/
+
+# Claude Code 작업 폴더 (에이전트 작업 사본 등)
+.claude/
