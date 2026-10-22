@@ -3,6 +3,7 @@
 모든 지표는 '값이 클수록 탐욕'이 되도록 부호를 맞춘다. 미래 정보가 섞이지 않게
 발표 시차가 있는 자료(BIS 가계신용)는 뒤로 미룬다.
 """
+import datetime as dt
 import json
 from pathlib import Path
 
@@ -78,8 +79,16 @@ def kb_supply(name):
     return s.groupby(level=0).sum().reindex(full, fill_value=0.0)
 
 
+def finished(df, path):
+    """파일을 쓴 달과 그 뒤 달은 버린다: 그때 아직 안 끝난 달이라 중간 값이다 (v3.5 전에 받은 파일, 받기가 실패해 지난 파일을 쓸 때).
+    받는 쪽(fetch_*·update_pipeline)도 이번 달을 버리지만, 지난 파일이 남으면 그 달 중간 값이 다음 기준월 값으로 쓰여 점검(freshness)도 못 잡음."""
+    cut = pd.Timestamp(dt.datetime.fromtimestamp(path.stat().st_mtime)).to_period("M").to_timestamp()
+    return df[df.index < cut]
+
+
 def trend(kw):
-    df = pd.read_csv(RAW / "trends" / f"{kw}.csv", parse_dates=[0], index_col=0)
+    path = RAW / "trends" / f"{kw}.csv"
+    df = finished(pd.read_csv(path, parse_dates=[0], index_col=0), path)
     return df.iloc[:, 0].astype(float)
 
 
@@ -128,9 +137,9 @@ META = {
     # 자금
     "자금_기준금리수준": ("한국은행 기준금리 수준 (부호 반대: 낮을수록 탐욕) — 사용자 원안 '기준금리'", "자금", "후행", "거시정책", "금융기관", "금융", "", "기준금리"),
     "자금_기준금리변화": ("한국은행 기준금리 6개월 변화 (부호 반대)", "자금", "선행", "거시정책", "금융기관", "금융", "", "기준금리"),
-    "자금_주담대금리변화": ("예금은행 주택담보대출 금리(신규취급액) 6개월 변화 (부호 반대, 2개월 늦춤)", "자금", "선행", "거시정책", "금융기관", "금융", "", ""),
+    "자금_주담대금리변화": ("예금은행 주택담보대출 금리(신규취급액) 6개월 변화 (부호 반대, 다음 달 말 공개라 1개월 늦춤)", "자금", "선행", "거시정책", "금융기관", "금융", "", ""),
     "자금_국고채10년변화": ("국고채 10년 금리 6개월 변화 (부호 반대, 한국은행)", "자금", "선행", "금융시장", "금융기관", "금융", "", ""),
-    "자금_가계신용증가": ("가계신용/명목 GDP 4분기 변화 (한국은행, 분기 끝 3개월 뒤 반영)", "자금", "후행", "거시정책", "금융기관", "금융", "", ""),
+    "자금_가계신용증가": ("가계신용/명목 GDP 4분기 변화 (한국은행, 분기 끝 2개월 뒤 반영)", "자금", "후행", "거시정책", "금융기관", "금융", "", ""),
     # 가격 부담 (밸류에이션)
     "부담_PIR": ("서울 PIR (중위주택/중위소득)", "가격부담", "후행", "가격실측", "시장전체", "매매", "", ""),
     "부담_구매력역수": ("KB 주택구매력지수 서울 아파트 (부호 반대)", "가격부담", "후행", "가격실측", "시장전체", "매매", "", ""),
@@ -183,7 +192,7 @@ def build():
     ind["자금_국고채10년변화"] = -ecos("국고채10년").diff(6)
     ind["자금_주담대금리변화"] = lag(-ecos("주담대금리").diff(6), 1)  # 신규취급액 금리는 다음 달 말 공개 → 기준월 t 발표(t+1월 20일)엔 t−1월까지
     hh = ecos("가계신용") / ecos("명목GDP").rolling(4).sum() * 100  # 가계신용 / 최근 4분기 명목 GDP (%)
-    hh_m = hh.diff(4).resample("MS").ffill()
+    hh_m = hh.diff(4).dropna().resample("MS").ffill()  # 가계신용만 나오고 GDP가 아직이면 그 분기는 빈 값 → 지난 분기를 새 값처럼 펼치지 않게 버림
     hh_m.index = hh_m.index + pd.DateOffset(months=4)  # 분기 끝 + 2개월 기준월부터 (가계신용 8월 하순, 명목 GDP 9월 초 공개 → 2분기는 8월 점수(9월 20일 발표)부터)
     ind["자금_가계신용증가"] = hh_m
     ind["설문_주택가격전망CSI"] = ecos("주택가격전망CSI")  # 보조 지표 (2013~), 시차는 timing.py
@@ -205,7 +214,8 @@ def build():
         movein = kb_supply("입주물량")
         ind["공급_향후입주역수"] = -np.log1p(movein[::-1].rolling(12).sum()[::-1].shift(-1))
 
-    st = pd.read_csv(RAW / "market" / "stocks_monthly.csv", index_col=0, parse_dates=True)
+    sp = RAW / "market" / "stocks_monthly.csv"
+    st = finished(pd.read_csv(sp, index_col=0, parse_dates=True), sp)
     names = [c for c in st.columns if c != "KOSPI"]
     basket = np.log(st[names]).diff().mean(axis=1, skipna=True)  # 동일가중 월수익률
     ind["시장_건설주모멘텀"] = basket.rolling(6).sum()
@@ -216,8 +226,11 @@ def build():
     import timing
     raw = pd.DataFrame(ind).sort_index()
     label = p.last_valid_index()  # 기준월 = KB 매매지수 최신 달
-    # 발표가 늦는 지표는 최근 값으로 최대 3개월 이어 붙임 (실시간 운영과 동일)
+    # 발표가 늦는 지표는 최근 값으로 최대 3개월 이어 붙임 (실시간 운영과 동일). 분기 자료(timing.SLOW_FFILL)는 fill_slow가 따로
+    # (예전엔 여기서 3개월 + fill_slow 5개월 = 8개월까지 이어 썼음)
+    slow = [c for c in raw.columns if c in timing.SLOW_FFILL]
     df = raw.ffill(limit=3)
+    df[slow] = raw[slow]
     df = df[df.index >= "2000-01-01"]
     df.index.name = "date"
     extra = ROOT / "data" / "indicators_extra.csv"

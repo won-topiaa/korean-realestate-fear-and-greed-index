@@ -4,7 +4,7 @@
 그룹 점수: 소속 지표 점수의 단순 평균 (사용 가능한 지표만).
 정답(실제 시장 변화): KB 서울 아파트 매매지수
   - 동행: t-3 → t+3 변화 (지금 시장이 달아올랐는지)
-  - 선행: t → t+6, t → t+12 변화 (앞으로 오르는지)
+  - 선행: 점수를 발표한 달(t+1, timing.PUB_OFFSET)부터 6·12개월 변화 (앞으로 오르는지)
 평가: 스피어만 순위상관(IC). 학습 2006~2016 / 검증 2017~ 로 나눠 안정성 확인.
 """
 import itertools
@@ -94,7 +94,7 @@ def load():
     lp = np.log(price)
     targets = pd.DataFrame({
         "동행": lp.shift(-3) - lp.shift(3),
-        "선행6": lp.shift(-6) - lp,
+        "선행6": timing.fwd(price, 6),  # 발표한 달부터 (선행12와 같게)
         "선행12": timing.fwd(price),  # 발표한 달부터 (timing.PUB_OFFSET)
     })
     mom = (lp - lp.shift(3))  # 통제용 과거 3개월 가격 변화
@@ -220,7 +220,8 @@ def turning_points(price, span=12, min_move=0.05):
 
 
 def best_lag(score, price, lags=range(-6, 19)):
-    """점수(t)와 '6개월 가격 변화(t+k-6 → t+k)'의 상관이 가장 큰 k = 점수가 시장을 몇 개월 앞서는지."""
+    """점수(t)와 '6개월 가격 변화(t+k-6 → t+k)'의 상관이 가장 큰 k = 점수가 시장을 몇 개월 앞서는지 (기준월 기준).
+    발표한 달 기준으로 말하려면 timing.PUB_OFFSET을 뺀다 (기준월 t 점수는 t+1월에 발표)."""
     lp = np.log(price)
     d6 = lp - lp.shift(6)
     m = window_mask(score.index, FULL)
@@ -244,13 +245,15 @@ def main():
         s = composite(scores, mem)
         r = evaluate(s, targets, mom)
         r.update({"분류방식": scheme, "그룹": name, "지표수": len(mem), "지표": ", ".join(mem)})
-        r["선행시차_개월"], r["선행시차_IC"] = best_lag(s, price)
+        k, r["선행시차_IC"] = best_lag(s, price)
+        r["선행시차_개월"] = k - timing.PUB_OFFSET  # 발표한 달 기준
         rows.append(r)
         series[f"{scheme}|{name}"] = s
     for name, s in scheme_indices(scores, meta, cands).items():
         r = evaluate(s, targets, mom)
         r.update({"분류방식": "분류방식 전체지수", "그룹": name, "지표수": 31, "지표": ""})
-        r["선행시차_개월"], r["선행시차_IC"] = best_lag(s, price)
+        k, r["선행시차_IC"] = best_lag(s, price)
+        r["선행시차_개월"] = k - timing.PUB_OFFSET  # 발표한 달 기준
         rows.append(r)
         series[f"분류방식 전체지수|{name}"] = s
     res = pd.DataFrame(rows)

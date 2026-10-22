@@ -6,7 +6,7 @@ B1  추세 제거(강): 경고 2개 이상 지표는 '5년 평균 대비 편차'
 B2  추세 제거(넓게): 경고 1개 이상 지표 전부
 C   고정 구성: 2009년까지 시작한 지표만 사용 (시대마다 구성이 같도록)
 D   주제 균등: 지표 → 주제 → 속도 그룹 순으로 평균 (지표가 많은 주제가 그룹을 장악하지 않도록)
-E   성과 가중: 주제별 가중치를 직전 7년 성적(12개월 뒤에야 알 수 있는 정보만)으로 정하고 동일가중과 반반 섞음
+E   성과 가중: 주제별 가중치를 직전 7년 성적(그때 이미 결과가 나온 달만: 발표 1개월 + 12개월 + 가격 공개 1개월)으로 정하고 동일가중과 반반 섞음
 W60 점수화 기간 60개월
 """
 import numpy as np
@@ -35,12 +35,9 @@ TREND_KW = {"관심_아파트": ["아파트"], "관심_부동산": ["부동산"]
 
 
 def search_mask():
-    m = pd.DataFrame(True, index=raw0.index, columns=list(TREND_KW))
-    for c, kws in TREND_KW.items():
-        vol = sum(pd.read_csv(bt.ROOT / "data" / "raw" / "trends" / f"{k}.csv", index_col=0, parse_dates=True).iloc[:, 0] for k in kws)
-        ok = vol.rolling(24).mean() >= 5
-        m[c] = ok.reindex(raw0.index).fillna(False)
-    return m
+    """v3와 같은 판정 (그달까지의 최고점으로 다시 맞춘 검색량, v3.4). 예전엔 전체 기간 최고점 기준이라 나중 값이 섞였음."""
+    import v3
+    return v3.search_ok(raw0.index)[list(TREND_KW)]
 
 
 def prepare(search=False, detrend=None, fixed=False, window=120):
@@ -71,7 +68,7 @@ def theme_within_speed(sc, me):
     return pd.concat(groups, axis=1).mean(axis=1)
 
 
-def adaptive(sc, me, y, lookback=84, gap=12, shrink=0.5):
+def adaptive(sc, me, y, lookback=84, gap=12 + timing.PUB_OFFSET + 1, shrink=0.5):
     themes = {t: bt.composite(sc, me.index[me["주제"] == t]) for t in me["주제"].unique()}
     T = pd.DataFrame(themes)
     out = pd.Series(np.nan, index=T.index)
@@ -80,7 +77,7 @@ def adaptive(sc, me, y, lookback=84, gap=12, shrink=0.5):
         if avail.empty:
             continue
         w_eq = pd.Series(1 / len(avail), index=avail.index)
-        lo, hi = max(0, i - gap - lookback), i - gap  # 12개월 뒤에야 결과를 아는 구간만
+        lo, hi = max(0, i - gap - lookback), i - gap  # 결과를 아는 구간만: 정답이 발표한 달부터 12개월이고 그 마지막 달 가격은 한 달 뒤에야 나옴
         w = w_eq
         if hi - lo >= 36:
             ics = {}

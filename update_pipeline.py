@@ -229,6 +229,14 @@ def refresh_reb(workers=4):
     return f"부동산원 {len(jobs) - len(errors)}/{len(jobs)}개 시계열 갱신 · 거래량 최신 {last}" + (f" · 실패 예: {errors[0]}" if errors else "")
 
 
+def molit_needed(failed):
+    """못 받은 달 중 이번 기준월 점수의 실거래 표(신고가·급락 = 기준월 직전 3개월, 신고 기한만큼 1개월 늦춤)에 쓰는 달."""
+    import pandas as pd
+    import timing
+    cut = f"{timing.expected_label(dt.date.today()) - pd.DateOffset(months=1):%Y%m}"
+    return sorted(ym for ym in failed if ym <= cut)
+
+
 def refresh_molit(back=4):
     """최근 몇 달은 늦은 신고·해제가 반영되므로 다시 받는다."""
     import molit_fetch as M
@@ -262,6 +270,8 @@ def refresh_molit(back=4):
     msg = f"실거래 {start}~{end}: {len(complete)}개월 갱신 ({n}회 호출) · 저장소 {total:,}건"
     if failed:
         msg += f" · 일부 실패로 지난 자료 유지: {', '.join(sorted(failed))} (예: {next(iter(failed.values()))[0]})"
+    if molit_needed(failed):  # 받은 달은 저장했지만 이번 점수에 쓰는 달이 빠졌으면 실패로 (예전엔 '완료'로 넘어가 덜 들어온 달 값이 기록에 굳었음)
+        raise RuntimeError(msg + f" · 이번 기준월 점수에 쓰는 달 실패: {', '.join(molit_needed(failed))}")
     return msg
 
 
@@ -310,6 +320,8 @@ def refresh_molit_regions(back=4):
     msg = f"지역 실거래 {start}~{end}: {len(complete)}개월 갱신 ({n}회 호출, {len(rids)}개 지역) · 저장소 {total:,}건"
     if failed:
         msg += f" · 일부 실패로 지난 자료 유지: {', '.join(sorted(failed))}"
+    if molit_needed(failed):  # 서울과 같은 규칙: 이번 점수에 쓰는 달이 빠졌으면 실패로 (다시 받게)
+        raise RuntimeError(msg + f" · 이번 기준월 점수에 쓰는 달 실패: {', '.join(molit_needed(failed))}")
     return msg
 
 
@@ -397,7 +409,9 @@ def check_and_summarize():
     stale = [v for v, comp in zip(vm.index, vm["구성"]) if any(c in stale_cols for c in comp.split(", "))]
     if stale:
         log(f"알림: 최신 자료가 아직 안 들어와 지난 값을 이어 쓴 표 {stale} (" + ", ".join(f"{c} {fr[c]['last']}<{fr[c]['need']}" for c in sorted(stale_cols)) + ")")
-    failed = [s["step"] for s in STATUS if s["step"] in VOTE_SOURCES and not s["ok"]]
+    # 갈래 프로세스가 결과 없이 끝났으면(예: 메모리 부족) 그 갈래의 자료처도 실패로 (예전엔 '{갈래} 갈래' 이름이라 빠졌음)
+    vote_groups = {f"{g} 갈래" for g, steps in FETCH_GROUPS.items() if any(n in VOTE_SOURCES for n, _ in steps)}
+    failed = [s["step"] for s in STATUS if (s["step"] in VOTE_SOURCES or s["step"] in vote_groups) and not s["ok"]]
     if latest < expected:
         log(f"알림: 기준월 {latest}이 나와야 할 달({expected})보다 이르러요. KB 월간 자료가 아직 안 들어왔을 수 있어요.")
     hist_path = ROOT / "results_zone/update_history.csv"
@@ -538,8 +552,10 @@ def main():
     today = dt.date.today()
     official = (bool(os.environ.get("CI") or a.record) and FETCHED and today.day >= timing_day("UPDATE_DAY")
                 and s["latest_month"] >= s["expected_month"] and (s["complete"] or today.day >= timing_day("LAST_TRY_DAY")))
+    unrecorded = []  # 공식 실행인데 발표값을 기록에 못 남긴 곳 → '완료'로 치지 않아 다음 시도에서 다시 (이미 남은 줄은 다시 쓰지 않음)
     if official:
-        step("실시간 기록", lambda: run_script("live_track.py"))
+        if not step("실시간 기록", lambda: run_script("live_track.py")):
+            unrecorded.append("서울")
     else:
         log("실시간 기록: 건너뜀 (" + ("로컬 실행 — 기록하려면 --record" if not (os.environ.get("CI") or a.record) else
                                      "자료를 받지 않은 재계산" if not FETCHED else "갱신일 전이거나 자료가 다 안 들어옴 — 다음 시도에서") + ")")
@@ -566,8 +582,14 @@ def main():
                 note.write_text(note.read_text() + f"\n**다만 그 뒤 `{rel}` 단계가 실패해 지역 페이지에는 아직 반영하지 못했어요.** "
                                 "다음 월간 갱신에서 고정한 엔진으로 다시 계산해요.\n")
             break
-    if region_ok and official:
-        step("실시간 기록 (지역)", lambda: run_script("live_track.py --regions"))
+    if official and not (region_ok and step("실시간 기록 (지역)", lambda: run_script("live_track.py --regions"))):
+        unrecorded.append("수도권·광역시")  # 지역 계산이 실패했거나 기록이 실패함 (예전엔 서울만 보고 '완료'라 그 달 지역 기록이 영영 빠졌음)
+    if unrecorded:
+        sp = ROOT / "results_zone/update_summary.json"
+        summ = json.loads(sp.read_text())
+        summ.update({"complete": False, "unrecorded": unrecorded})
+        sp.write_text(json.dumps(summ, ensure_ascii=False, indent=1))
+        log(f"알림: 실시간 기록을 못 남김 ({', '.join(unrecorded)}) — 이번 실행은 '완료'로 치지 않아 다음 시도에서 다시 남겨요")
     # 단지 검색·신고가·모의 투자는 지역 결과(점수·공개 여부)를 읽으므로 지역 계산 뒤에 (예전엔 앞에 돌아 지난 결과를 썼음)
     # 새로 들어온 지역의 단지 점수 고정값(층 효과·면적 탄력성)을 먼저 한 번 고른다 (셋이 같은 값을 쓰게)
     step("계산 apt_region_study.py --missing", lambda: run_script("apt_region_study.py --missing"))

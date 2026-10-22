@@ -5,6 +5,7 @@ import numpy as np
 import pandas as pd
 
 import backtest as bt
+import timing
 
 P3 = [("2006-01-01", "2012-12-01", "2006–12"), ("2013-01-01", "2019-12-01", "2013–19"), ("2020-01-01", "2026-12-01", "2020–26")]
 NOT_REALTIME = ("공급_분양물량", "공급_향후입주역수")
@@ -144,6 +145,6 @@ snaps = [{"date": d, "v2": r3(v2_now.get(pd.Timestamp(d + "-01"))), "fwd12": r3(
 out = {"series": series, "tps": tps, "schemes": schemes, "variants": variants, "themes": themes, "singles": singles,
        "buckets": buckets, "overfit": overfit, "now": now, "quality": quality, "snaps": snaps,
        "n_all": int(len(meta)), "n_v2": int(len(D)), "n_trades": 1411886,
-       "lag": int(bt.best_lag(v2, price)[0])}
+       "lag": int(bt.best_lag(v2, price)[0]) - timing.PUB_OFFSET}  # 발표한 달 기준
 json.dump(out, open(bt.ROOT / "results_v2" / "report_data.json", "w"), ensure_ascii=False)
 print(json.dumps({k: v for k, v in out.items() if k not in ("series",)}, ensure_ascii=False)[:6000])

@@ -92,7 +92,7 @@ def high_low(df, high_window_days=1095, drop_gap_months=24):
     dr = (d["price"] < 0.9 * prev_p).where(has_drop)
     m = pd.DataFrame({"date": d["date"], "hi": hi.astype(float), "dr": dr.astype(float)})
     out = m.groupby("date")[["hi", "dr"]].mean()
-    # 거래가 없는 달도 빈 값으로 둔다 (부르는 쪽의 3개월 평균·2개월 늦춤이 줄 수가 아니라 달력 기준이 되게)
+    # 거래가 없는 달도 빈 값으로 둔다 (부르는 쪽의 3개월 평균·신고 기한 늦춤이 줄 수가 아니라 달력 기준이 되게)
     out = out.reindex(pd.date_range(out.index.min(), out.index.max(), freq="MS"))
     return out["hi"], out["dr"], df.groupby("date").size()
 

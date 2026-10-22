@@ -191,7 +191,9 @@ if __name__ == "__main__":
               f"| 기본 {r['base']['acc']:.2f}/{r['base']['win_median']:.2f}")
     print(f"  평균 목표: 고른 엔진 {np.mean([r['obj'] for r in loro.values()]):.3f} · 기본 {np.mean([r['base']['obj'] for r in loro.values()]):.3f}")
 
-    TRAIN_END = SPLIT - pd.DateOffset(months=12)  # 이후 12개월 가격이 2019년 전에 끝나는 달까지만 고르고 배운다
+    # 정답(발표한 달부터 12개월)이 2019년 전에 끝나는 달까지만 고르고 배운다: 기준월 t의 정답은 t+13월 가격까지 씀
+    # (예전엔 12개월만 빼서 2017년 12월의 정답이 2019년 1월 가격까지 갔음)
+    TRAIN_END = SPLIT - pd.DateOffset(months=12 + timing.PUB_OFFSET)
     cfg_t, _ = best(regions, OFF, TRAIN_END)
     per = {n: {"pick": run(cfg_t, n, regions, SPLIT, wb=TRAIN_END), "base": run(base, n, regions, SPLIT)} for n in regions}
     print(f"\n[기간 검증: 2011~2017년(이후 12개월이 2019년 전에 끝나는 달)으로 고른 엔진 = {cfg_t['name']} · 2019년~ 정확도]")
@@ -219,6 +221,8 @@ if __name__ == "__main__":
                # --refit으로 다시 고를 때도 임시 엔진의 시험 성적(미리 정한 기록)은 그대로 둔다
                "previous": {"name": old["name"], "chosen": old["chosen"], "regions": old["regions"], "holdout": holdout} if holdout
                else (old or {}).get("previous")}
+        if (old or {}).get("extra"):  # 대구 공급 보정(region_supply.py)은 한 번 정해 고정: 엔진을 다시 골라도 그대로 잇는다 (예전엔 조용히 빠졌음)
+            eng["extra"] = old["extra"]
         dump(eng, EP)
         print(f"{'임시' if provisional else '최종'} 엔진 저장: data/region_engine.json · 공개", [h for h, v in pub.items() if v])
         lines = [f"## 지역 엔진 {'임시 ' if provisional else ''}고정: {final['name']}", "", f"- 지역 {len(regions)}곳, 엔진 후보 {len(CONFIGS)}개, 목표 {obj:.3f}",
@@ -245,11 +249,13 @@ if __name__ == "__main__":
     # 교차검증은 지역만 빼고 같은 기간으로 비중을 배우므로, 이 값이 시간상 정직한 성적에 더 가깝다 (지역 페이지에 함께 적음)
     fixed = json.loads(EP.read_text()) if EP.exists() else None
     honest = {n: run(fixed, n, regions, SPLIT, wb=TRAIN_END) for n in regions} if fixed else {}
+    # 공급 보정 지역은 보정 없이 잰 같은 성적도 남긴다 (지역 페이지의 '보정 전 → 후' 숫자)
+    honest_base = {n: run({**fixed, "extra": {}}, n, regions, SPLIT, wb=TRAIN_END) for n in (fixed or {}).get("extra") or {}} if fixed else {}
     # 고정 엔진을 지금 정답(발표한 달부터 12개월)으로, 그 지역만 빼고 비중을 배워 잰 성적 (지역 페이지 표시용. 공개 여부는 고정할 때 정한 그대로)
     fixed_loro = {n: run(fixed, n, regions) for n in regions} if fixed else {}
     if honest:
         print("\n[시간까지 나눈 점검: 고정 엔진, 2018년까지 배운 비중 → 2019년~]")
         print("  ", {n: f"{h['acc']:.2f} / 5년 중앙 {h['win_median']:.2f}" for n, h in honest.items()})
     dump({"regions": regions, "configs": [c["name"] for c in CONFIGS], "full": full, "loro": loro,
-          "period": {"engine": cfg_t["name"], "per": per}, "honest": honest, "fixed_loro": fixed_loro, "final": final, "final_obj": obj, "seoul_check": sr},
+          "period": {"engine": cfg_t["name"], "per": per}, "honest": honest, "honest_base": honest_base, "fixed_loro": fixed_loro, "final": final, "final_obj": obj, "seoul_check": sr},
          bt.ROOT / "results_region" / "engine_study.json")

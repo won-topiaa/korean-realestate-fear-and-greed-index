@@ -185,7 +185,7 @@ def sub_indicators(rid, lawd, reg):
 
 
 def build_target(ind, sub, sub_all, idx):
-    """실거래 → 신고가·급락 지표(2개월 늦춤)와 정답(반복매매지수, 최근 2개월 제외)."""
+    """실거래 → 신고가·급락 지표(신고 기한만큼 늦춤: 1개월, 2020년 2월 전 2개월)와 정답(반복매매지수, 최근 2개월 제외)."""
     rs, pairs = MI.repeat_sales(sub)
     hi, dr, _ = MI.high_low(sub_all)
     ind["거래_신고가비중"] = timing.trade_lag(hi.rolling(3).mean()).reindex(idx)  # 신고 기한만큼 (2020년 2월 전 2개월, 뒤 1개월)

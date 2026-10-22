@@ -125,10 +125,12 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A data results_zone results_v2 results_region map report home README.md
           git diff --cached --quiet || git commit -m "월간 자동 갱신 $(TZ=Asia/Seoul date +%Y-%m-%d)"
-          # 실행 중에 누가 화면·자료를 올렸으면 그 위에 얹고(겹친 기록은 양쪽 다 남기고, 합칠 수 없으면 실패), 새 화면으로 다시 빌드
+          # 실행 중에 누가 화면·자료를 올렸으면 그 위에 얹고(겹친 기록은 양쪽 다 남기고, 겹친 화면·README는 main 쪽을 받고,
+          # 합칠 수 없으면 실패), 새 화면·README로 다시 빌드
           bash automation/push.sh sync
-          python map/build.py && python report/build.py && python home_build.py && python site_build.py
-          git add -A map report home
+          python map/build.py && python report/build.py && python home_build.py && python readme_build.py && python site_build.py \
+            || echo "알림: 다시 빌드 실패 — 갱신 단계에서 만든 화면으로 올림"
+          git add -A map report home README.md
           git diff --cached --quiet || git commit -m "화면 다시 빌드 (갱신 중 바뀐 화면 반영)"
           bash automation/push.sh
 
@@ -146,7 +148,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: gh workflow run site-deploy.yml -R "$GITHUB_REPOSITORY" --ref main
 
-      # 화면 배포는 이 갱신이 도는 동안 비켜 주므로, 그사이 main에 새 커밋(화면 수정 등)이 들어왔으면 끝난 뒤 다시 배포한다
+      # 화면 배포는 이 갱신이 끝날 때까지 기다렸다 배포하지만, 그사이 main에 새 커밋(화면 수정 등)이 들어왔으면 한 번 더 부른다 (이 실행이 끝난 뒤 배포됨)
       - name: 갱신 중에 main이 바뀌었으면 화면 배포 부르기
         if: success()
         env:
