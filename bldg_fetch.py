@@ -19,6 +19,7 @@ from difflib import SequenceMatcher
 import re
 import subprocess
 import sys
+import threading
 import time
 from pathlib import Path
 
@@ -57,19 +58,24 @@ class Unreachable(Stop):
 
 
 # call()이 호출마다 확인: 이번 실행의 마감 시각 · 멈춘 까닭(한 스레드가 멈추면 나머지도 다음 호출에서 같이 멈춤) · 응답을 연달아 못 받은 호출 수
-_until, _stop, _bad = None, None, 0
+# · 하루 한도가 찬 기능 {op: 까닭} (data.go.kr 하루 한도는 기능마다 따로라 그 기능만 막는다: 용적률 단계가 총괄표제부 한도에도 층별개요로 어림하게)
+_until, _stop, _bad, _quota = None, None, 0, {}
 BAD_MAX = 8  # 이만큼 연달아 응답이 이상하면 서버 문제로 보고 멈춘다 (2026-10-21: 응답 없는 서버에 단지 150곳을 붙잡고 98분, 시간 한도도 넘김)
 
 
 def start(budget_s=None):
     """이번 실행의 마감. 응답이 느려도 단지 묶음 사이가 아니라 호출마다 확인해 마감을 넘기지 않는다."""
-    global _until, _stop, _bad
-    _until, _stop, _bad = (time.time() + budget_s if budget_s else None), None, 0
+    global _until, _stop, _bad, _quota
+    _until, _stop, _bad, _quota = (time.time() + budget_s if budget_s else None), None, 0, {}
 
 
-def halt(e):
+def halt(e, op=None):
+    """op를 주면(하루 한도) 그 기능만, 아니면(시간·서버) 이번 실행의 모든 호출을 멈춘다."""
     global _stop
-    _stop = e
+    if op:
+        _quota[op] = e
+    else:
+        _stop = e
     raise e
 
 
@@ -83,7 +89,7 @@ def bad(msg):
 
 
 def why(e):
-    return {QuotaExceeded: "하루 호출 한도", TimeUp: "시간 한도"}.get(type(e), "서버 오류")
+    return {QuotaExceeded: "하루 호출 한도", TimeUp: "시간 한도", NotRegistered: "인증키 오류(활용신청 확인)"}.get(type(e), "서버 오류")
 
 
 def _env():
@@ -102,6 +108,8 @@ def call(op, params, key, page=1, rows=100, maxpage=10, _try=0):
     for attempt in range(4):
         if _stop:
             raise type(_stop)(*_stop.args)
+        if op in _quota:
+            raise QuotaExceeded(*_quota[op].args)
         if _until and time.time() > _until:
             halt(TimeUp(f"{op}: 시간 한도"))
         out = subprocess.run(["curl", "-sS", "--http1.1", "-m", "30", url], capture_output=True, text=True).stdout
@@ -110,9 +118,9 @@ def call(op, params, key, page=1, rows=100, maxpage=10, _try=0):
             break
         except json.JSONDecodeError:
             if "SERVICE_KEY_IS_NOT_REGISTERED" in out:
-                raise NotRegistered
+                raise NotRegistered(f"{op}: SERVICE_KEY_IS_NOT_REGISTERED")
             if "LIMITED_NUMBER_OF_SERVICE_REQUESTS" in out:
-                halt(QuotaExceeded(f"{op}: LIMITED_NUMBER_OF_SERVICE_REQUESTS"))
+                halt(QuotaExceeded(f"{op}: LIMITED_NUMBER_OF_SERVICE_REQUESTS"), op)
             time.sleep(2 * 2 ** attempt)
     else:
         bad(f"{op}: 응답 해석 실패 · {out.replace(key, '***')[:120]}")
@@ -120,20 +128,20 @@ def call(op, params, key, page=1, rows=100, maxpage=10, _try=0):
     if err:
         code = str(err.get("returnReasonCode", ""))
         if code == "30" or "NOT_REGISTERED" in str(err.get("errMsg", "")):
-            raise NotRegistered
+            raise NotRegistered(f"{op}: code {code} {err.get('errMsg')}")
         if code == "22":
-            halt(QuotaExceeded(f"{op}: {err.get('errMsg')}"))
+            halt(QuotaExceeded(f"{op}: {err.get('errMsg')}"), op)
         if "PER_SECOND" in str(err.get("errMsg", "")):
             if _try < 5:  # 초당 한도: 잠깐 쉬고 다시 (1+2+3+4+5초)
                 time.sleep(1 + _try)
                 return call(op, params, key, page, rows, maxpage, _try + 1)
-            halt(QuotaExceeded(f"{op}: {err.get('errMsg')} (6번 연속)"))  # 계속이면 하루 한도가 찬 것 (서버가 하루 한도도 초당 한도로 답할 때가 있다) → 다음 실행에
+            halt(QuotaExceeded(f"{op}: {err.get('errMsg')} (6번 연속)"), op)  # 계속이면 하루 한도가 찬 것 (서버가 하루 한도도 초당 한도로 답할 때가 있다) → 다음 실행에
         bad(f"{op}: {err.get('errMsg')}")
     resp = d.get("response", {})
     code = str(resp.get("header", {}).get("resultCode", ""))
     if code not in ("00", "000"):
         if code == "22":
-            halt(QuotaExceeded(f"{op}: code 22"))
+            halt(QuotaExceeded(f"{op}: code 22"), op)
         bad(f"{op}: code {code} {resp.get('header', {}).get('resultMsg')}")
     _bad = 0
     body = resp.get("body", {}) or {}
@@ -303,12 +311,15 @@ def fill(workers=2, budget_s=None, retry_days=90, region=False):
     miss = [s for s, r in rows.items() if s in cx.index and
             (r["status"] in ("none", "nocode", "error") or (r["status"] == "missing" and r["fetched"] < cut))]
     today = dt.date.today().isoformat()
-    cache = {}
+    cache, locks, guard = {}, {}, threading.Lock()
 
     def area_items(op, sgg, bj):
         k = (op, sgg, bj)
-        if k not in cache:  # 동네 전체 목록 (표제부는 너무 많으면 앞 2,000건까지만)
-            cache[k] = call(op, {"sigunguCd": sgg, "bjdongCd": bj}, key, maxpage=80 if op == "getBrRecapTitleInfo" else 20)
+        with guard:
+            lock = locks.setdefault(k, threading.Lock())
+        with lock:  # 같은 동네의 두 단지가 동시에 와도 목록은 한 번만 받는다 (늦은 스레드는 기다렸다 캐시를 쓴다)
+            if k not in cache:  # 동네 전체 목록 (표제부는 너무 많으면 앞 2,000건까지만)
+                cache[k] = call(op, {"sigunguCd": sgg, "bjdongCd": bj}, key, maxpage=80 if op == "getBrRecapTitleInfo" else 20)
         return cache[k]
 
     def one(seq):
@@ -357,7 +368,7 @@ def fill(workers=2, budget_s=None, retry_days=90, region=False):
                     done += 1
                     found += status == "ok"
                 save(list(rows.values()), out)
-    except Stop as e:
+    except (Stop, NotRegistered) as e:  # 인증키 오류도 받은 만큼 저장하고 끝낸다 (워크플로의 다음 단계가 돌게)
         msg = f" ({why(e)}로 중단, 다음 실행에 이어서)"
     save(list(rows.values()), out)
     left = sum(1 for r in rows.values() if r["status"] != "ok")
@@ -500,7 +511,7 @@ def fill_land(workers=3, budget_s=None, region=False):
                     r["landSrc"] = how
                     n_ratio += bool(vl)
                 save(list(rows.values()), out)
-    except Stop as e:
+    except (Stop, NotRegistered) as e:  # 인증키 오류도 받은 만큼 저장하고 끝낸다
         msg = f" (건축물대장 {why(e)}로 중단, 다음 실행에 이어서 · {e})"
     save(list(rows.values()), out)
     still = sum(1 for r in rows.values() if r["status"] == "ok" and not r["vlRat"])
