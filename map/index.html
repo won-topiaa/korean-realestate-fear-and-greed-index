@@ -334,7 +334,7 @@ details.readhow[open] summary { margin-bottom: 6px; }
 
   <footer class="foot m-fold" data-fold="계산 방법·출처 보기">
     <p id="foot-method"></p>
-    <p><b style="color:var(--ink-2)">눈금</b> · 여러 지표를 평균하면 점수가 가운데로 몰려서, 마지막에 50을 중심으로 눈금을 1.5배 넓혔어요(점수 = 50 + 1.5 × (원점수 − 50)). 모든 시점에 같은 배율을 써서 순서와 정확도는 그대로예요. 이력이 짧은 청약 경쟁률, 20·30대 매수 비중, 소비심리, 전망지수 등 11개는 보조 지표로만 보여줘요.</p>
+    <p><b style="color:var(--ink-2)">눈금</b> · 여러 지표를 평균하면 점수가 가운데로 몰려서, 마지막에 50을 중심으로 눈금을 <span class="k-val">1.5</span>배 넓혔어요(점수 = 50 + <span class="k-val">1.5</span> × (원점수 − 50)). <span id="k-note"></span>모든 시점에 같은 배율을 써서 순서와 정확도는 그대로예요. 이력이 짧은 청약 경쟁률, 20·30대 매수 비중, 소비심리, 전망지수 등 11개는 보조 지표로만 보여줘요.</p>
     <p><b style="color:var(--ink-2)">시점</b> · 매달 20일에 갱신해요. 그때 아직 공개되지 않은 그달 자료(부동산원 거래 통계, 미분양, 월평균 금리, 월말 주가, 검색량)는 지난달 값을 써요. 과거 점수도 같은 규칙으로 계산해서, 한 번 발표한 점수가 나중에 바뀌지 않아요. 지표 구성이 다 갖춰진 건 2011년 2월부터라 그 이전은 참고용이에요.</p>
     <p><b style="color:var(--ink-2)">정확도</b> · 권역·구 지수는 지금 어디가 더 뜨거운지를 보는 데 쓰세요. 점수 차이가 5점 미만이면 의미 있는 차이로 보기 어렵고, 서남권처럼 서울 지수가 더 잘 맞은 곳도 있어요. 25개 구 평균으로 보면 구 지수, 권역 지수, 서울 지수가 그 구의 이후 가격을 맞힌 정도가 거의 같고, 구 점수의 높낮이로 어느 구가 더 오를지 맞히는 힘은 약해요. 구끼리 비교할 때는 '서울 안 상대 강도'(신고가 비중의 25개 구 안 순위)를 함께 보세요. 이 순위는 공포탐욕 점수와 따로 실시간 기록으로 검증해요. 권역이나 구를 누르면 해당 수치가 나와요.</p>
     <p><b style="color:var(--ink-2)">출처</b> · KB부동산, 한국부동산원 R-ONE, 국토교통부 실거래가, 청약홈, 한국은행 ECOS, 네이버 금융, 구글 트렌드. 지도는 통계청 2013년 구 경계(southkorea/seoul-maps)와 Natural Earth 한강 중심선이에요.</p>
@@ -724,6 +724,8 @@ function renderTable() {
   if (el && eps.length) el.textContent = [...new Set(eps.map(yr))].join(", ");
 })();
 $("#eyebrow").textContent = D.eyebrow || `서울 아파트 · 공포탐욕지수 ${D.version} · 5대 권역 · 25개 구`;
+document.querySelectorAll(".k-val").forEach(e => { e.textContent = D.k; });
+if (D.k_note) $("#k-note").textContent = D.k_note + " ";
 (() => {
   const f = $("#foot-method");
   H("b", { style: "color:var(--ink-2)" }, f, `계산 방식 (${D.version})`);

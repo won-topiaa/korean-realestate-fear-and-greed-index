@@ -45,9 +45,10 @@ def compute(ind):
     else:
         key = "속도" if ENGINE["agg"] == "speed" else "주제"
         core = pd.concat([V[M.index[M[key] == g]].mean(axis=1) for g in M[key].unique()], axis=1).mean(axis=1)
-    r.update({"core": core, "final": v3.spread(core), "votes": V, "vote_meta": M, "n_votes_available": V.notna().sum(axis=1),
-              "groups": {g: v3.spread(V[M.index[M["속도"] == g]].mean(axis=1)) for g in v3.SPEED},
-              "themes": {t: v3.spread(V[M.index[M["주제"] == t]].mean(axis=1)) for t in M["주제"].unique()}})
+    k = v3.K_REGION  # 고정 엔진의 눈금 (서울 1.5배와 같은 기준으로 정한 배율, v3.py)
+    r.update({"core": core, "final": v3.spread(core, k), "votes": V, "vote_meta": M, "n_votes_available": V.notna().sum(axis=1),
+              "groups": {g: v3.spread(V[M.index[M["속도"] == g]].mean(axis=1), k) for g in v3.SPEED},
+              "themes": {t: v3.spread(V[M.index[M["주제"] == t]].mean(axis=1), k) for t in M["주제"].unique()}})
     return r
 
 

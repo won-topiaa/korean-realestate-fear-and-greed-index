@@ -134,7 +134,8 @@ for rid, R in RV["regions"].items():
               f"{sw} 지수는 가격·전세·전세가율(KB), 거래량·매입자 구성(부동산원), 실거래를 그 {sw} 값으로 바꾸고 나머지는 {name} 값을 써요. "
               f"각 지표는 과거 {(ENG or {}).get('window', 120)}개월 안에서의 백분위로 바꾸고, 지역 자료가 늦게 시작하는 지표는 서울 값으로 채우지 않아요.")
     data = {"dates": [t.strftime("%Y-%m") for t in idx], "regions": regions, "geo": geo, "theme_order": list(VMr["주제"].unique()),
-            "aux_label": AUX_LABEL, "n_ind": int(sum(len(c.split(", ")) for c in VMr["구성"])), "n_votes": int(len(VMr)), "k": v3.K,
+            "aux_label": AUX_LABEL, "n_ind": int(sum(len(c.split(", ")) for c in VMr["구성"])), "n_votes": int(len(VMr)), "k": v3.K_REGION if ENG else v3.K,
+            "k_note": f"표마다 비중을 둬서 합치는 지역 엔진은 원점수가 서울보다 넓게 퍼져서, 서울({v3.K}배)과 같은 기준(가장 극단적인 달이 0·100에 닿지 않는 가장 큰 배율)으로 {v3.K_REGION}배를 써요." if ENG else None,
             "gu_order": [names[l] for l in subs], "version": v3.VERSION, "official_start": st.strftime("%Y-%m"),
             "top": name, "top_full": f"{name} 전체", "sub_word": sw, "presets": [["2008-12", "금융위기"], ["2022-11", "금리 급등 후 급락"]],
             "eyebrow": f"{name} 아파트 · 공포탐욕지수 {ENG_LABEL} · {len(subs)}개 {sw}", "map_label": f"{name} {sw} 지도",
