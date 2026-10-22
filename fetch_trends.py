@@ -1,4 +1,5 @@
-"""구글 트렌드 (한국, 월간, 2004~). 키 불필요하지만 429가 잦아 키워드별로 천천히 수집."""
+"""구글 트렌드 (한국, 월간, 2004~오늘). 키 불필요하지만 429가 잦아 키워드별로 천천히 수집."""
+import datetime as dt
 import sys
 import time
 from pathlib import Path
@@ -18,7 +19,7 @@ if __name__ == "__main__":
             continue
         for attempt in range(4):
             try:
-                py.build_payload([kw], timeframe="2004-01-01 2026-10-12", geo="KR")
+                py.build_payload([kw], timeframe=f"2004-01-01 {dt.date.today().isoformat()}", geo="KR")
                 df = py.interest_over_time()
                 df[[kw]].to_csv(path)
                 print("OK", kw, len(df), df.index.min().date(), df.index.max().date(), flush=True)

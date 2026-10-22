@@ -1,11 +1,10 @@
 """수도권·광역시 아파트 매매 실거래 (국토부, 시군구 × 월) → data/raw/molit/apt_kr/{코드}_{YYYYMM}.json
 
 지역 하나를 2006년 1월부터 끝까지 다 받은 뒤 다음 지역으로 간다 (하루 호출 한도에 걸려 멈춰도 끝난 지역은 바로 쓸 수 있게).
-받은 파일은 건너뛰므로 다음 날 같은 명령으로 이어받는다.
+받은 파일은 건너뛰므로(쓰다 끊겨 깨진 파일은 다시 받음) 다음 날 같은 명령으로 이어받는다.
 
 사용: python region_fetch.py [끝YYYYMM] [지역id ...]   (지역을 안 주면 regions.REGIONS 순서대로 전부)
 """
-import json
 import sys
 import time
 from pathlib import Path
@@ -23,13 +22,13 @@ def fetch_region(rid, start, end, budget=None):
     for ym in M.months(start, end):
         for lawd in REGIONS[rid]["lawd"]:
             path = OUT / f"{lawd}_{ym}.json"
-            if path.exists():
+            if M.cached(path):
                 continue
             if budget is not None and calls >= budget:
                 return calls
             for attempt in range(4):  # 네트워크가 잠깐 끊긴 경우 (DNS 실패 등): 기다렸다 다시. 그래도 안 되면 건너뛰고 다음 실행에 받음
                 try:
-                    path.write_text(json.dumps(M.fetch(lawd, ym), ensure_ascii=False))
+                    M.save_json(path, M.fetch(lawd, ym))
                     break
                 except RuntimeError as e:
                     print(f"  재시도 {attempt + 1}: {str(e)[:120]}", flush=True)
@@ -40,7 +39,7 @@ def fetch_region(rid, start, end, budget=None):
 
 
 def missing(rid, start, end):
-    return sum(not (OUT / f"{lawd}_{ym}.json").exists() for ym in M.months(start, end) for lawd in REGIONS[rid]["lawd"])
+    return sum(not M.cached(OUT / f"{lawd}_{ym}.json") for ym in M.months(start, end) for lawd in REGIONS[rid]["lawd"])
 
 
 if __name__ == "__main__":

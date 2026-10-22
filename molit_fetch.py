@@ -1,8 +1,9 @@
 """국토부 아파트 매매 실거래가 상세 (서울 25개 구 × 월). 구·월 단위 JSON 캐시, 중단 후 재실행하면 이어받음.
 
-사용: python molit_fetch.py [시작YYYYMM] [끝YYYYMM]   (최근 달부터 거꾸로 받음)
+사용: python molit_fetch.py [시작YYYYMM] [끝YYYYMM]   (최근 달부터 거꾸로 받음, 끝을 안 주면 지난달)
 일일 호출 한도에 걸리면 (resultCode 22) 멈추고 다음 날 다시 실행.
 """
+import datetime as dt
 import json
 import subprocess
 import sys
@@ -55,13 +56,33 @@ def fetch(lawd, ym):
         if code in ("22", "LIMITED_NUMBER_OF_SERVICE_REQUESTS_EXCEEDS_ERROR"):
             raise QuotaExceeded
         if code not in ("000", "00"):
-            raise RuntimeError(f"{lawd} {ym}: code {code} {(root.findtext('.//resultMsg') or root.findtext('.//errMsg'))}")
+            raise RuntimeError(f"{lawd} {ym}: code {code} {(root.findtext('.//resultMsg') or root.findtext('.//errMsg'))}".replace(KEY, "***"))
         for it in root.iter("item"):
             items.append({k: (it.findtext(k) or "").strip() for k in KEEP})
-        total = int(root.findtext(".//totalCount") or 0)
-        if page * 1000 >= total:
+        total = (root.findtext(".//totalCount") or "").strip()
+        if not total.isdigit():  # 본문 없이 머리만 온 응답 (거래가 없는 달도 totalCount 0은 온다)
+            raise RuntimeError(f"{lawd} {ym}: totalCount 없는 응답 ({page}쪽)")
+        if page * 1000 >= int(total):
+            if len(items) != int(total):  # 덜 온 응답을 그 달 전부로 쓰면 저장소의 그 달 거래가 줄어든다
+                raise RuntimeError(f"{lawd} {ym}: {len(items)}/{total}건만 받음")
             return items
         page += 1
+
+
+def save_json(path, rows):
+    """임시 파일에 다 쓴 뒤 바꿔 쓴다 (중간에 끊겨도 반쯤 쓴 파일이 남지 않게)."""
+    tmp = path.with_suffix(".json.tmp")
+    tmp.write_text(json.dumps(rows, ensure_ascii=False))
+    tmp.replace(path)
+
+
+def cached(path):
+    """받아 둔 파일이 온전한지. 예전에 쓰다 끊겨 깨진 파일은 False (다시 받는다)."""
+    try:
+        json.loads(path.read_text())
+        return True
+    except (OSError, ValueError):
+        return False
 
 
 def months(start, end):
@@ -75,16 +96,16 @@ def months(start, end):
 
 if __name__ == "__main__":
     start = sys.argv[1] if len(sys.argv) > 1 else "200601"
-    end = sys.argv[2] if len(sys.argv) > 2 else "202609"
+    end = sys.argv[2] if len(sys.argv) > 2 else f"{dt.date.today().replace(day=1) - dt.timedelta(days=1):%Y%m}"  # 지난달
     done = calls = 0
     t0 = time.time()
     try:
         for ym in months(start, end):
             for lawd in SEOUL:
                 path = OUT / f"{lawd}_{ym}.json"
-                if path.exists():
+                if cached(path):
                     continue
-                path.write_text(json.dumps(fetch(lawd, ym), ensure_ascii=False))
+                save_json(path, fetch(lawd, ym))
                 calls += 1
                 time.sleep(0.15)
             done += 1
