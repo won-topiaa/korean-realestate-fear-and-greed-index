@@ -22,6 +22,7 @@ import build_indicators as B
 import extra_indicators as E
 import molit_indicators as MI
 import region_store
+import region_supply as RS
 import timing
 from regions import REGIONS
 from zone_index import reb_file
@@ -147,7 +148,10 @@ def region_indicators(rid, common, cols):
         if c.startswith(COMMON_PREFIX) or c in COMMON:
             df[c] = common[c]
     df["설문_국토연소비심리"] = np.nan  # 서울 값만 받음 (보조 지표)
-    return df.reindex(columns=cols)
+    df = df.reindex(columns=cols)
+    if rid in RS.EXTRA:  # 공급 보정 지역: 착공 물량 표 (시군구도 이 시도 값을 그대로 씀)
+        df[RS.COL] = RS.indicator(rid, idx)
+    return df
 
 
 def sub_indicators(rid, lawd, reg):

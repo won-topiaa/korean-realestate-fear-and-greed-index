@@ -11,6 +11,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 import kb_fetch as K
 import reb_fetch as R
+import region_supply as RS
 from regions import REGIONS
 
 KB_SUB = {
@@ -44,6 +45,8 @@ def reb_jobs(rid):
         for sid, nm in TRADE:
             add(sid, f"r_{rid}_{nm}", "그룹", d["reb"])
         add("T237973129847263", f"r_{rid}_미분양", "분류", f"{d['reb_unsold']}>계", item=10001)
+    if rid in RS.EXTRA:  # 공급 보정 지역: 국토부 주택착공실적 (region_supply.py)
+        add(RS.SID, f"r_{rid}_착공", "분류", f"{RS.EXTRA[rid]}>총계", item=RS.ITEM)
     sub = d.get("reb_sub", d["reb"])
     for lawd, n in d["lawd"].items():
         full = f"{sub}>{n.replace(' ', '>')}"

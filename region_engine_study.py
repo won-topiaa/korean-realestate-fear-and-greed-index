@@ -29,6 +29,7 @@ import numpy as np
 import pandas as pd
 
 import backtest as bt
+import region_supply as RS
 import timing
 import v3
 
@@ -132,17 +133,23 @@ CONFIGS += [{"name": f"자료로 비중 · {w}개월", "drop": [], "agg": "flat"
 
 
 def run(cfg, name, train, a=OFF, b=None, wb=None):
-    """wb: 비중을 배울 때 쓰는 마지막 달 (없으면 b — 평가 기간과 같게)."""
+    """wb: 비중을 배울 때 쓰는 마지막 달 (없으면 b — 평가 기간과 같게). cfg에 extra(공급 보정)가 있으면 그 지역은 공급 표를 더해 잰다."""
     vt, vm = V(name, cfg["window"])
     w = ic_weights([n for n in train if n != name], cfg["window"], wb if wb is not None else b) if cfg.get("learn") else None  # 평가 지역은 비중 학습에서 뺀다
-    s = core(vt, vm, cfg["drop"], cfg["agg"], w)
+    if w is not None and name in (cfg.get("extra") or {}) and not cfg["drop"]:
+        s = RS.combine(vt, w, DATA[name]["ind"], name, cfg["extra"])
+    else:
+        s = core(vt, vm, cfg["drop"], cfg["agg"], w)
     return score(s, (SEOUL if name == "seoul" else DATA[name])["fwd12"], a, b)
 
 
 def run_fixed(eng, name):
     """고정 엔진(배운 비중 그대로)을 한 지역에 쓴 성적 — 엔진을 고를 때 안 본 지역의 시험용."""
     vt, vm = V(name, eng["window"])
-    s = core(vt, vm, eng["drop"], eng["agg"], eng.get("weights"))
+    if eng.get("weights") and name in (eng.get("extra") or {}) and not eng["drop"]:
+        s = RS.combine(vt, eng["weights"], DATA[name]["ind"], name, eng["extra"])
+    else:
+        s = core(vt, vm, eng["drop"], eng["agg"], eng.get("weights"))
     return score(s, (SEOUL if name == "seoul" else DATA[name])["fwd12"])
 
 

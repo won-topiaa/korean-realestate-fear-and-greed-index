@@ -58,6 +58,8 @@ def record_regions(out=ROOT / "results_region"):
         eng = f"{d['version']}-지역{s.get('engine', 'A')}"  # A = 서울과 같은 엔진, 날짜 = 그날 고정한 지역 엔진
         if d.get("k", 1.5) != 1.5:  # 눈금을 바꾼 뒤의 점수는 다른 기록으로 (2026-10-22 지역 1.1배, 그 전 1.5배 줄은 그대로 둔다)
             eng += f"-눈금{d['k']}"
+        if s.get("extra"):  # 공급 보정 지역(대구)은 다른 지역과 엔진이 달라 따로 채점
+            eng += "-공급보정"
         t = d["dates"].index(s["month"])
         month = s["month"]
         for name, reg in d["regions"].items():

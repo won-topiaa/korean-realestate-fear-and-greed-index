@@ -14,6 +14,7 @@ import numpy as np
 import pandas as pd
 
 import backtest as bt
+import region_supply as RS
 import timing
 import v3
 from regions import REGIONS
@@ -28,8 +29,9 @@ SP = bt.ROOT / "results_region" / "engine_study.json"
 FIXED_LORO = json.loads(SP.read_text()).get("fixed_loro", {}) if SP.exists() else {}
 
 
-def compute(ind):
-    """고정 엔진(없으면 서울 v3)으로 지수. 화면용 속도 3그룹·주제 점수도 같은 표로 다시 만든다."""
+def compute(ind, rid=None):
+    """고정 엔진(없으면 서울 v3)으로 지수. 화면용 속도 3그룹·주제 점수도 같은 표로 다시 만든다.
+    rid: 공급 보정 지역(region_supply.py, 대구)이면 그 시도와 시군구 지수에 착공 물량 표를 정해 둔 비중으로 더한다."""
     if ENGINE is None:
         return v3.compute(ind, meta, aux_meta)
     bt.WINDOW = ENGINE["window"]
@@ -41,8 +43,7 @@ def compute(ind):
     keep = M.index[~M["주제"].isin(ENGINE["drop"])]
     V, M = V[keep], M.loc[keep]
     if ENGINE.get("weights"):
-        w = pd.Series(ENGINE["weights"]).reindex(keep).fillna(0)
-        core = (V * w).sum(axis=1, min_count=1) / V.notna().mul(w).sum(axis=1).replace(0, np.nan)
+        core = RS.combine(V, ENGINE["weights"], ind, rid, ENGINE.get("extra"))
     elif ENGINE["agg"] == "flat":
         core = V.mean(axis=1)
     else:
@@ -82,7 +83,7 @@ print("엔진:", ENGINE["name"] + f" (고정 {ENGINE['chosen']})" if ENGINE else
 
 res = {}
 for rid, o in R["regions"].items():
-    r = compute(o["ind"])
+    r = compute(o["ind"], rid)
     idx = o["ind"].index
     f, y = r["final"].reindex(idx), o["fwd12"]
     st = start_month(r["n_votes_available"])
@@ -110,7 +111,7 @@ for rid, o in R["regions"].items():
 
 subs = {}
 for lawd, o in R["subs"].items():
-    r = compute(o["ind"])
+    r = compute(o["ind"], o["region"])
     idx = o["ind"].index
     f = r["final"].reindex(idx)
     reg = res[o["region"]]

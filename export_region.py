@@ -10,6 +10,7 @@ import numpy as np
 import pandas as pd
 
 import backtest as bt
+import region_supply as RS
 import v3
 from regions import REGIONS, josa, sub_word
 
@@ -116,6 +117,11 @@ for rid, R in RV["regions"].items():
     d = REGIONS[rid]
     name, sw = d["name"], sub_word(rid)
     ENG_HEAD, ENG_HOW = engine_note(rid)
+    ex = ((ENG or {}).get("extra") or {}).get(rid)
+    if ex:  # 공급 보정 (region_supply.py): 이 지역에만 더한 표를 숨기지 않고 밝힌다
+        ENG_HOW += (f"{name}에는 표 하나를 더해요: 2~3년 전 착공 물량(국토부 주택착공실적, 아파트 재고 대비)이 적을수록 탐욕 쪽이에요. "
+                    f"{name}{josa(name, '은', '는')} 공급이 유난히 많았던 곳이라({ex['chosen']} 결정), 이 표의 비중({ex[RS.COL]:.2f})은 {name} 자료로 2018년까지 배워 고정했어요. "
+                    f"{name} 성적이 낮은 걸 본 뒤 더한 보정이라, 2018년까지 배운 비중으로 2019년 이후를 잰 성적으로 확인했어요(0.68 → 0.78). ")
     geo_src = json.loads((bt.ROOT / "data" / "region_maps" / f"{rid}.json").read_text())
     subs = [l for l in d["lawd"] if l in RV["subs"]]
     names = {l: d["lawd"][l] for l in subs}
@@ -189,7 +195,8 @@ for rid, R in RV["regions"].items():
                     "prev": r1(s.iloc[i - 1]), "acc": r3(acc_src["acc"]), "win_median": r3(acc_src["win_median"]), "win_min": r3(acc_src["win_min"]),
                     "acc_seoul": r3(R["acc_seoul"]), "acc_kb": r3(R["acc_kb"]), "start": st.strftime("%Y-%m"),
                     "n_sub": len(subs), "sub_word": sw, "sub_acc_mean": {k: r3(v) for k, v in mean.items()},
-                    "engine": ENG["chosen"] if ENG else "A", "cross_validated": bool(lo)}
+                    "engine": ENG["chosen"] if ENG else "A", "cross_validated": bool(lo),
+                    "extra": sorted(k for k in ((ENG or {}).get("extra") or {}).get(rid, {}) if k == RS.COL)}
     print(f"{name}: {summary[rid]['score']} ({summary[rid]['month']}) · {'공개' if R['publish'] else '검증 중'} · "
           f"시군구 평균 정확도 {f2(mean['sub'])} / 시도 지수 {f2(mean['region'])}")
 write(OUT / "summary.json", json.dumps(summary, ensure_ascii=False, indent=1))
