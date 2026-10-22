@@ -26,6 +26,7 @@ r3 = lambda v: None if v is None or pd.isna(v) else round(float(v), 3)
 ser = lambda s: [r1(v) for v in s.reindex(idx)]
 f2 = lambda v: "–" if v is None or pd.isna(v) else f"{v:.2f}"
 ym = lambda t: f"{t.year}년 {t.month}월"
+LORO_START = pd.Timestamp("2011-02-01")  # 교차검증 성적은 늘 이 달부터 잼 (region_engine_study.OFF)
 HAI_NAME = {"gyeonggi": "경기", "incheon": "수도권"}
 AUX_LABEL = {"설문_가격전망": "KB 매매가격 전망 (2013~)", "설문_부동산원매매수급": "부동산원 매매수급 (2012~)",
              "전세_가격전망": "KB 전세가격 전망 (2016~)", "전세_부동산원전세수급": "부동산원 전세수급 (2012~)",
@@ -37,6 +38,24 @@ AUX_LABEL = {"설문_가격전망": "KB 매매가격 전망 (2013~)", "설문_�
 def own_votes(own, vm):
     own = set(own)
     return int(sum(any(c in own for c in comp.split(", ")) for comp in vm["구성"]))
+
+
+def own_weight(own, vm):
+    """고정 엔진의 비중 중 시군구 자기 값을 쓰는 표의 몫 (비중이 없는 엔진이면 None)."""
+    w = (ENG or {}).get("weights")
+    if not w:
+        return None
+    own = set(own)
+    mine = [v for v, comp in zip(vm.index, vm["구성"]) if any(c in own for c in comp.split(", "))]
+    tot = sum(x for x in w.values() if x > 0)
+    return sum(max(w.get(v, 0), 0) for v in mine) / tot if tot else None
+
+
+def write(p, text):
+    """중간에 끊겨도 반쯤 쓴 파일이 남지 않게 (임시 파일에 쓰고 바꿔 넣음)."""
+    tmp = p.with_name(p.name + ".tmp")
+    tmp.write_text(text)
+    tmp.replace(p)
 
 
 def pack(r, rs, y, level, weight=None):
@@ -59,21 +78,29 @@ IND_META = pd.read_csv(bt.ROOT / "data" / "indicator_meta.csv", index_col=0).fil
 VOTE_LABEL = {v3.GOOGLE: "구글 검색량 급증"}  # 여러 지표를 묶은 표라 indicator_meta.csv에 줄이 없는 것
 
 
-def label(k):
-    return IND_META.loc[k, "설명"].split(" (")[0] if k in IND_META.index else VOTE_LABEL.get(k, k)
+def label(k, rid=None):
+    """표 설명. 지역 페이지에서는 그 지역 값을 쓰는 표의 '서울'을 지역 이름으로 (PIR은 전국, 구매력은 KB 묶음 지역)."""
+    s = IND_META.loc[k, "설명"].split(" (")[0] if k in IND_META.index else VOTE_LABEL.get(k, k)
+    if rid is None or "서울" not in s:
+        return s
+    if k == "부담_PIR":
+        return s.replace("서울", "전국")
+    return s.replace("서울", HAI_NAME.get(rid, "6개광역시") if k == "부담_구매력역수" else REGIONS[rid]["name"])
 
 
-def engine_note():
+def engine_note(rid):
     """지역 페이지 '계산 방식'의 엔진 설명."""
     if not ENG:
         return "서울과 같은 엔진이에요. ", "선행·동행·후행 3그룹을 같은 비중으로 평균해요. "
-    head = (f"서울 밖 {len(ENG['regions'])}개 지역에서 엔진 44개를 비교해 고른 엔진('{ENG['name']}', {ENG['chosen']} {'임시 ' if ENG.get('provisional') else ''}고정)이에요. "
-            "한 지역씩 빼고 고른 엔진을 뺀 지역에 써서 잰 성적으로 골랐어요. "
+    n = len(ENG["regions"])
+    head = (f"서울 밖 {n}개 지역에 같은 엔진을 써요('{ENG['name']}', {ENG['chosen']} {'임시 ' if ENG.get('provisional') else ''}고정). "
+            f"미리 정한 규칙에 따라 후보 44개 중 {n}개 지역의 평균 성적이 가장 높은 엔진을 골랐고, 공개 여부는 한 지역씩 빼고 고른 엔진을 "
+            "뺀 지역에 써서 잰 성적으로 정했어요. "
             + ("부산·경기 실거래가 다 들어오면 7개 지역으로 다시 골라 최종으로 고정해요. " if ENG.get("provisional") else ""))
     if ENG.get("weights"):
         top = sorted(((v, k) for k, v in ENG["weights"].items() if v > 0), reverse=True)[:6]
         tw = sum(v for v, _ in top) / sum(v for v in ENG["weights"].values() if v > 0)
-        names = ", ".join(label(k) for _, k in top)
+        names = ", ".join(label(k, rid) for _, k in top)
         how = (f"표마다 비중을 두고 합치는데, 비중은 {len(ENG['regions'])}개 지역에서 각 표가 이후 12개월 가격과 맞은 정도(순위상관, 맞지 않은 표는 0)로 정해 고정했어요. "
                f"비중이 큰 표는 {names}이고 이 여섯 표가 비중의 {tw * 100:.0f}%예요. ")
     else:
@@ -81,12 +108,14 @@ def engine_note():
     return head, how
 
 
-ENG_HEAD, ENG_HOW = engine_note()
+ST = json.loads((OUT / "engine_study.json").read_text()) if (OUT / "engine_study.json").exists() else {}
+HONEST = ST.get("honest", {})  # 2018년까지의 자료로만 비중을 배워 2019년 이후에 쓴 성적 (region_engine_study.py)
 ENG_LABEL = f"지역 엔진 {ENG['chosen']}{' 임시' if ENG.get('provisional') else ''}" if ENG else v3.VERSION  # 서울 엔진(v3.x)과 구분
 for rid, R in RV["regions"].items():
     VMr = R["vote_meta"]  # 이 지역 엔진의 표 구성
     d = REGIONS[rid]
     name, sw = d["name"], sub_word(rid)
+    ENG_HEAD, ENG_HOW = engine_note(rid)
     geo_src = json.loads((bt.ROOT / "data" / "region_maps" / f"{rid}.json").read_text())
     subs = [l for l in d["lawd"] if l in RV["subs"]]
     names = {l: d["lawd"][l] for l in subs}
@@ -101,25 +130,33 @@ for rid, R in RV["regions"].items():
         wl = Wn[l].dropna() if l in Wn.columns else pd.Series(dtype=float)
         pk = pack(S, S["rs"], S["fwd12"], "gu", r3(wl.iloc[-1]) if len(wl) else None)
         pk["own_votes"] = own_votes(S["own"], VMr)
+        own_w = own_weight(S["own"], VMr)
         pk["n_trades"] = int(S["n_trades"])
         a = S["acc3"]
         if S["rs"] is None or pd.isna(a["sub"]):
             acc_sub[names[l]] = f"{names[l]}{josa(names[l], '은', '는')} 거래가 적어 정확도를 재지 못했어요. 점수는 KB·부동산원 시군구 값과 {name} 값으로 계산했어요."
         else:
             accs.append(a)
-            acc_sub[names[l]] = (f"{ym(st)} 이후 이 {sw} 지수와 이후 12개월 {names[l]} 실거래 가격의 순위상관은 {f2(a['sub'])}예요. "
+            acc_sub[names[l]] = (f"{ym(st)} 이후 이 {sw} 지수와 점수가 발표된 달부터 12개월 {names[l]} 실거래 가격의 순위상관은 {f2(a['sub'])}예요. "
                                  f"같은 기간 {name} 지수를 쓰면 {f2(a['region'])}, 서울 지수를 쓰면 {f2(a['seoul'])}예요. "
-                                 f"{len(VMr)}표 중 {pk['own_votes']}표만 이 {sw} 값이고 나머지는 {name} 값이라, 5점 미만 차이는 의미 있는 차이로 보기 어려워요.")
+                                 f"{len(VMr)}표 중 {pk['own_votes']}표만 이 {sw} 값이고"
+                                 + (f"(비중으로는 {own_w * 100:.0f}%)" if own_w is not None else "")
+                                 + f" 나머지는 {name} 값이라, 5점 미만 차이는 의미 있는 차이로 보기 어려워요."
+                                 + (" 표 비중은 이 지역 자료도 함께 써서 정해서, 이 숫자는 조금 낙관적이에요." if ENG and ENG.get("weights") else ""))
         regions[names[l]] = pk
     A = pd.DataFrame(accs)
     mean = {k: (float(A[k].mean()) if len(A) else np.nan) for k in ("sub", "region", "seoul")}
     lo = R.get("loro")
     if lo:  # 고정 엔진: 이 지역을 빼고 고른 엔진으로 잰 성적을 먼저 (공개 판단에 쓴 값)
-        top_txt = (f"엔진을 고를 때 {name}{josa(name)} 빼고 고른 엔진으로 재면 {ym(st)} 이후 이 지수와 이후 12개월 {name} 실거래 가격의 순위상관은 {f2(lo['acc'])}, "
+        h = HONEST.get(rid)
+        top_txt = (f"표 비중을 배울 때 {name}{josa(name)} 빼고 재면 {ym(LORO_START)} 이후 이 지수와 점수가 발표된 달부터 12개월 {name} 실거래 가격의 순위상관은 {f2(lo['acc'])}, "
                    f"5년씩 나눠 본 중앙값 {f2(lo['win_median'])}, 2019년 이후 {f2(lo['recent'])}예요. 지금 엔진으로 다시 재면 {f2(R['acc'])}인데, "
-                   f"고를 때 {name} 자료도 함께 써서 조금 낙관적이에요. 같은 기간 서울 지수를 그대로 쓰면 {f2(R['acc_seoul'])}, KB 매수우위지수 하나만 보면 {f2(R['acc_kb'])}예요.")
+                   f"고를 때 {name} 자료도 함께 써서 조금 낙관적이에요. "
+                   + (f"또 표 비중을 배운 기간과 성적을 잰 기간이 같아요. 2018년까지의 자료로만 비중을 배워 2019년 이후에 쓰면 순위상관 {f2(h['acc'])}, "
+                      f"5년씩 나눠 본 중앙값 {f2(h['win_median'])}이에요. " if h else "")
+                   + f"같은 기간 서울 지수를 그대로 쓰면 {f2(R['acc_seoul'])}, KB 매수우위지수 하나만 보면 {f2(R['acc_kb'])}예요.")
     else:
-        top_txt = (f"{ym(st)} 이후 이 지수와 이후 12개월 {name} 실거래 가격의 순위상관은 {f2(R['acc'])}예요. "
+        top_txt = (f"{ym(st)} 이후 이 지수와 점수가 발표된 달부터 12개월 {name} 실거래 가격의 순위상관은 {f2(R['acc'])}예요. "
                    f"5년씩 나눠 보면 중앙값 {f2(R['win_median'])}, 가장 나빴던 구간 {f2(R['win_min'])}이에요. "
                    f"같은 기간 서울 지수를 {name}에 그대로 쓰면 {f2(R['acc_seoul'])}, KB 매수우위지수 하나만 보면 {f2(R['acc_kb'])}예요.")
     geo = {"w": geo_src["w"], "h": geo_src["h"], "zones": {}, "outline": geo_src["outline"], "river": None,
@@ -143,7 +180,7 @@ for rid, R in RV["regions"].items():
             "short_name": {names[l]: short(names[l]) for l in subs}, "compact_pins": len(subs) > 16,
             "sub_acc_mean": {k: r3(v) for k, v in mean.items()}, "region_id": rid,
             "compose_label": "구성 (속도별 3그룹, 참고용: 점수는 표마다 비중을 둬서 합쳐요)" if (ENG or {}).get("weights") else None}
-    (OUT / f"{rid}.json").write_text(json.dumps(data, ensure_ascii=False, separators=(",", ":")))
+    write(OUT / f"{rid}.json", json.dumps(data, ensure_ascii=False, separators=(",", ":")))
     s = R["final"].reindex(idx)
     t = s.last_valid_index()
     i = idx.get_loc(t)
@@ -155,4 +192,4 @@ for rid, R in RV["regions"].items():
                     "engine": ENG["chosen"] if ENG else "A", "cross_validated": bool(lo)}
     print(f"{name}: {summary[rid]['score']} ({summary[rid]['month']}) · {'공개' if R['publish'] else '검증 중'} · "
           f"시군구 평균 정확도 {f2(mean['sub'])} / 시도 지수 {f2(mean['region'])}")
-(OUT / "summary.json").write_text(json.dumps(summary, ensure_ascii=False, indent=1))
+write(OUT / "summary.json", json.dumps(summary, ensure_ascii=False, indent=1))

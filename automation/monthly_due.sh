@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # 이번 달 월간 갱신이 아직 필요한지 한 단어로 알려 준다 (GitHub Actions에서 씀).
-#   early: 아직 20일 전 / done: 20일(한국 시간) 이후 갱신 완료 / busy: 먼저 시작한 갱신이 돌고 있음 / due: 지금 돌려야 함
+#   early: 아직 20일 전 / done: 20일(한국 시간) 이후 갱신 완료 (자료가 다 들어온 실행) / busy: 먼저 시작한 갱신이 돌고 있음 / due: 지금 돌려야 함
 # '완료'는 저장소 main의 results_zone/update_summary.json(점검을 통과해야 커밋됨) 실행 시각으로 판단한다.
 # '돌고 있음'은 이 실행보다 먼저 만들어진 월간 갱신만 센다 (예약이 늦게 몰려 동시에 떠도 하나는 진행하게).
 # ANY_BUSY=1이면 언제 만들어졌든 끝나지 않은 월간 갱신을 모두 센다 (다른 워크플로가 월간 갱신을 부르기 전에 볼 때).
@@ -12,10 +12,11 @@ since=$(TZ=Asia/Seoul date +%Y%m)20
 
 if (( 10#$day < 20 )); then echo early; exit 0; fi
 
-# 자료 받기 없이 재계산만 한 실행(지역 엔진 고정용 skip_fetch, fetched=false)은 이번 달 갱신으로 치지 않는다
-last=$(gh api "repos/$repo/contents/results_zone/update_summary.json?ref=main" -H "Accept: application/vnd.github.raw" \
-  | jq -r 'if .fetched == false then (.last_fetched // "") else .run end')
-if [[ ! "${last:0:8}" < "$since" ]]; then echo done; exit 0; fi
+# 자료 받기 없이 재계산만 한 실행(지역 엔진 고정용 skip_fetch, fetched=false)은 이번 달 갱신으로 치지 않는다.
+# 자료가 다 들어오지 않은 실행(complete=false: 기준월이 안 바뀜·자료처 실패·지난 값을 이어 쓴 표)도 완료로 치지 않아 다시 받는다
+read -r last complete < <(gh api "repos/$repo/contents/results_zone/update_summary.json?ref=main" -H "Accept: application/vnd.github.raw" \
+  | jq -r '[(if .fetched == false then (.last_fetched // "") else .run end), (if .complete == false then "no" else "yes" end)] | @tsv')
+if [[ ! "${last:0:8}" < "$since" && "$complete" = yes ]]; then echo done; exit 0; fi
 
 before=$([ "${ANY_BUSY:-}" = 1 ] && echo true || echo ".id < $GITHUB_RUN_ID")
 busy=$(gh api "repos/$repo/actions/workflows/monthly-update.yml/runs?per_page=30" \

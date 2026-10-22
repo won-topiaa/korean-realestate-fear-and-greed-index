@@ -222,7 +222,7 @@ code { font-family: var(--mono); font-size: 13px; }
   <section class="section m-fold" data-fold="5년 구간별 성적">
     <header>
       <h2>5년 구간별 성적</h2>
-      <p>세 구간만으로는 구간을 어떻게 자르느냐에 따라 결과가 크게 달라져서, 5년 창을 1년씩 옮겨가며 13번 평가했어요. 숫자는 지수와 이후 12개월 실거래 가격의 순위상관이에요. 단순한 기준 세 가지와 나란히 놓았어요.</p>
+      <p>세 구간만으로는 구간을 어떻게 자르느냐에 따라 결과가 크게 달라져서, 5년 창을 1년씩 옮겨가며 13번 평가했어요. 숫자는 지수와 이후 12개월 실거래 가격의 순위상관이에요. '이후 12개월'은 점수가 발표되는 달(기준월 다음 달 20일)부터 재요. 기준월부터 재면 발표 전 1개월이 섞여 성적이 부풀어요(2026-10-22 점검에서 고침). 단순한 기준 세 가지와 나란히 놓았어요.</p>
     </header>
     <div class="panel">
       <div class="table-wrap"><table id="rolling-table" style="min-width:860px"></table></div>
@@ -291,7 +291,7 @@ code { font-family: var(--mono); font-size: 13px; }
   <section class="section m-fold" data-fold="묶는 방식 비교 (v2 분석, 45개 기준)">
     <header>
       <h2>묶는 방식 비교 (v2 분석, 45개 기준)</h2>
-      <p>같은 45개 지표를 서로 다른 기준으로 묶었어요. 숫자는 지수 점수와 이후 12개월 실거래 가격 변화의 순위상관이에요(1이면 완벽, 0이면 무관). 7년씩 세 구간으로 나눠 가장 나쁜 구간의 값으로 순위를 매겼어요. 오른쪽 끝 열은 정답을 KB 지수로 바꿨을 때의 최저값이에요.</p>
+      <p>같은 45개 지표를 서로 다른 기준으로 묶었어요. 숫자는 지수 점수와 이후 12개월 실거래 가격 변화의 순위상관이에요(1이면 완벽, 0이면 무관). 이 v2 분석 표는 그때 방식대로 기준월부터 잰 값이라, 발표 기준으로 재면 조금 낮아요. 7년씩 세 구간으로 나눠 가장 나쁜 구간의 값으로 순위를 매겼어요. 오른쪽 끝 열은 정답을 KB 지수로 바꿨을 때의 최저값이에요.</p>
     </header>
     <div class="panel">
       <div class="table-wrap"><table id="scheme-table" style="min-width:760px"></table></div>
@@ -364,7 +364,7 @@ code { font-family: var(--mono); font-size: 13px; }
   <section class="section">
     <header>
       <h2 id="now-h2">지금 서울은</h2>
-      <p>v3 지수를 구성하는 세 그룹과, 설명용으로 본 주제별 점수예요. 모두 같은 1.5배 눈금이고, 50보다 오른쪽이면 탐욕, 왼쪽이면 공포예요.</p>
+      <p>v3 지수를 구성하는 세 그룹과, 설명용으로 본 주제별 점수예요. 그룹·주제는 표가 적어 이미 넓게 퍼져 있어 넓히지 않은 원점수예요(지수는 세 그룹 평균을 1.5배로 넓힌 값). 50보다 오른쪽이면 탐욕, 왼쪽이면 공포예요.</p>
     </header>
     <div class="cols">
       <div class="panel"><h3 style="margin-bottom:14px">지수 구성 (속도별)</h3><div class="bars" id="speed-bars"></div></div>
@@ -432,8 +432,9 @@ const ZONES = [
 ];
 const PER = ["2006–12", "2013–19", "2020–26"];
 const PCOL = ["var(--s1)", "var(--s2)", "var(--s3)"];
-const zone = (v) => (v < 25 ? "극단적 공포" : v < 45 ? "공포" : v < 55 ? "중립" : v < 75 ? "탐욕" : "극단적 탐욕");
-const sideColor = (v) => (v < 45 ? "var(--fear)" : v < 55 ? "var(--neutral)" : "var(--greed)");
+// 구간은 화면에 보이는 반올림한 숫자로 (44.8이 "45 · 공포"로 보이지 않게, 지도와 같은 규칙)
+const zone = (v) => { v = Math.round(v); return v < 25 ? "극단적 공포" : v < 45 ? "공포" : v < 55 ? "중립" : v < 75 ? "탐욕" : "극단적 탐욕"; };
+const sideColor = (v) => { v = Math.round(v); return v < 45 ? "var(--fear)" : v < 55 ? "var(--neutral)" : "var(--greed)"; };
 const f2 = (v) => (v == null ? "–" : v.toFixed(2));
 const pct = (v, d = 1) => (v == null ? "–" : (v >= 0 ? "+" : "−") + Math.abs(v * 100).toFixed(d) + "%");
 const ym = (s) => s.slice(0, 4) + "년 " + String(+s.slice(5, 7)) + "월";
@@ -874,7 +875,7 @@ function drawSnaps() {
   });
 }
 
-$("#main-cap").textContent = `${D.version} 지수(위)와 국토부 실거래로 만든 반복매매지수(아래)예요. 세로선은 실거래 가격의 고점과 저점이에요. 지수는 실거래 가격 흐름을 약 ${D.lag}개월 앞섰어요. KB 지수 기준으로는 3개월이었는데, KB 지수 자체가 실거래보다 2개월쯤 늦게 반영되기 때문이에요.`;
+$("#main-cap").textContent = `${D.version} 지수(위)와 국토부 실거래로 만든 반복매매지수(아래)예요. 세로선은 실거래 가격의 고점과 저점이에요. ${D.lag > 0 ? `점수가 발표되는 달 기준으로 지수는 실거래 가격 흐름을 약 ${D.lag}개월 앞섰어요.` : D.lag === 0 ? "점수가 발표되는 달(기준월 다음 달 20일) 기준으로 지수는 실거래 가격 흐름과 거의 같이 움직였어요. 기준월로 보면 1개월 앞서지만, 그 1개월은 발표 전이라 셈하지 않았어요." : `점수가 발표되는 달 기준으로 지수는 실거래 가격 흐름보다 약 ${-D.lag}개월 늦었어요.`} 그래서 이 지수는 앞날을 맞히는 신호가 아니라 지금 시장 분위기를 재는 온도계로 읽어 주세요.`;
 
 function drawRisk() {
   const ul = $("#risk-list");

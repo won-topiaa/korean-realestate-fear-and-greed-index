@@ -11,6 +11,8 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+import timing
+
 ROOT = Path(__file__).parent
 LOG = ROOT / "results_zone" / "live_log.csv"
 COLS = ["logged_at", "engine", "month", "region", "score"]
@@ -94,7 +96,7 @@ def evaluate():
         s = rs.get(r)
         if s is None:
             return None
-        t0 = pd.Timestamp(month + "-01")
+        t0 = pd.Timestamp(month + "-01") + pd.DateOffset(months=timing.PUB_OFFSET)  # 발표한 달부터 (기준월 t는 t+1월에 발표)
         t1 = t0 + pd.DateOffset(months=12)
         if t1 in s.index and pd.notna(s.get(t1)) and pd.notna(s.get(t0)):
             return float(np.log(s[t1] / s[t0]))

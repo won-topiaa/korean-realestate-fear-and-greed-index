@@ -31,6 +31,7 @@ RAW = ROOT / "data" / "raw"
 OUT = ROOT / "results_region"
 OUT.mkdir(exist_ok=True)
 NOT_REALTIME = ("공급_분양물량", "공급_향후입주역수")
+OFFICIAL = pd.Timestamp("2011-02-01")  # 서울 공식 기록 시작 (시군구 자기 값 판단에 씀)
 COMMON_PREFIX = ("자금_", "관심_", "시장_")
 COMMON = ["가격_선도50모멘텀", "설문_주택가격전망CSI"]
 HAI_REGION = {"gyeonggi": "경기", "incheon": "수도권"}  # 나머지(광역시)는 6개광역시
@@ -175,7 +176,8 @@ def sub_indicators(rid, lawd, reg):
             if pd.notna(gap):
                 ind.loc[~after, c] += gap
         ind.loc[after, c] = o.loc[after, c]
-    return ind, [c for c in o.columns if o[c].notna().any()]
+    # 자기 값으로 치는 표: 공식 기록 시작(2011년 2월) 뒤 절반 넘는 달에 그 시군구 값이 있을 때만 (최근 몇 달만 있으면 시도 값과 같음)
+    return ind, [c for c in o.columns if o.loc[o.index >= OFFICIAL, c].notna().mean() > 0.5]
 
 
 def build_target(ind, sub, sub_all, idx):
@@ -186,7 +188,7 @@ def build_target(ind, sub, sub_all, idx):
     ind["거래_급락거래역수"] = (-dr.rolling(3).mean().shift(2)).reindex(idx)
     rs.iloc[-2:] = np.nan
     rs = rs.reindex(idx)
-    y = np.log(rs).shift(-12) - np.log(rs)
+    y = timing.fwd(rs)  # 발표한 달부터 12개월
     s = sub.sort_values(["key", "date"])
     n_pairs = s[s.duplicated("key", keep="first")].groupby("date").size().reindex(idx).fillna(0)
     return rs, y, n_pairs

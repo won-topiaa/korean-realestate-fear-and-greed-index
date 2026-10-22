@@ -79,22 +79,26 @@ def regional():
         lines += ["", f"임시 엔진('{prev['name']}', {prev['chosen']}, {len(prev['regions'])}개 지역으로 고름)을 고를 때 안 본 지역에 그대로 쓴 성적:"]
         lines += [f"- {REGIONS[h]['name']}: 정확도 {f2(r['acc'])}, 5년 구간 중앙값 {f2(r['win_median'])}, 2019년 이후 {f2(r['recent'])}"
                   for h, r in prev["holdout"].items()]
-    base = (st or {}).get("loro", {})
-    lines += ["", f"**지금 결과** (정확도는 그 지역을 빼고 고른 엔진으로 잰 교차검증 성적, 공개 기준 0.40·5년 구간 중앙값 0.25)",
-              "| 지역 | 지금 점수 | 교차검증 정확도 | 5년 구간 중앙값 | 2019년 이후 | 서울과 같은 엔진이면 | 서울 지수를 그대로 쓰면 | 상태 |",
-              "|---|---|---|---|---|---|---|---|"]
+    base, fixed, honest = ((st or {}).get(k, {}) for k in ("loro", "fixed_loro", "honest"))
+    lines += ["", "**지금 결과** (정확도 = 지수와 점수가 발표된 달부터 12개월 그 지역 실거래 가격의 순위상관. 표 비중을 배울 때 그 지역을 뺀 고정 엔진으로 재요. "
+              "공개 기준 0.40·5년 구간 중앙값 0.25. 공개 여부는 엔진을 고정할 때 기준월부터 잰 성적으로 정했어요)",
+              "| 지역 | 지금 점수 | 정확도 | 5년 구간 중앙값 | 2019년 이후 | 2018년까지 배워 2019년 이후 | 서울과 같은 엔진이면 | 서울 지수를 그대로 쓰면 | 상태 |",
+              "|---|---|---|---|---|---|---|---|---|"]
     loro = eng.get("loro") or {}
-    rows = sorted(loro.items(), key=lambda kv: -(kv[1].get("acc") if kv[1].get("acc") is not None else -9))
+    cur = {r: fixed.get(r) or lo for r, lo in loro.items()}  # 지금 정답으로 다시 잰 값 (없으면 고정 때 값)
+    rows = sorted(cur.items(), key=lambda kv: -(kv[1].get("acc") if kv[1].get("acc") is not None else -9))
     for r, lo in rows:
-        x, b = summ.get(r, {}), base.get(r, {}).get("base", {})
+        x, b, h = summ.get(r, {}), base.get(r, {}).get("base", {}), honest.get(r, {})
         score = x.get("score") if x.get("publish") else None  # 공개 기준을 못 넘은 지역은 점수를 쓰지 않는다
+        below = r in fixed and not (lo["acc"] >= 0.40 and lo["win_median"] >= 0.25)
         lines.append(f"| {REGIONS[r]['name']} | {f1(score)}{old(x, ym) if score is not None else ''} | {f2(lo.get('acc'))} | {f2(lo.get('win_median'))} | {f2(lo.get('recent'))} | "
-                     f"{f2(b.get('acc'))} / {f2(b.get('win_median'))} | {f2(x.get('acc_seoul'))} | {'공개' if x.get('publish') else '검증 중'} |")
+                     f"{f2(h.get('acc'))} | {f2(b.get('acc'))} / {f2(b.get('win_median'))} | {f2(x.get('acc_seoul'))} | "
+                     f"{'공개' if x.get('publish') else '검증 중'}{' (발표 기준으로 다시 재면 기준 미달)' if below and x.get('publish') else ''} |")
     for why, rest in (("엔진 확정 대기", [REGIONS[r]["name"] for r in REGIONS if r not in loro and r in summ]),
                       ("실거래 받는 중", [REGIONS[r]["name"] for r in REGIONS if r not in loro and r not in summ])):
         if rest:
-            lines.append(f"| {'·'.join(rest)} | | {why} | | | | | 검증 중 |")
-    sc = eng.get("seoul_check") or {}
+            lines.append(f"| {'·'.join(rest)} | | {why} | | | | | | 검증 중 |")
+    sc = (st or {}).get("seoul_check") or eng.get("seoul_check") or {}  # 지금 정답으로 다시 잰 값
     lines += ["", f"지역 엔진을 학습에 안 쓴 서울에 써 보면 {f2(sc.get('acc'))}이라(서울 엔진 {f2(seoul_acc)}) 서울은 서울 엔진을 그대로 써요."]
     if eng.get("weights"):
         lines[-1] += " 비중이 큰 표는 KB 매수우위·전세수급·거래활발 같은 중개사 설문이라 KB 자료 의존이 커져요."

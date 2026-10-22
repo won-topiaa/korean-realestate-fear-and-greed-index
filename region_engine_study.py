@@ -29,6 +29,7 @@ import numpy as np
 import pandas as pd
 
 import backtest as bt
+import timing
 import v3
 
 OFF = pd.Timestamp("2011-02-01")
@@ -52,7 +53,7 @@ def seoul_frame():
     raw = pd.read_csv(bt.ROOT / "data" / "indicators.csv", index_col=0, parse_dates=True)
     raw = raw[raw.index <= raw["__price"].last_valid_index()]
     rs = pd.read_csv(bt.ROOT / "data" / "targets_extra.csv", index_col=0, parse_dates=True)["실거래지수"].reindex(raw.index)
-    return {"ind": raw, "fwd12": np.log(rs).shift(-12) - np.log(rs)}
+    return {"ind": raw, "fwd12": timing.fwd(rs)}
 
 
 DATA = {rid: {"ind": o["ind"], "fwd12": o["fwd12"]} for rid, o in R.items()}
@@ -146,9 +147,20 @@ def run_fixed(eng, name):
 
 
 def best(train, a=OFF, b=None):
-    """학습 지역의 목표 평균이 가장 높은 엔진."""
-    res = [(np.nanmean([run(c, n, train, a, b)["obj"] for n in train]), i) for i, c in enumerate(CONFIGS)]
-    return CONFIGS[max(res)[1]], max(res)[0]
+    """학습 지역의 목표 평균이 가장 높은 엔진. 목표를 못 잰 지역이 있는 엔진은 고르지 않고, 같으면 먼저 적힌 후보."""
+    res = []
+    for i, c in enumerate(CONFIGS):
+        objs = [run(c, n, train, a, b)["obj"] for n in train]
+        res.append((float(np.mean(objs)) if np.all(np.isfinite(objs)) else -np.inf, -i))
+    obj, i = max(res)
+    return CONFIGS[-i], obj
+
+
+def dump(obj, path):
+    """중간에 끊겨도 반쯤 쓴 파일이 남지 않게 (임시 파일에 쓰고 바꿔 넣음)."""
+    tmp = path.with_name(path.name + ".tmp")
+    json.dump(obj, open(tmp, "w"), ensure_ascii=False, indent=1, default=float)
+    tmp.replace(path)
 
 
 if __name__ == "__main__":
@@ -194,13 +206,13 @@ if __name__ == "__main__":
                 print(f"  임시 엔진({len(old['regions'])}개 지역)으로 처음 본 {h}: 정확도 {r['acc']:.2f}, 5년 중앙 {r['win_median']:.2f}, 2019~ {r['recent']:.2f}")
         pub = {h: bool(r["acc"] >= 0.40 and r["win_median"] >= 0.25) for h, r in loro.items()}
         eng = {**final, "weights": ic_weights(regions, final["window"]) if final.get("learn") else None,
-               "chosen": str(pd.Timestamp.now().date()), "regions": regions, "objective": obj,
+               "chosen": pd.Timestamp.now().strftime("%Y-%m-%d %H:%M"), "regions": regions, "objective": obj,  # 같은 날 다시 골라도 실시간 기록 이름이 겹치지 않게 시각까지
                "loro": {h: {k: r[k] for k in ("engine", "acc", "win_median", "win_min", "recent")} for h, r in loro.items()},
                "publish": pub, "seoul_check": sr, "provisional": provisional,
                # --refit으로 다시 고를 때도 임시 엔진의 시험 성적(미리 정한 기록)은 그대로 둔다
                "previous": {"name": old["name"], "chosen": old["chosen"], "regions": old["regions"], "holdout": holdout} if holdout
                else (old or {}).get("previous")}
-        json.dump(eng, open(EP, "w"), ensure_ascii=False, indent=1, default=float)
+        dump(eng, EP)
         print(f"{'임시' if provisional else '최종'} 엔진 저장: data/region_engine.json · 공개", [h for h, v in pub.items() if v])
         lines = [f"## 지역 엔진 {'임시 ' if provisional else ''}고정: {final['name']}", "", f"- 지역 {len(regions)}곳, 엔진 후보 {len(CONFIGS)}개, 목표 {obj:.3f}",
                  f"- 교차검증 평균 목표: 고른 엔진 {np.mean([r['obj'] for r in loro.values()]):.3f} · 서울과 같은 엔진 {np.mean([r['base']['obj'] for r in loro.values()]):.3f}",
@@ -222,6 +234,15 @@ if __name__ == "__main__":
         (bt.ROOT / "results_region" / "engine_new.md").write_text("\n".join(lines) + "\n")
     print(f"\n[모든 지역으로 고른 엔진] {final['name']} (목표 {obj:.3f})")
     print(f"  서울에 써 보면: 정확도 {sr['acc']:.2f}, 5년 중앙 {sr['win_median']:.2f} | 서울 엔진 {run(base, 'seoul', regions)['acc']:.2f}")
-    json.dump({"regions": regions, "configs": [c["name"] for c in CONFIGS], "full": full, "loro": loro,
-               "period": {"engine": cfg_t["name"], "per": per}, "final": final, "final_obj": obj, "seoul_check": sr},
-              open(bt.ROOT / "results_region" / "engine_study.json", "w"), ensure_ascii=False, indent=1, default=float)
+    # 시간까지 나눈 점검: 고정 엔진의 비중을 2018년까지(이후 12개월이 2019년 전에 끝나는 달)의 다른 지역 자료로만 배워 2019년~에 쓴 성적.
+    # 교차검증은 지역만 빼고 같은 기간으로 비중을 배우므로, 이 값이 시간상 정직한 성적에 더 가깝다 (지역 페이지에 함께 적음)
+    fixed = json.loads(EP.read_text()) if EP.exists() else None
+    honest = {n: run(fixed, n, regions, SPLIT, wb=TRAIN_END) for n in regions} if fixed else {}
+    # 고정 엔진을 지금 정답(발표한 달부터 12개월)으로, 그 지역만 빼고 비중을 배워 잰 성적 (지역 페이지 표시용. 공개 여부는 고정할 때 정한 그대로)
+    fixed_loro = {n: run(fixed, n, regions) for n in regions} if fixed else {}
+    if honest:
+        print("\n[시간까지 나눈 점검: 고정 엔진, 2018년까지 배운 비중 → 2019년~]")
+        print("  ", {n: f"{h['acc']:.2f} / 5년 중앙 {h['win_median']:.2f}" for n, h in honest.items()})
+    dump({"regions": regions, "configs": [c["name"] for c in CONFIGS], "full": full, "loro": loro,
+          "period": {"engine": cfg_t["name"], "per": per}, "honest": honest, "fixed_loro": fixed_loro, "final": final, "final_obj": obj, "seoul_check": sr},
+         bt.ROOT / "results_region" / "engine_study.json")

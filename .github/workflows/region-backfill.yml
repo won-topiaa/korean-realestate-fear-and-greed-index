@@ -6,7 +6,7 @@ name: 지역 실거래 채우기
 #  - 건축물대장 (세대수·용적률 등, 실거래와 다른 호출 한도): 따로 동시에 (bldg_fetch.py --regions)
 # 7개 지역 실거래가 다 차면 '월간 자동 갱신'을 자료 받기 없이 불러 지역 엔진을 고정하고 사이트에 반영한다.
 # 그 갱신이 실패해 엔진이 아직 임시면 다음 차례에 다시 부른다. 단지 이름·정보가 새로 다 차면 '화면만 다시 배포'를 부른다.
-# 월간 갱신을 앞뒀거나 아직 못 끝낸 날(KST 18~22일)은 그날 호출 한도를 월간 갱신 몫으로 남긴다 (갱신이 한도에 막히지 않게).
+# 월간 갱신을 앞뒀거나 아직 못 끝낸 날(KST 18~22일)은 채우기를 쉰다 (그날 호출 한도를 월간 갱신이 다 쓰게).
 on:
   schedule:
     - cron: "23 15 * * *"   # 00:23 KST (한도가 풀린 직후)
@@ -47,7 +47,8 @@ jobs:
 
   fill:
     needs: check
-    if: needs.check.outputs.left != '' || needs.check.outputs.names != '0'
+    # 월간 갱신 무렵(busy)엔 쉰다: 실행마다 한도를 나눠도 하루 세 번 돌면 월간 갱신 몫까지 써 버려서 (2026-10-22 건축물대장 한도 소진)
+    if: needs.check.outputs.busy != 'true' && (needs.check.outputs.left != '' || needs.check.outputs.names != '0')
     runs-on: ubuntu-latest
     timeout-minutes: 340
     env:
@@ -69,8 +70,8 @@ jobs:
         run: |
           printf 'DATA_GO_KR_KEY=%s\n' "$DATA_GO_KR_KEY" > .env
           set +e
-          # 재시도가 길어져도 작업 한도(340분) 안에서 저장·커밋. 월간 갱신 무렵엔 하루 한도(약 1만)의 일부만
-          python region_backfill.py --minutes 280 ${{ needs.check.outputs.busy == 'true' && '--max-calls 6000' || '' }}
+          # 재시도가 길어져도 작업 한도(340분) 안에서 저장·커밋
+          python region_backfill.py --minutes 280
           code=$?
           set -e
           echo "code=$code" >> "$GITHUB_OUTPUT"
@@ -85,15 +86,11 @@ jobs:
           git add -A data/molit_kr
           git diff --cached --quiet && exit 0
           git commit -m "지역 실거래 채우기 $(date +%Y-%m-%d) ($([ '${{ steps.fill.outputs.code }}' = 0 ] && echo 완료 || echo 진행 중))"
-          for i in 1 2 3; do  # 건축물대장 작업과 동시에 올릴 수 있어 밀리면 다시
-            git pull --rebase -X theirs origin main && git push origin HEAD:main && exit 0
-            sleep $((i * 15))
-          done
-          exit 1
+          bash automation/push.sh  # 건축물대장 작업·월간 갱신과 동시에 올릴 수 있어 밀리면 다시 (겹친 단지 표는 단지 번호로 합침)
 
   bldg:
     needs: check
-    if: needs.check.outputs.bldg != '0'
+    if: needs.check.outputs.busy != 'true' && needs.check.outputs.bldg != '0'
     runs-on: ubuntu-latest
     timeout-minutes: 120
     env:
@@ -113,8 +110,7 @@ jobs:
           DATA_GO_KR_KEY: ${{ secrets.DATA_GO_KR_KEY }}
         run: |
           printf 'DATA_GO_KR_KEY=%s\n' "$DATA_GO_KR_KEY" > .env
-          # 월간 갱신 무렵엔 그 갱신의 서울 새 단지 몫을 남긴다
-          python bldg_fetch.py ${{ needs.check.outputs.busy == 'true' && '1500' || 'run' }} --regions --minutes 70
+          python bldg_fetch.py run --regions --minutes 70
           python bldg_fetch.py fill --regions --minutes 30
           python bldg_fetch.py land --regions --minutes 10   # 대장에 대지가 있는 단지의 용적률·건폐율 (토지대장은 키가 없어 건너뜀)
 
@@ -127,11 +123,7 @@ jobs:
           git add data/molit_kr/buildings.csv
           git diff --cached --quiet && exit 0
           git commit -m "지역 건축물대장 채우기 $(date +%Y-%m-%d)"
-          for i in 1 2 3; do  # 실거래 작업과 동시에 올릴 수 있어 밀리면 다시
-            git pull --rebase -X theirs origin main && git push origin HEAD:main && exit 0
-            sleep $((i * 15))
-          done
-          exit 1
+          bash automation/push.sh  # 실거래 작업·월간 갱신과 동시에 올릴 수 있어 밀리면 다시 (겹친 단지 표는 단지 번호로 합침)
 
   finish:
     needs: [check, fill, bldg]

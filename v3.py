@@ -25,10 +25,15 @@ def load_meta():
 
 
 def search_ok(index):
+    """검색어마다 직전 2년 평균 검색량이 MIN_SEARCH 이상인 달만 쓴다. 구글 트렌드는 받을 때마다 전체 기간 최고점을 100으로 맞추므로,
+    그달까지의 최고점으로 다시 맞춰 잰다 (그때 받았으면 보였을 값. 전체 기간 기준이면 나중 최고점이 과거 판정을 바꿈, v3.4)."""
     m = pd.DataFrame(True, index=index, columns=list(TREND_KW))
     for c, kws in TREND_KW.items():
-        vol = sum(pd.read_csv(bt.ROOT / "data" / "raw" / "trends" / f"{k}.csv", index_col=0, parse_dates=True).iloc[:, 0] for k in kws)
-        ok = vol.rolling(24).mean() >= MIN_SEARCH
+        vol = 0
+        for k in kws:
+            s = pd.read_csv(bt.ROOT / "data" / "raw" / "trends" / f"{k}.csv", index_col=0, parse_dates=True).iloc[:, 0].astype(float)
+            vol = vol + 100 * s.rolling(24).mean() / s.cummax()
+        ok = vol >= MIN_SEARCH
         if c in timing.LAG1:
             ok = ok.shift(1)  # 지표를 1개월 늦췄으므로 판정도 같은 시점으로
         m[c] = ok.reindex(index).fillna(False).astype(bool)
@@ -54,7 +59,9 @@ def scores(raw):
     return raw.apply(bt.pct_score)
 
 
-VERSION = "v3.3"  # 2026-10-14: 신고가·급락은 해제·직거래 표시 전후로 같은 정의(모든 거래), 급락은 직전 다른 날과 비교, 미분양 2개월 늦춤, 권역·구 표 구성 통일.
+VERSION = "v3.4"  # 2026-10-22: 검색량 기준·공포어 합산을 그때까지의 최고점으로, 권역·구가 자료 시작 전 상위 값을 이을 때 수준 맞추기,
+#   그룹·주제 점수는 넓히지 않음, 성적은 발표한 달부터 (timing.fwd).
+#   v3.3 (2026-10-14): 신고가·급락은 해제·직거래 표시 전후로 같은 정의(모든 거래), 급락은 직전 다른 날과 비교, 미분양 2개월 늦춤, 권역·구 표 구성 통일.
 #   v3.2: 자금 지표를 한국은행 원자료로. v3.1: 공개 시차, 신고가·급락 정의, 같은 출처 한 표. (점수화 기간 10년은 7·15년·누적과 비교해 유지)
 OFFICIAL_START = "2011-02-01"  # 이 달부터 표의 90% 이상이 갖춰짐 (이전은 구성 불완전 · 참고용)
 # 같은 원자료에서 나온 지표는 한 표 (같은 속도 그룹 안). 결과를 보기 전에 정한 기준으로 고름 (eval_structure.py)
@@ -87,8 +94,9 @@ def compute(raw, meta, aux_meta=None):
     core = pd.concat(groups.values(), axis=1).mean(axis=1)
     themes = {t: V[M.index[M["주제"] == t]].mean(axis=1, skipna=True) for t in M["주제"].unique()}
     aux = raw[[c for c in (aux_meta.index if aux_meta is not None else []) if c in raw.columns]].apply(bt.pct_score) if aux_meta is not None else None
-    return {"core": core, "final": spread(core), "groups": {k: spread(v) for k, v in groups.items()},
-            "themes": {k: spread(v) for k, v in themes.items()}, "aux": aux, "votes": V, "vote_meta": M,
+    # 그룹·주제는 표가 적어 이미 넓게 퍼져 있어 넓히지 않는다 (1.5배로 넓히면 가격부담 주제가 137개월 0·100에 붙었음, v3.4)
+    return {"core": core, "final": spread(core), "groups": {k: spread(v, 1.0) for k, v in groups.items()},
+            "themes": {k: spread(v, 1.0) for k, v in themes.items()}, "aux": aux, "votes": V, "vote_meta": M,
             "n_votes_available": V.notna().sum(axis=1)}
 
 
@@ -100,7 +108,7 @@ if __name__ == "__main__":
     r = compute(raw, meta, aux_meta)
     tg = pd.read_csv(bt.ROOT / "data" / "targets_extra.csv", index_col=0, parse_dates=True)
     rs = tg["실거래지수"].reindex(raw.index)
-    y = np.log(rs).shift(-12) - np.log(rs)
+    y = timing.fwd(rs)  # 발표한 달부터 12개월
     for nm in ["core", "final"]:
         s = r[nm].reindex(raw.index)
         ics = [bt.spearman(s[bt.window_mask(s.index, w)].to_numpy(), y[bt.window_mask(s.index, w)].to_numpy()) for w in P3]

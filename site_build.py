@@ -179,6 +179,22 @@ def tool_ready(page, rid):
     return all((ROOT / f).exists() for f in need)
 
 
+def tool_src(page, h1):
+    """도구 화면의 원본. 서울 자료를 이번 실행에서 못 만들었으면(월간 갱신에서 그 계산만 실패) '잠시 쉬어요' 안내 페이지로
+    (그냥 두면 '잠시 뒤 새로고침'이라는 안내만 뜨는데, 자료는 다음 갱신 때까지 안 생김)."""
+    src = ROOT / page / "template.html"
+    if tool_ready(page, "seoul"):
+        return src, True
+    print(f"알림: 서울 {page} 자료가 없어 안내 페이지로 배포")
+    title = re.search(r"<title>.*?</title>", src.read_text()).group(0)
+    tmp = ROOT / "logs" / f"maint_{page}.html"
+    tmp.parent.mkdir(exist_ok=True)
+    tmp.write_text(f'{title}<style>.wrap{{max-width:960px;margin:0 auto;padding:24px 16px}}</style>\n<div class="wrap">'
+                   f'<header style="display:grid;gap:6px"><h1>{h1}</h1><p>이번 달 갱신에서 이 화면의 자료를 만들지 못해 잠시 쉬어요. '
+                   '다음 갱신 때 다시 열어요. 지도와 지수는 정상이에요.</p></header></div>\n')
+    return tmp, False
+
+
 def tool_regions(page):
     """도구 화면의 지역 목록: 서울 + 수도권·광역시 (자료를 만든 곳만 ready). pre: 그 지역 단지 번호 앞 5자리 (지역 없이 #단지번호만 있는 예전 링크용)."""
     out = []
@@ -286,9 +302,10 @@ if __name__ == "__main__":
              skin_args=("../", "지도", ('<header style="display:grid;gap:6px">', "</header>"),
                         (f"<h1>{nm} 아파트 공포탐욕지도</h1>", f'<h1><span class="sk-h1a">{nm} 아파트</span><span class="sk-h1b">공포탐욕지도</span></h1>'),
                         (f"bg-{rid}" if (ROOT / "assets" / "img" / f"bg-{rid}.jpg").exists() else "bg-map", "50%"), 1180))  # 지역 사진이 없으면 서울 사진
-    wrap(ROOT / "apt" / "template.html", SITE / "apt" / "index.html",
+    src, ok = tool_src("apt", "단지 검색")
+    wrap(src, SITE / "apt" / "index.html",
          "우리 단지 최근 실거래가가 비싼 편인지 싼 편인지 0~100점으로. 서울·수도권·광역시, 세대수·용적률 같은 단지 정보도 함께.",
-         inject=pick("apt"), skin_args=("../", "단지 검색", ('<header style="display:grid;gap:6px">', "</header>"),
+         inject=pick("apt") if ok else None, skin_args=("../", "단지 검색", ('<header style="display:grid;gap:6px">', "</header>"),
                     ("<h1>단지 검색</h1>", '<h1><span class="sk-h1a">최근 실거래가, 비싼 편일까?</span><span class="sk-h1b">단지 검색</span></h1>'),
                     ("bg-apt", "40%"), 960), intro="#detail")
     for res, page, script in [("results_apt", "apt", "apt_score.py"), ("results_highs", "highs", "highs_build.py"), ("results_sim", "sim", "sim_build.py")]:
@@ -298,14 +315,16 @@ if __name__ == "__main__":
             shutil.copytree(data, SITE / page / "data")
         else:
             print(f"알림: {res}가 없어 {page} 자료 없이 빌드 (python {script} 먼저)")
-    wrap(ROOT / "highs" / "template.html", SITE / "highs" / "index.html",
+    src, ok = tool_src("highs", "신고가 단지")
+    wrap(src, SITE / "highs" / "index.html",
          "이번 달 아파트 신고가 단지 (서울·수도권·광역시). 같은 단지·같은 평형의 지난 모든 거래보다 비싸게 팔린 거래를 구·시군별로.",
-         inject=pick("highs"), skin_args=("../", "신고가 단지", ('<header style="display:grid;gap:6px">', "</header>"),
+         inject=pick("highs") if ok else None, skin_args=("../", "신고가 단지", ('<header style="display:grid;gap:6px">', "</header>"),
                     ("<h1>신고가 단지</h1>", '<h1><span class="sk-h1a">이번 달 가장 비싸게 팔린 집</span><span class="sk-h1b">신고가 단지</span></h1>'),
                     ("bg-highs", "45%"), 1040))
-    wrap(ROOT / "sim" / "template.html", SITE / "sim" / "index.html",
+    src, ok = tool_src("sim", "모의 투자")
+    wrap(src, SITE / "sim" / "index.html",
          "그때 이 단지를 샀다면 지금 얼마일까? 서울·수도권·광역시 실거래로 계산하는 가상 투자. 단지 2~3개를 같은 기간으로 비교.",
-         inject=pick("sim"), skin_args=("../", "모의 투자", ('<header style="display:grid;gap:6px">', "</header>"),
+         inject=pick("sim") if ok else None, skin_args=("../", "모의 투자", ('<header style="display:grid;gap:6px">', "</header>"),
                     ("<h1>모의 투자</h1>", '<h1><span class="sk-h1a">그때 샀다면 지금 얼마?</span><span class="sk-h1b">모의 투자</span></h1>'),
                     ("bg-sim", "38%"), 960), intro="#res-panel")
     wrap(ROOT / "report" / "index.html", SITE / "report" / "index.html",

@@ -5,6 +5,7 @@ import numpy as np
 import pandas as pd
 
 import backtest as bt
+import timing
 import v3
 from zone_fetch import ZONES
 
@@ -30,7 +31,7 @@ AUX_LABEL = {"설문_가격전망": "KB 매매가격 전망 (2013~)", "설문_�
 
 tg = pd.read_csv(bt.ROOT / "data" / "targets_extra.csv", index_col=0, parse_dates=True)
 rs_seoul = tg["실거래지수"].reindex(idx)
-y_seoul = np.log(rs_seoul).shift(-12) - np.log(rs_seoul)
+y_seoul = timing.fwd(rs_seoul)  # 발표한 달부터 12개월
 sf = seoul["final"].reindex(idx)
 ic_seoul = [bt.spearman(sf[bt.window_mask(idx, w)].to_numpy(), y_seoul[bt.window_mask(idx, w)].to_numpy()) for w in P3]
 

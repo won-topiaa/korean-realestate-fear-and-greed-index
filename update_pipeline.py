@@ -249,7 +249,7 @@ def refresh_molit(back=4):
             except Exception as e:  # noqa: BLE001  (한 구·월이 실패해도 나머지는 계속)
                 failed.setdefault(ym, []).append(str(e)[:200])
                 continue
-            M.OUT.joinpath(f"{lawd}_{ym}.json").write_text(json.dumps(rows, ensure_ascii=False))
+            M.save_json(M.OUT / f"{lawd}_{ym}.json", rows)  # 끊겨도 반쯤 쓴 파일이 남지 않게
             new.setdefault(ym, []).append((lawd, rows))
             n += 1
             time.sleep(0.15)
@@ -384,6 +384,20 @@ def check_and_summarize():
     missing = list(r["votes"].columns[r["votes"].iloc[-1].isna()])
     if missing:
         log(f"알림: 최신 달에 비어 있는 표 {missing} (과거 최대 {int(nv.max())}표 중 {int(nv.iloc[-1])}표로 계산) — 자료 공급을 확인해 보세요.")
+    # 자료가 다 들어왔는지: 기준월이 나와야 할 달까지 왔고, 표에 쓰는 자료처가 다 받혔고, 지난 값을 이어 쓴 표가 없을 때만 '완료'.
+    # 완료가 아니면 점수는 그대로 게시하되 예비 실행·감시가 다시 받는다 (monthly_due.sh). 예전엔 받기가 실패해도 '완료'로 넘어갔음
+    import timing
+    expected = f"{timing.expected_label(dt.date.today()):%Y-%m}"
+    fp = ROOT / "data/freshness.json"
+    fr = json.loads(fp.read_text())["cols"] if fp.exists() else {}
+    stale_cols = {c for c, v in fr.items() if v["stale"]}
+    vm = r["vote_meta"]
+    stale = [v for v, comp in zip(vm.index, vm["구성"]) if any(c in stale_cols for c in comp.split(", "))]
+    if stale:
+        log(f"알림: 최신 자료가 아직 안 들어와 지난 값을 이어 쓴 표 {stale} (" + ", ".join(f"{c} {fr[c]['last']}<{fr[c]['need']}" for c in sorted(stale_cols)) + ")")
+    failed = [s["step"] for s in STATUS if s["step"] in VOTE_SOURCES and not s["ok"]]
+    if latest < expected:
+        log(f"알림: 기준월 {latest}이 나와야 할 달({expected})보다 이르러요. KB 월간 자료가 아직 안 들어왔을 수 있어요.")
     hist_path = ROOT / "results_zone/update_history.csv"
     row = {"run": STAMP, "latest_month": latest, **{r: round(v, 1) for r, v in now.items()}}
     hist = pd.read_csv(hist_path) if hist_path.exists() else pd.DataFrame()
@@ -398,13 +412,18 @@ def check_and_summarize():
     sp = ROOT / "results_zone/update_summary.json"
     prev = json.loads(sp.read_text()) if sp.exists() else {}
     # fetched=false: 자료 받기 없이 재계산만 한 실행. 월간 갱신 확인(monthly_due.sh)은 last_fetched(마지막으로 자료를 받은 실행)로 본다
+    # 재계산만 한 실행은 자료를 받은 실행의 '완료' 판단을 그대로 이어받는다
+    complete = (latest >= expected and not stale and not failed) if FETCHED else prev.get("complete", True)
     summary = {"run": STAMP, "fetched": FETCHED, "last_fetched": STAMP if FETCHED else prev.get("last_fetched", prev.get("run")),
-               "latest_month": latest, "scores": now, "log": str(LOG.relative_to(ROOT))}
+               "latest_month": latest, "expected_month": expected, "complete": complete,
+               "stale_votes": stale if FETCHED else prev.get("stale_votes", []), "failed_sources": failed if FETCHED else prev.get("failed_sources", []),
+               "scores": now, "log": str(LOG.relative_to(ROOT))}
     sp.write_text(json.dumps(summary, ensure_ascii=False, indent=1))
     zs = [r for r in now if regs[r].get("level") == "zone"]
     gs = {r: v for r, v in now.items() if regs[r].get("level") == "gu"}
     gtxt = f" · 구 {len(gs)}개 {min(gs.values()):.1f}~{max(gs.values()):.1f}" if gs else ""
-    return f"기준월 {latest} · 서울 {now['서울']} · " + ", ".join(f"{r} {now[r]}" for r in zs) + gtxt
+    return (f"기준월 {latest} · 서울 {now['서울']} · " + ", ".join(f"{r} {now[r]}" for r in zs) + gtxt
+            + ("" if complete else f" · 미완료 (다시 받을 예정: 표 {len(stale)}개 지난 값, 실패 {failed or '-'})"))
 
 
 # ---------------- 게시 ----------------
@@ -438,6 +457,8 @@ FETCH_GROUPS = {
     "건축물대장": [("건축물대장", refresh_bldg)],
 }
 SEOUL_MOLIT_DONE = LOGS / f".seoul_molit_{STAMP}"
+# 점수의 표에 들어가는 자료처 (실패하면 이번 달 갱신을 '완료'로 치지 않음). 청약홈(보조 지표)·건축물대장(단지 화면)은 빼고
+VOTE_SOURCES = {n for g in FETCH_GROUPS.values() for n, _ in g} - {"청약홈", "건축물대장"}
 
 
 def run_group(g):
@@ -508,28 +529,32 @@ def main():
         log("=== 점검 실패로 중단 (게시 안 함) ===")
         write_status()
         return 1
-    # 실시간 기록(지우지 않는 기록)은 점검을 통과한 공식 실행(GitHub Actions)에서만. 로컬 시험 실행이 값을 굳히지 않게
-    if os.environ.get("CI") or a.record:
+    # 실시간 기록(지우지 않는 기록)은 발표한 값만: 점검을 통과한 공식 실행(GitHub Actions)이 이번 달 자료를 받았고, 갱신일 이후이고,
+    # 자료가 다 들어왔거나 마지막 시도일이 됐을 때. 한 달에 처음 남긴 값이 굳으므로 그 전의 수동 실행·재계산 값이 남지 않게
+    # (2026-09 서울 기록은 10-15 수동 실행 값이 남아 10-20 발표값과 달라요 — 지우지 않는 기록이라 그대로 둠)
+    s = json.loads((ROOT / "results_zone/update_summary.json").read_text())
+    today = dt.date.today()
+    official = (bool(os.environ.get("CI") or a.record) and FETCHED and today.day >= timing_day("UPDATE_DAY")
+                and s["latest_month"] >= s["expected_month"] and (s["complete"] or today.day >= timing_day("LAST_TRY_DAY")))
+    if official:
         step("실시간 기록", lambda: run_script("live_track.py"))
     else:
-        log("실시간 기록: 로컬 실행이라 건너뜀 (기록하려면 --record)")
+        log("실시간 기록: 건너뜀 (" + ("로컬 실행 — 기록하려면 --record" if not (os.environ.get("CI") or a.record) else
+                                     "자료를 받지 않은 재계산" if not FETCHED else "갱신일 전이거나 자료가 다 안 들어옴 — 다음 시도에서") + ")")
     for rel in AFTER_CHECK:
         if not step(f"계산 {rel}", lambda rel=rel: run_script(rel)):
             log("=== 계산 실패로 중단 (게시 안 함) ===")
             write_status()
             return 1
-    # 새로 들어온 지역의 단지 점수 고정값(층 효과·면적 탄력성)을 먼저 한 번 고른다 (셋이 같은 값을 쓰게)
-    step("계산 apt_region_study.py --missing", lambda: run_script("apt_region_study.py --missing"))
-    # 셋은 서로 기다릴 필요가 없어 동시에 (서울과 지역마다 돌아 차례로 하면 몇 분 더 걸림)
-    from concurrent.futures import ThreadPoolExecutor
-    with ThreadPoolExecutor(len(OPTIONAL)) as ex:
-        done = list(ex.map(lambda rel: (rel, step(f"계산 {rel}", lambda: run_script(rel))), OPTIONAL))
-    for rel, ok in done:
-        if not ok:
-            log(f"알림: {rel} 실패 — 지도·보고서는 그대로 게시 (서울 밖 한 지역만 실패면 그 지역만 빠짐)")
     region_ok = True
+    eng = ROOT / "data/region_engine.json"
+    fixed = eng.exists() and not json.loads(eng.read_text()).get("provisional", True)
     for rel in REGION:
-        if not step(f"계산 {rel}", lambda rel=rel: run_script(rel)):
+        ok = step(f"계산 {rel}", lambda rel=rel: run_script(rel))
+        if not ok and rel == "region_engine_study.py" and fixed:  # 엔진이 이미 고정됐으면 비교표만 못 쓴 것 — 지역 계산은 계속
+            log("알림: region_engine_study.py 실패 — 고정 엔진으로 지역 계산은 계속 (비교 결과만 지난 것)")
+            continue
+        if not ok:
             log(f"알림: {rel} 실패 — 수도권·광역시는 지난 결과로 게시")
             region_ok = False
             why = f"- 실패한 단계: `{rel}`\n- 내용: {STATUS[-1]['detail']}\n- 실행 기록: `{LOG.relative_to(ROOT)}` (Actions 실행의 update-log)\n"
@@ -539,8 +564,18 @@ def main():
                 note.write_text(note.read_text() + f"\n**다만 그 뒤 `{rel}` 단계가 실패해 지역 페이지에는 아직 반영하지 못했어요.** "
                                 "다음 월간 갱신에서 고정한 엔진으로 다시 계산해요.\n")
             break
-    if region_ok and (os.environ.get("CI") or a.record):
+    if region_ok and official:
         step("실시간 기록 (지역)", lambda: run_script("live_track.py --regions"))
+    # 단지 검색·신고가·모의 투자는 지역 결과(점수·공개 여부)를 읽으므로 지역 계산 뒤에 (예전엔 앞에 돌아 지난 결과를 썼음)
+    # 새로 들어온 지역의 단지 점수 고정값(층 효과·면적 탄력성)을 먼저 한 번 고른다 (셋이 같은 값을 쓰게)
+    step("계산 apt_region_study.py --missing", lambda: run_script("apt_region_study.py --missing"))
+    # 셋은 서로 기다릴 필요가 없어 동시에 (서울과 지역마다 돌아 차례로 하면 몇 분 더 걸림)
+    from concurrent.futures import ThreadPoolExecutor
+    with ThreadPoolExecutor(len(OPTIONAL)) as ex:
+        done = list(ex.map(lambda rel: (rel, step(f"계산 {rel}", lambda: run_script(rel))), OPTIONAL))
+    for rel, ok in done:
+        if not ok:
+            log(f"알림: {rel} 실패 — 지도·보고서는 그대로 게시 (서울 자료가 빠지면 그 화면은 점검 중 안내로)")
     step("README 갱신", lambda: run_script("readme_build.py"))  # 현재 점수·지역 결과 칸 (실패해도 게시는 계속)
     for rel in FINAL:
         if not step(f"계산 {rel}", lambda rel=rel: run_script(rel)):
@@ -555,8 +590,20 @@ def main():
 
 
 def write_status():
-    (ROOT / "results_zone/update_status.json").write_text(json.dumps(
-        {"run": STAMP, "steps": STATUS}, ensure_ascii=False, indent=1))
+    """단계별 결과. 재계산만 한 실행은 지금 자료를 받은 실행의 자료처별 결과(fetch)를 그대로 남긴다 (덮어써 사라지지 않게)."""
+    p = ROOT / "results_zone/update_status.json"
+    names = {n for g in FETCH_GROUPS.values() for n, _ in g}
+    fetch_run, fetch = STAMP, [s for s in STATUS if s["step"] in names]
+    if not FETCHED and p.exists():
+        prev = json.loads(p.read_text())
+        fetch_run = prev.get("fetch_run", prev.get("run"))
+        fetch = prev.get("fetch", [s for s in prev.get("steps", []) if s["step"] in names])
+    p.write_text(json.dumps({"run": STAMP, "steps": STATUS, "fetch_run": fetch_run, "fetch": fetch}, ensure_ascii=False, indent=1))
+
+
+def timing_day(name):
+    import timing
+    return getattr(timing, name)
 
 
 if __name__ == "__main__":

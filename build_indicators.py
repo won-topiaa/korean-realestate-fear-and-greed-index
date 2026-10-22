@@ -100,6 +100,14 @@ def attention(s):
     return np.log(s.rolling(3).mean() / s.rolling(24).mean())
 
 
+def attention_rt(series):
+    """여러 검색어를 더한 관심 급증. 구글 트렌드는 검색어마다 전체 기간 최고점을 100으로 맞춰 와서 그대로 더하면 섞는 비율이
+    나중 최고점으로 정해진다. 그달까지의 최고점으로 다시 맞춰 더한다 (그때 받았으면 보였을 비율, v3.4)."""
+    num = sum(100 * s.clip(lower=1).rolling(3).mean() / s.cummax() for s in series)
+    den = sum(100 * s.clip(lower=1).rolling(24).mean() / s.cummax() for s in series)
+    return np.log(num / den)
+
+
 # 지표 메타: 키 → (설명, 주제, 속도, 출처성격, 행위자, 시장, cnn, 사용자원안)
 META = {
     # 가격
@@ -188,7 +196,7 @@ def build():
     for k, kw in [("관심_아파트", "아파트"), ("관심_부동산", "부동산"), ("관심_집값", "집값"),
                   ("관심_청약", "청약"), ("관심_갭투자", "갭투자")]:
         ind[k] = attention(trend(kw))
-    ind["관심_공포어역수"] = -attention(trend("급매") + trend("미분양"))
+    ind["관심_공포어역수"] = -attention_rt([trend("급매"), trend("미분양")])
 
     if (RAW / "kb" / "분양물량.csv").exists() and (RAW / "kb" / "입주물량.csv").exists():  # v3.1에서는 쓰지 않음 (실시간 계산 불가)
         sale = kb_supply("분양물량")
@@ -204,15 +212,22 @@ def build():
     ind["시장_건설주상대강도"] = basket.rolling(6).sum() - kospi6
     ind["시장_KOSPI모멘텀"] = kospi6
 
+    import timing
+    raw = pd.DataFrame(ind).sort_index()
+    label = p.last_valid_index()  # 기준월 = KB 매매지수 최신 달
     # 발표가 늦는 지표는 최근 값으로 최대 3개월 이어 붙임 (실시간 운영과 동일)
-    df = pd.DataFrame(ind).sort_index().ffill(limit=3)
+    df = raw.ffill(limit=3)
     df = df[df.index >= "2000-01-01"]
     df.index.name = "date"
     extra = ROOT / "data" / "indicators_extra.csv"
     if extra.exists():  # API 키로 받은 지표 (extra_indicators.py)
-        ex = pd.read_csv(extra, index_col=0, parse_dates=True).ffill(limit=3)
-        df = df.join(ex.reindex(df.index))
-    import timing
+        ex0 = pd.read_csv(extra, index_col=0, parse_dates=True)
+        raw = raw.join(ex0, how="outer")
+        df = df.join(ex0.ffill(limit=3).reindex(df.index))
+    # 이어 붙이기 전에 열마다 최신 값이 기준월에 맞게 왔는지 남긴다 (이어 붙인 뒤엔 빈칸이 안 보여 점검이 못 잡음)
+    tmp = ROOT / "data" / "freshness.json.tmp"
+    tmp.write_text(json.dumps({"label": f"{label:%Y-%m}", "cols": timing.freshness(raw, label)}, ensure_ascii=False, indent=1))
+    tmp.replace(ROOT / "data" / "freshness.json")
     df = timing.apply(df)  # 20일 갱신 시점에 아직 공개 전인 지표는 1개월 늦춤
     df = timing.fill_slow(df)  # 분기 자료는 다음 발표까지 이어 씀
     df["__price"] = p.reindex(df.index)  # 타깃용 서울 아파트 매매지수

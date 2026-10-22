@@ -90,6 +90,8 @@ def high_low(df, high_window_days=1095, drop_gap_months=24):
     dr = (d["price"] < 0.9 * prev_p).where(has_drop)
     m = pd.DataFrame({"date": d["date"], "hi": hi.astype(float), "dr": dr.astype(float)})
     out = m.groupby("date")[["hi", "dr"]].mean()
+    # 거래가 없는 달도 빈 값으로 둔다 (부르는 쪽의 3개월 평균·2개월 늦춤이 줄 수가 아니라 달력 기준이 되게)
+    out = out.reindex(pd.date_range(out.index.min(), out.index.max(), freq="MS"))
     return out["hi"], out["dr"], df.groupby("date").size()
 
 
@@ -101,7 +103,7 @@ if __name__ == "__main__":
     hi, dr, _ = high_low(df_all)
     cnt = df.groupby("date").size()
     out = pd.DataFrame({"index": idx, "pairs": npairs, "trades": cnt})
-    # 지표는 신고 기한(최대 60일) 때문에 2개월 뒤에야 확정 → 2개월 늦춰서 사용
+    # 지표는 신고 기한(2020년 2월부터 30일, 그 전 60일) 때문에 늦게 확정 → 2개월 늦춰서 사용
     out["거래_신고가비중"] = hi.rolling(3).mean().shift(2)
     out["거래_급락거래역수"] = -dr.rolling(3).mean().shift(2)
     # 같은 이유로 최근 2개월 지수는 표본이 덜 차서 제외

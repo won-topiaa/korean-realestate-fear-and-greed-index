@@ -16,6 +16,8 @@ import pandas as pd
 from scipy.cluster.hierarchy import fcluster, linkage
 from scipy.spatial.distance import squareform
 
+import timing
+
 ROOT = Path(__file__).parent
 OUT = ROOT / "results"
 OUT.mkdir(exist_ok=True)
@@ -93,7 +95,7 @@ def load():
     targets = pd.DataFrame({
         "동행": lp.shift(-3) - lp.shift(3),
         "선행6": lp.shift(-6) - lp,
-        "선행12": lp.shift(-12) - lp,
+        "선행12": timing.fwd(price),  # 발표한 달부터 (timing.PUB_OFFSET)
     })
     mom = (lp - lp.shift(3))  # 통제용 과거 3개월 가격 변화
     return scores, meta, targets, mom, price

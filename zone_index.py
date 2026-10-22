@@ -3,7 +3,7 @@
 권역(구) 값이 있는 지표는 그 값으로 바꾸고(가격·거래·수급·전세·미분양·신고가 등),
 없는 지표(금리·검색량·주가·청약·PIR 등)는 서울 공통 값을 쓴다. 구 단위가 없는 자료(부동산원 수급, 상승 구 비율)는
 그 구가 속한 권역 값, KB 설문은 강북·강남 값을 쓴다. 미분양도 구 하나는 대부분 0호라 권역 값을 쓴다. 점수는 권역마다 자기 과거 기준 백분위.
-정답: 권역별 실거래 반복매매지수. 서울 전체 = 권역 점수의 최근 12개월 거래금액 가중평균.
+정답: 권역별 실거래 반복매매지수. 지도에 싣는 서울 전체 점수는 서울 엔진(v3.py)의 값이고, 권역 비중(최근 12개월 거래금액)은 표시용.
 결과: results_zone/zone_data.json
 """
 import json
@@ -25,6 +25,8 @@ OUT.mkdir(exist_ok=True)
 GU2ZONE = {g: z for z, gs in ZONES.items() for g in gs}
 KB_SIDE = {"도심권": "강북14개구", "동북권": "강북14개구", "서북권": "강북14개구", "서남권": "강남11개구", "동남권": "강남11개구"}
 NOT_REALTIME = ("공급_분양물량", "공급_향후입주역수")
+# 수준이 권역·구마다 다른 지표: 자료가 늦게 시작하면 그 전의 상위 값을 시작 무렵의 차이만큼 옮겨 잇는다 (그대로 이으면 백분위가 한쪽 끝에 몰림)
+LEVEL = ["부담_전세가율역수", "거래_외지인비중", "거래_원정매수비중", "거래_2030비중", "거래_법인매수비중", "공급_미분양역수"]
 P3 = [("2006-01-01", "2012-12-01"), ("2013-01-01", "2019-12-01"), ("2020-01-01", "2026-12-01")]
 LAWD2GU = {"11110": "종로구", "11140": "중구", "11170": "용산구", "11200": "성동구", "11215": "광진구", "11230": "동대문구",
            "11260": "중랑구", "11290": "성북구", "11305": "강북구", "11320": "도봉구", "11350": "노원구", "11380": "은평구",
@@ -135,10 +137,16 @@ def main():
             if first is None:
                 ind[c] = ref[c]
             elif ref[c].first_valid_index() is not None and ref[c].first_valid_index() < first:
-                ind.loc[ind.index < first, c] = ref.loc[ref.index < first, c]
+                fill = ref.loc[ref.index < first, c]
+                if c in LEVEL:  # 수준이 다른 지표는 시작 6개월의 평균 차이만큼 옮겨 잇는다 (region_index.py와 같은 규칙, v3.4)
+                    w = (idx >= first) & (idx < first + pd.DateOffset(months=6))
+                    gap = (ind.loc[w, c] - ref.loc[w, c]).mean()
+                    if pd.notna(gap):
+                        fill = fill + gap
+                ind.loc[ind.index < first, c] = fill
         rs.iloc[-2:] = np.nan  # 실거래 신고가 덜 찬 최근 2개월 (실거래 자료 기준, 서울과 같게)
         rs = rs.reindex(idx)
-        y = np.log(rs).shift(-12) - np.log(rs)
+        y = timing.fwd(rs)  # 발표한 달부터 12개월
         own = [c for c in meta.index if c not in v3.DROP and not ind[c].equals(ref[c])]
         print(f"{name}: 고유 지표 {len(own)}개, 실거래 지수 {rs.dropna().index[-1].date()}까지 · 반복매매 쌍 월 중앙값 {int(_pairs(sub))}", flush=True)
         return {"ind": ind, "rs": rs, "fwd12": y, "zone_specific": own}

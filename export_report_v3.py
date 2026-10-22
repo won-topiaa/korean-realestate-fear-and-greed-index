@@ -6,6 +6,7 @@ import pandas as pd
 
 import backtest as bt
 import remedies as RM
+import timing
 import v3
 
 D = json.loads((bt.ROOT / "results_v2" / "report_data.json").read_text())
@@ -34,7 +35,8 @@ ic = [bt.spearman(fi[bt.window_mask(fi.index, w)].to_numpy(), y[bt.window_mask(f
 D["v3_ic"] = [r3(v) for v in ic]
 yk = RM.Y["KB"]
 D["v3_ic_kb"] = r3(np.nanmin([bt.spearman(fi[bt.window_mask(fi.index, w)].to_numpy(), yk[bt.window_mask(fi.index, w)].to_numpy()) for w in P3]))
-D["lag"] = int(bt.best_lag(fi, np.exp(np.log(pd.read_csv(bt.ROOT / "data" / "targets_extra.csv", index_col=0, parse_dates=True)["실거래지수"]).reindex(fi.index)))[0])
+# 점수가 시장을 몇 개월 앞서는지: 기준월이 아니라 발표한 달 기준 (기준월 t는 t+PUB_OFFSET월에 발표)
+D["lag"] = int(bt.best_lag(fi, np.exp(np.log(pd.read_csv(bt.ROOT / "data" / "targets_extra.csv", index_col=0, parse_dates=True)["실거래지수"]).reindex(fi.index)))[0]) - timing.PUB_OFFSET
 last = f.dropna().index[-1]
 D["now"] = {"date": last.strftime("%Y-%m"), "v2": r1(f.iloc[-1]), "prev3": r1(f.iloc[-4]), "prev12": r1(f.iloc[-13]),
             "themes": {k: r1(v.dropna().iloc[-1]) for k, v in r["themes"].items()},
@@ -108,7 +110,9 @@ bench = {
     "KB 매수우위지수 하나": bt.pct_score(raw_["설문_매수우위"]),
     "KB 3개월 가격 변화": bt.pct_score(np.log(raw_["__price"]).diff(3)),
     # 반복매매지수는 나중 거래로 과거 값이 다시 추정되므로, 그달에 알 수 있던 값으로 (rs_vintage.py)
-    "실거래 6개월 가격 변화 (그때 알 수 있던 값)": bt.pct_score(pd.read_csv(bt.ROOT / "data" / "repeat_sales_rt.csv", index_col=0, parse_dates=True)["d6"].reindex(raw_.index)),
+    # 발표하는 날(기준월 + PUB_OFFSET의 20일)에 알 수 있던 값: 그날 만든 반복매매지수(신고 기한이 지난 달까지)
+    "실거래 6개월 가격 변화 (그때 알 수 있던 값)": bt.pct_score(pd.read_csv(bt.ROOT / "data" / "repeat_sales_rt.csv", index_col=0, parse_dates=True)["d6"]
+                                                    .shift(-timing.PUB_OFFSET).reindex(raw_.index)),
 }
 starts = pd.date_range("2008-01-01", "2020-01-01", freq="12MS")
 D["rolling"] = {"starts": [s.year for s in starts], "rows": []}

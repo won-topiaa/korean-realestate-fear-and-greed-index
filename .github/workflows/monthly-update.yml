@@ -27,7 +27,7 @@ permissions:
   contents: write
   pages: write
   id-token: write
-  actions: read   # due: 돌고 있는 갱신 확인
+  actions: write  # due: 돌고 있는 갱신 확인 · 배포 실패 시 화면 배포 다시 부르기
   issues: write   # 지역 엔진을 처음 고정했을 때 알림
 
 jobs:
@@ -64,6 +64,8 @@ jobs:
       url: ${{ steps.deploy.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: main   # 부른 시각의 커밋이 아니라 시작할 때의 main (앞 실행이 올린 기록 위에서 시작)
 
       - uses: actions/setup-python@v5
         with:
@@ -114,7 +116,8 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add results_zone/update_status.json
           git diff --cached --quiet || git commit -m "월간 갱신 실패 기록 $(TZ=Asia/Seoul date +%Y-%m-%d)"
-          git pull --rebase -X theirs origin main && git push origin HEAD:main || true
+          git stash -q --include-untracked || true   # 실패한 실행이 고친 다른 파일은 올리지 않음 (남아 있으면 얹기가 거부됨)
+          bash automation/push.sh || true
 
       - name: 갱신된 자료 커밋
         run: |
@@ -122,12 +125,12 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A data results_zone results_v2 results_region map report home README.md
           git diff --cached --quiet || git commit -m "월간 자동 갱신 $(TZ=Asia/Seoul date +%Y-%m-%d)"
-          # 실행 중에 누가 화면 등을 올렸으면: 그 위에 얹고(자료는 이번 실행 값 우선), 새 화면으로 다시 빌드
-          git pull --rebase -X theirs origin main
+          # 실행 중에 누가 화면·자료를 올렸으면 그 위에 얹고(겹친 기록은 양쪽 다 남기고, 합칠 수 없으면 실패), 새 화면으로 다시 빌드
+          bash automation/push.sh sync
           python map/build.py && python report/build.py && python home_build.py && python site_build.py
           git add -A map report home
           git diff --cached --quiet || git commit -m "화면 다시 빌드 (갱신 중 바뀐 화면 반영)"
-          git push origin HEAD:main
+          bash automation/push.sh
 
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
@@ -135,6 +138,22 @@ jobs:
           path: site
       - id: deploy
         uses: actions/deploy-pages@v4
+
+      # 자료는 이미 올라가 '완료'로 보이므로, 배포만 실패했으면 화면 배포를 따로 다시 부른다 (사이트가 지난달에 머물지 않게)
+      - name: 배포가 실패했으면 화면 배포 다시 부르기
+        if: failure() && steps.deploy.outcome == 'failure'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run site-deploy.yml -R "$GITHUB_REPOSITORY" --ref main
+
+      # 화면 배포는 이 갱신이 도는 동안 비켜 주므로, 그사이 main에 새 커밋(화면 수정 등)이 들어왔으면 끝난 뒤 다시 배포한다
+      - name: 갱신 중에 main이 바뀌었으면 화면 배포 부르기
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git fetch -q origin main
+          [ "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)" ] || gh workflow run site-deploy.yml -R "$GITHUB_REPOSITORY" --ref main
 
       # 알림은 배포 뒤에 (이슈를 못 열어도 배포는 끝나게). 커밋이나 배포가 실패했어도 엔진을 고정했으면 알린다
       - name: 지역 엔진을 처음 고정했으면 이슈로 알림

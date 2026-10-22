@@ -632,11 +632,11 @@ function renderHist() {
     note.append(isSeoul ? D.acc_text.top : (D.acc_text.sub[state.region] || ""));
   } else if (isSeoul) {
     H("b", {}, note, "정확도 ");
-    note.append(`${ym(D.official_start)} 이후 이 지수와 이후 12개월 서울 실거래 가격의 순위상관은 ${f2(R.acc)}예요. 5년 단위로 보면 구간에 따라 크게 달라서, 주로 나쁜 구간을 덜 나쁘게 만드는 정도로 이해해 주세요. 권역 점수는 각 권역 자료로 따로 계산해서 평균이 서울 점수와 꼭 같지는 않아요.`);
+    note.append(`${ym(D.official_start)} 이후 이 지수와 점수가 발표된 달(기준월 다음 달)부터 12개월 서울 실거래 가격의 순위상관은 ${f2(R.acc)}예요. 5년 단위로 보면 구간에 따라 크게 달라서, 주로 나쁜 구간을 덜 나쁘게 만드는 정도로 이해해 주세요. 권역 점수는 각 권역 자료로 따로 계산해서 평균이 서울 점수와 꼭 같지는 않아요.`);
   } else if (R.level === "gu") {
     H("b", {}, note, "정확도 ");
     const A = D.gu_acc_mean;
-    note.append(`${ym(D.official_start)} 이후 이 구 지수와 이후 12개월 ${state.region} 실거래 가격의 순위상관은 ${f2(R.acc)}예요. 같은 기간 ${R.zone} 지수를 쓰면 ${f2(R.acc_zone)}, 서울 지수를 쓰면 ${f2(R.acc_seoul)}예요. 25개 구 평균은 구 지수 ${f2(A.gu)}, 권역 지수 ${f2(A.zone)}, 서울 지수 ${f2(A.seoul)}로 거의 같아요. 같은 달 25개 구를 점수 순서로 세웠을 때 이후 1년 더 오른 순서와 맞는 정도도 ${f2(D.gu_cs.score.ic)}로 약해요. 구끼리 비교할 때는 위의 '서울 안 상대 강도'를 함께 보세요.`);
+    note.append(`${ym(D.official_start)} 이후 이 구 지수와 발표된 달부터 12개월 ${state.region} 실거래 가격의 순위상관은 ${f2(R.acc)}예요. 같은 기간 ${R.zone} 지수를 쓰면 ${f2(R.acc_zone)}, 서울 지수를 쓰면 ${f2(R.acc_seoul)}예요. 25개 구 평균은 구 지수 ${f2(A.gu)}, 권역 지수 ${f2(A.zone)}, 서울 지수 ${f2(A.seoul)}로 거의 같아요. 같은 달 25개 구를 점수 순서로 세웠을 때 이후 1년 더 오른 순서와 맞는 정도도 ${f2(D.gu_cs.score.ic)}로 약해요. 구끼리 비교할 때는 위의 '서울 안 상대 강도'를 함께 보세요.`);
     const c = H("div", { class: "note m-hide" }, el);
     H("b", {}, c, "비교할 때 ");
     c.append(`${D.n_votes}표 중 ${R.own_votes}표만 이 구 값이고(가격·전세·거래량·매입자 구성·실거래), 부동산원 수급·미분양·상승 구 비율은 ${R.zone} 값, KB 설문은 ${["서남권", "동남권"].includes(R.zone) ? "강남" : "강북"} 값, 금리·검색량·주가·PIR 등은 서울 값이에요. 거래가 적은 구는 점수가 더 흔들려요. `);
@@ -646,7 +646,7 @@ function renderHist() {
   } else {
     H("b", {}, note, "정확도 ");
     const better = R.acc - R.acc_seoul;
-    note.append(`${ym(D.official_start)} 이후 이 권역 지수와 이후 12개월 ${state.region} 실거래 가격의 순위상관은 ${f2(R.acc)}, 서울 지수를 그대로 쓰면 ${f2(R.acc_seoul)}예요. `);
+    note.append(`${ym(D.official_start)} 이후 이 권역 지수와 발표된 달부터 12개월 ${state.region} 실거래 가격의 순위상관은 ${f2(R.acc)}, 서울 지수를 그대로 쓰면 ${f2(R.acc_seoul)}예요. `);
     note.append(better > 0.02 ? "이 권역은 권역 지수가 조금 더 잘 맞았어요." : better < -0.02 ? "이 권역은 서울 지수가 더 잘 맞았어요. 권역 점수의 차이는 참고로만 보세요." : "둘이 거의 같아요.");
     const c = H("div", { class: "note m-hide" }, el);
     H("b", {}, c, "서울과 비교할 때 ");

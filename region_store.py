@@ -55,9 +55,12 @@ def regions_in_store():
     return [r for r, d in REGIONS.items() if have & set(d["lawd"])]
 
 
-def consolidate(end):
+def consolidate(end, force=False):
     """빠진 달이 없는 지역의 JSON을 모두 모아 저장소를 다시 쓴다. 반환: 넣은 지역, 건수."""
     done = [r for r in REGIONS if F.missing(r, "200601", end) == 0]
+    lost = [r for r in regions_in_store() if r not in done]
+    if lost and not force:  # 이 맥의 JSON 캐시가 다 차지 않은 지역은 저장소에서 통째로 사라지므로 멈춘다 (지금은 Actions가 채움)
+        raise SystemExit(f"JSON 캐시가 다 차지 않아 저장소에서 빠질 지역: {[REGIONS[r]['name'] for r in lost]} — 그래도 하려면 --force")
     frames = []
     for r in done:
         for lawd in REGIONS[r]["lawd"]:
@@ -89,7 +92,8 @@ if __name__ == "__main__":
     if sys.argv[1:] == ["--complexes"]:
         print("단지 표:", complexes_from_json())
         sys.exit(0)
-    end = sys.argv[1] if len(sys.argv) > 1 else dt.date.today().strftime("%Y%m")
-    done, n = consolidate(end)
+    args = [a for a in sys.argv[1:] if a != "--force"]
+    end = args[0] if args else dt.date.today().strftime("%Y%m")
+    done, n = consolidate(end, force="--force" in sys.argv)
     fs = S.files(DIR)
     print("지역:", [REGIONS[r]["name"] for r in done], f"| 거래 {n:,}건 | {len(fs)}개 파일 {sum(f.stat().st_size for f in fs) / 1e6:.1f} MB")

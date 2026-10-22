@@ -4,7 +4,7 @@
   names= 지역 저장소에 있는데 단지 표에 이름이 없는 단지 수 (다시 받아 볼 달이 남은 것만)
   bldg=  건축물대장을 아직 조회하지 않은 지역 단지 수
   fix=   true면 최종 지역 엔진이 아직 없음 (임시 엔진이거나 없음)
-  busy=  true면 월간 갱신을 앞뒀거나 아직 못 끝낸 때 (KST 18~22일): 그날 호출 한도를 월간 갱신 몫으로 남겨 둔다
+  busy=  true면 월간 갱신을 앞뒀거나 아직 못 끝낸 때 (KST 18~22일): 채우기를 쉬어 그날 호출 한도를 월간 갱신이 다 쓰게 한다
 
 사용: python automation/backfill_left.py >> "$GITHUB_OUTPUT"
 """
@@ -30,7 +30,7 @@ def monthly_busy(today=None):
     p = ROOT / "results_zone" / "update_summary.json"
     s = json.loads(p.read_text()) if p.exists() else {}
     last = s.get("run", "") if s.get("fetched", True) else s.get("last_fetched", "")
-    return last[:8] < f"{today:%Y%m}20"
+    return last[:8] < f"{today:%Y%m}20" or s.get("complete") is False  # 자료가 덜 들어온 실행은 다시 받으므로 아직 바쁨
 
 
 def main():

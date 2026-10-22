@@ -2,12 +2,9 @@
 import json
 import sys
 import time
-import warnings
 from pathlib import Path
 
 import requests
-
-warnings.filterwarnings("ignore")
 
 BASE = "https://data-api.kbland.kr/bfmstat/weekMnthlyHuseTrnd/"
 CACHE = Path(__file__).parent / "data" / "raw" / "kb"
@@ -27,7 +24,7 @@ def fetch(endpoint: str, params: dict, name: str, refresh: bool = False):
     last = None
     for attempt in range(6):
         try:
-            r = requests.get(BASE + endpoint, params=params, headers=HEADERS, verify=False, timeout=90)
+            r = requests.get(BASE + endpoint, params=params, headers=HEADERS, timeout=90)  # 인증서 확인 (2026-10-22: certifi로 정상 확인돼 끄지 않음)
             r.raise_for_status()
             j = r.json()
             data = j["dataBody"]["data"]

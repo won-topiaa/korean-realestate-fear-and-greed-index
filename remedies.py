@@ -13,6 +13,7 @@ import numpy as np
 import pandas as pd
 
 import backtest as bt
+import timing
 
 NOT_REALTIME = ("공급_분양물량", "공급_향후입주역수")
 P3 = [("2006-01-01", "2012-12-01"), ("2013-01-01", "2019-12-01"), ("2020-01-01", "2026-12-01")]
@@ -27,7 +28,7 @@ raw0 = raw0[meta.index]
 diag = pd.read_csv(bt.ROOT / "results_v2" / "diag_time.csv", index_col=0)
 tg = pd.read_csv(bt.ROOT / "data" / "targets_extra.csv", index_col=0, parse_dates=True)
 rs = tg["실거래지수"].reindex(raw0.index)
-Y = {"실거래": np.log(rs).shift(-12) - np.log(rs), "KB": np.log(kbp).shift(-12) - np.log(kbp)}
+Y = {"실거래": timing.fwd(rs), "KB": timing.fwd(kbp)}  # 발표한 달부터 12개월
 
 TREND_KW = {"관심_아파트": ["아파트"], "관심_부동산": ["부동산"], "관심_집값": ["집값"], "관심_청약": ["청약"],
             "관심_갭투자": ["갭투자"], "관심_공포어역수": ["급매", "미분양"]}

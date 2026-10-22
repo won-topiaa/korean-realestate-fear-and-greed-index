@@ -14,6 +14,7 @@ import numpy as np
 import pandas as pd
 
 import backtest as bt
+import timing
 import v3
 from regions import REGIONS
 
@@ -23,6 +24,8 @@ meta, aux_meta = v3.load_meta()
 seoul = pd.read_pickle(bt.ROOT / "results_v2" / "v3_seoul.pkl")
 EP = bt.ROOT / "data" / "region_engine.json"
 ENGINE = json.loads(EP.read_text()) if EP.exists() else None
+SP = bt.ROOT / "results_region" / "engine_study.json"
+FIXED_LORO = json.loads(SP.read_text()).get("fixed_loro", {}) if SP.exists() else {}
 
 
 def compute(ind):
@@ -47,8 +50,8 @@ def compute(ind):
         core = pd.concat([V[M.index[M[key] == g]].mean(axis=1) for g in M[key].unique()], axis=1).mean(axis=1)
     k = v3.K_REGION  # 고정 엔진의 눈금 (서울 1.5배와 같은 기준으로 정한 배율, v3.py)
     r.update({"core": core, "final": v3.spread(core, k), "votes": V, "vote_meta": M, "n_votes_available": V.notna().sum(axis=1),
-              "groups": {g: v3.spread(V[M.index[M["속도"] == g]].mean(axis=1), k) for g in v3.SPEED},
-              "themes": {t: v3.spread(V[M.index[M["주제"] == t]].mean(axis=1), k) for t in M["주제"].unique()}})
+              "groups": {g: v3.spread(V[M.index[M["속도"] == g]].mean(axis=1), 1.0) for g in v3.SPEED},  # 그룹·주제는 넓히지 않음 (v3.compute와 같게)
+              "themes": {t: v3.spread(V[M.index[M["주제"] == t]].mean(axis=1), 1.0) for t in M["주제"].unique()}})
     return r
 
 
@@ -86,13 +89,15 @@ for rid, o in R["regions"].items():
     m = idx >= st
     win = windows(f, y, st)
     kb_buy = o["ind"]["설문_매수우위"]
-    rs6 = (np.log(o["rs"]).diff(6)).shift(2)
+    rs6 = (np.log(o["rs"]).diff(6)).shift(2 - timing.PUB_OFFSET)  # 발표할 때 신고가 다 찬 달까지 (기준월 t 발표 = t+1월 20일 → t−1월)
     r.update({"rs": o["rs"], "fwd12": y, "pairs": o["pairs"], "n_trades": o["n_trades"], "start": st,
               "acc": acc(f, y, m), "acc_seoul": acc(seoul["final"].reindex(idx), y, m), "acc_kb": acc(kb_buy, y, m),
               "acc_rs6": acc(rs6, y, m), "win": win})
     wv = [v for v in win.values() if not np.isnan(v)]
     r["win_median"], r["win_min"] = (float(np.median(wv)), float(np.min(wv))) if wv else (np.nan, np.nan)
-    lo = (ENGINE or {}).get("loro", {}).get(rid)
+    # 고정 엔진: 공개 여부는 고정할 때의 교차검증 성적으로 정한 그대로. 화면의 숫자는 지금 정답(발표한 달부터)으로 다시 잰 값
+    # (region_engine_study.py의 fixed_loro: 그 지역만 빼고 비중을 배운 고정 엔진), 없으면 고정할 때의 값
+    lo = FIXED_LORO.get(rid) or (ENGINE or {}).get("loro", {}).get(rid)
     if ENGINE:  # 고정 엔진: 교차검증 성적으로 공개 판단 (엔진을 고를 때 없던 지역은 공개하지 않음)
         r["loro"] = lo
         r["publish"] = bool(ENGINE["publish"].get(rid, False))

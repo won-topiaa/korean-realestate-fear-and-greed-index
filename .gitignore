@@ -31,3 +31,7 @@ results_region/*.pkl
 results_region/page_*.html
 results_region/engine_new.md
 results_region/region_failed.md
+
+# 공공판 시험용 원자료 (KOSIS·HOUSTAT, 올릴지 정하기 전까지 로컬에만)
+data/raw/kosis/
+data/raw/houstat/

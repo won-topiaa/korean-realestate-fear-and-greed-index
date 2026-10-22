@@ -132,7 +132,7 @@ def build(out):
         "name": "아파트 공포탐욕지수 API",
         "description": "아파트 시장 심리를 0~100으로 나타낸 월별 지수 (0 극단적 공포, 50 중립, 100 극단적 탐욕). 서울 전체·5대 권역·25개 구와, 공개 기준을 넘은 수도권·광역시와 그 시군구.",
         **meta,
-        "update_schedule": "매달 20일 09:17 (한국 시간) 전후 갱신. month = 최신 점수의 기준 달, updated = 계산한 날",
+        "update_schedule": "매달 20일 09:10 (한국 시간) 전후 갱신 (자료가 덜 들어오면 22일까지 다시 받음). month = 최신 점수의 기준 달, updated = 계산한 날",
         "coverage": {"from": dates[0], "to": month, "regions": len(names), "official_from": d["official_start"]},
         "scale": [{"from": lo, "to": hi, "key": key, "label": ko} for lo, hi, key, ko in BANDS],
         "endpoints": {"index": BASE + "index.json", "regions": BASE + "regions.json", "latest": BASE + "latest.json",
