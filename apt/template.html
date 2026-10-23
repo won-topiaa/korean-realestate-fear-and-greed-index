@@ -403,12 +403,14 @@ function renderDetail(it, d) {
   if (info) {
     const land = /^(토지대장|면적)/.test(info.landSrc || "");  // 대장에 대지가 비어 토지대장 면적으로 채운 단지
     const approx = /층별/.test(info.landSrc || "");  // 연면적·건축면적을 층별 면적 합으로 어림한 단지 (층별·층별확인)
+    const stuck = +(((info.landSrc || "").match(/·오류(\d+)$/) || [])[1] || 0) >= 3;  // 용적률 계산이 3번(bldg_fetch.FAIL_MAX) 실패한 단지: '곧 채워져요'라고 하지 않음
+    const later = stuck ? "계산하지 못했어요" : "곧 채워져요";
     fact(facts, "세대수", n(info.hhld), "세대", "단지 전체 집 수");
     fact(facts, "입주(사용승인)", info.useApr && info.useApr.length === 8 ? info.useApr.slice(0, 4) + "년 " + +info.useApr.slice(4, 6) + "월" : it.built ? it.built + "년" : null);
-    fact(facts, "용적률", info.vlRat, "%", info.vlRat ? "땅 넓이 대비 건물 바닥면적 합 · 높을수록 빽빽" : land ? "곧 채워져요" : "대장에 값이 없어요");
+    fact(facts, "용적률", info.vlRat, "%", info.vlRat ? "땅 넓이 대비 건물 바닥면적 합 · 높을수록 빽빽" : land ? later : "대장에 값이 없어요");
     fact(facts, "최고층", info.maxFlr, "층");
     fact(facts, "동수", info.dong, "개 동", "아파트 건물 수");
-    fact(facts, "건폐율", info.bcRat, "%", info.bcRat ? "땅 넓이 중 건물이 덮은 비율 · 낮을수록 동 간격이 넓어요" : land ? "곧 채워져요" : "대장에 값이 없어요");
+    fact(facts, "건폐율", info.bcRat, "%", info.bcRat ? "땅 넓이 중 건물이 덮은 비율 · 낮을수록 동 간격이 넓어요" : land ? later : "대장에 값이 없어요");
     fact(facts, "주차", n(info.pkng), "대", info.pkng && info.hhld ? `세대당 ${(info.pkng / info.hhld).toFixed(2)}대` : info.pkng ? null : "대장에 값이 없어요");
     fact(facts, "대지면적", n(info.platArea), "㎡", info.platArea ? `약 ${n(Math.round(info.platArea / 3.3058))}평` + (land ? " · 토지대장 합계" : "") : "대장에 값이 없어요");
     // 휴대폰: 앞의 4개만 보이고 나머지·설명은 펼쳐서

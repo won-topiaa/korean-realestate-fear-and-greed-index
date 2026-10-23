@@ -399,9 +399,22 @@ def land_area(lot, vkey):
     raise RuntimeError(f"토지 면적: 응답 해석 실패 · {out.replace(vkey, '***')[:120]}")
 
 
+FAIL_MAX = 3  # 용적률 계산이 이만큼(실행마다 한 번) 실패한 단지는 남은 일로 세지 않는다 (계속 실패하는 단지 하나로 '다 찼음' 재배포가 영영 안 돌지 않게)
+
+
+def _fails(src):
+    """landSrc 끝 '·오류N': 용적률 계산이 N번 실패한 단지 (다음 실행에도 다시 해 보고, 되면 지워진다)."""
+    m = re.search(r"·오류(\d+)$", src)
+    return int(m.group(1)) if m else 0
+
+
+def _base(src):
+    return re.sub(r"·오류\d+$", "", src)
+
+
 def ratio_todo(r):
     """용적률 단계에서 볼 단지: 대지는 있는데 용적률·건폐율이 비었거나, 하루 한도로 층별 어림값을 쓴 단지(대장 값으로 다시)."""
-    src = r.get("landSrc", "")
+    src = _base(r.get("landSrc", ""))
     return bool(r["status"] == "ok" and r["lot"] and r["platArea"]
                 and (((not r["vlRat"] or not r["bcRat"]) and src in ("", "면적")) or src.endswith("·층별")))
 
@@ -412,7 +425,8 @@ def fill_land(workers=3, budget_s=None, region=False):
            지번 중 하나라도 토지대장에 없으면 채우지 않는다.
     2단계: 용적률 = 용적률 산정 연면적 ÷ 대지, 건폐율 = 건축면적 ÷ 대지 (연면적·건축면적은 대장 값).
     landSrc: '' 아직 · '없음' 토지대장에 없음 · '면적' 대지만 채움(비율은 다음에) · '토지대장' 비율까지 · '대장' 대장 대지로 비율만 계산.
-    '·층별'이 붙으면 대장 하루 한도로 층별개요 합을 쓴 어림값 (다음 실행에 대장 값으로 다시 계산)."""
+    '·층별'이 붙으면 대장 하루 한도로 층별개요 합을 쓴 어림값 (다음 실행에 대장 값으로 다시 계산).
+    '·오류N'이 붙으면 용적률 계산이 N번 실패한 단지 (FAIL_MAX번부터는 land_left가 세지 않음)."""
     vkey = _env().get("VWORLD_KEY", "").strip()  # 없으면(자동 갱신 등) 1단계는 건너뛰고 2단계만
     key = _key()
     start(budget_s)
@@ -424,11 +438,21 @@ def fill_land(workers=3, budget_s=None, region=False):
     ok = [r for r in rows.values() if r["status"] == "ok" and r["lot"]]
     params = lambda r: dict(zip(("sigunguCd", "bjdongCd", "platGbCd", "bun", "ji"), r["lot"].split("-")))
 
+    errs = []  # 단지 하나만 실패한 까닭 (요약에 첫 것만)
+
+    def skip(r, e):
+        errs.append(f"{r['aptSeq']} {type(e).__name__}: {e}"[:100])
+
+    # 단지 하나가 실패하면 그 단지만 건너뛰고 다음 실행에 (예전엔 서버 오류만 잡아, 응답 모양이 다른 단지 하나에 실행 전체가 멈췄음:
+    # 2026-10-23 빈 부속지번 줄 KeyError). 한도·시간·서버 전체 문제(Stop)와 인증키 오류는 그대로 올려 이번 실행을 멈춘다
     def area(r):
         try:
             return area_(r)
-        except RuntimeError:
-            return r["aptSeq"], "skip"  # 이번엔 건너뛰고 다음 실행에
+        except (Stop, NotRegistered):
+            raise
+        except Exception as e:
+            skip(r, e)
+            return r["aptSeq"], "skip"
 
     def area_(r):
         p = params(r)
@@ -442,8 +466,11 @@ def fill_land(workers=3, budget_s=None, region=False):
     def ratio(r):
         try:
             return ratio_(r)
-        except RuntimeError:
-            return r["aptSeq"], None, None, None  # 이번엔 건너뛰고 다음 실행에
+        except (Stop, NotRegistered):
+            raise
+        except Exception as e:
+            skip(r, e)
+            return r["aptSeq"], None, None, None
 
     def ratio_(r):
         """(단지, 용적률, 건폐율, landSrc). 연면적·건축면적은 총괄표제부 → 동별 표제부 합 → 층별개요 합 순으로,
@@ -452,7 +479,7 @@ def fill_land(workers=3, budget_s=None, region=False):
         층별개요: 지상층 면적 합 ≈ 용적률 산정 연면적, 1층 면적 합 ≈ 건축면적 (은마: 485,684 vs 488,473㎡, 48,105 = 48,105㎡).
         landSrc 끝 '·층별' = 하루 한도로 층별 합을 쓴 어림값(다음 실행에 대장 값으로 다시), '·층별확인' = 대장 값이 맞지 않아 층별 합을 쓴 값(그대로 둠)."""
         p, plat = params(r), num(r["platArea"])
-        src = r.get("landSrc", "")
+        src = _base(r.get("landSrc", ""))
         base = "대장" if src.split("·")[0] in ("", "대장") else "토지대장"
         ok_vl = lambda e: 60 <= e / plat * 100 <= 1000
         ok_bc = lambda a: 3 <= a / plat * 100 <= 90
@@ -486,7 +513,7 @@ def fill_land(workers=3, budget_s=None, region=False):
             return r["aptSeq"], "", "", "없음" if base == "토지대장" else base
         return r["aptSeq"], round(est / plat * 100, 1), (round(arch / plat * 100, 1) if arch else ""), how
 
-    msg, n_area, n_ratio = "", 0, 0
+    msg, n_area, n_ratio, failed, stopped = "", 0, 0, [], False
     try:
         with ThreadPoolExecutor(workers) as ex:
             t0 = time.time()
@@ -511,22 +538,28 @@ def fill_land(workers=3, budget_s=None, region=False):
                     break
                 for seq, vl, bc, how in ex.map(ratio, todo[i:i + 30]):
                     if how is None:
+                        failed.append(seq)
                         continue
                     r = rows[seq]
                     if how == "없음":
                         r.update(platArea="", vlRat="", bcRat="", landSrc="없음")
                         continue
-                    redo = r.get("landSrc", "").endswith("·층별")
+                    redo = _base(r.get("landSrc", "")).endswith("·층별")
                     r["vlRat"] = vl if redo and vl != "" else r["vlRat"] or vl
                     r["bcRat"] = bc if redo and bc != "" else r["bcRat"] or bc
                     r["landSrc"] = how
                     n_ratio += bool(vl)
                 save(list(rows.values()), out)
     except (Stop, NotRegistered) as e:  # 인증키 오류도 받은 만큼 저장하고 끝낸다
-        msg = f" (건축물대장 {why(e)}로 중단, 다음 실행에 이어서 · {e})"
+        msg, stopped = f" (건축물대장 {why(e)}로 중단, 다음 실행에 이어서 · {e})", True
+    if not stopped:  # 한도·시간·서버 전체 문제로 멈춘 실행의 실패는 단지 탓이 아니라 세지 않는다
+        for seq in failed:
+            s = rows[seq].get("landSrc", "")
+            rows[seq]["landSrc"] = f"{_base(s)}·오류{_fails(s) + 1}"
     save(list(rows.values()), out)
     still = sum(1 for r in rows.values() if r["status"] == "ok" and not r["vlRat"])
-    return f"토지 면적으로 채우기: 대지면적 {n_area}곳, 용적률 {n_ratio}곳 채움{msg} · 용적률 빈 단지 {still}"
+    return (f"토지 면적으로 채우기: 대지면적 {n_area}곳, 용적률 {n_ratio}곳 채움{msg} · 용적률 빈 단지 {still}"
+            + (f" · 건너뛴 단지 {len(errs)}곳 (예: {errs[0]})" if errs else ""))
 
 
 def save(rows, out=OUT):
@@ -604,7 +637,8 @@ def land_left(region=False):
     out = OUT_KR if region else OUT
     if not out.exists():
         return 0
-    return sum(map(ratio_todo, pd.read_csv(out, dtype=str, keep_default_na=False).to_dict("records")))
+    rows = pd.read_csv(out, dtype=str, keep_default_na=False).to_dict("records")
+    return sum(ratio_todo(r) and _fails(r.get("landSrc", "")) < FAIL_MAX for r in rows)
 
 
 if __name__ == "__main__":
