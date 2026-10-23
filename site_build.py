@@ -105,8 +105,8 @@ def footer(base, rq=""):
             f'<div class="sk-about"><a class="sk-logo" href="{base}">KOREA FEAR &amp; GREED</a>'
             '<p>아파트 시장의 공포와 탐욕을 0~100으로 보여주는 지수예요. 서울에서 시작해 수도권·광역시로 넓히고 있고, 매달 20일에 갱신해요.</p></div>'
             f'<div><h4>둘러보기</h4><ul>{links}<li><a href="{REPO}">소스 코드 (GitHub)</a></li></ul></div>'
-            '<div><h4>자료</h4><ul><li>국토교통부 실거래가 · 건축물대장</li><li>한국부동산원 · 청약홈 · 한국은행</li>'
-            '<li>자세한 출처는 각 페이지 설명에 있어요</li></ul></div>'
+            '<div><h4>자료</h4><ul><li>가공 자료(지수·점수): 원토피아</li><li>원자료: KB부동산 · 국토교통부 실거래가 · 건축물대장</li>'
+            '<li>한국부동산원 · 청약홈 · 한국은행 · 네이버 금융 · 구글 트렌드</li><li>자세한 출처는 각 페이지 설명에 있어요</li></ul></div>'
             f'<div class="sk-contact"><h4>문의</h4><p>지수나 데이터 오류, 제안, 제휴 문의는 메일로 보내 주세요.</p>'
             f'<a class="sk-mail" href="{MAILTO}">{CONTACT}</a><a class="sk-mailbtn" href="{MAILTO}">메일 보내기 →</a></div>'
             f'<p class="sk-copy">사진: 위키미디어 공용 CC0·퍼블릭 도메인 (저작권 없음) — {who}</p></div></footer>\n')
