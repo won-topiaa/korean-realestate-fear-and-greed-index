@@ -2,7 +2,7 @@
 
   left=  아직 지역 저장소에 없는 지역 id (쉼표로)
   names= 지역 저장소에 있는데 단지 표에 이름이 없는 단지 수 (다시 받아 볼 달이 남은 것만)
-  bldg=  건축물대장을 아직 조회하지 않은 지역 단지 수
+  bldg=  건축물대장을 아직 조회하지 않은 지역 단지 수 + 용적률을 아직 계산하지 못한 단지 수 (하루 한도로 남은 것)
   fix=   true면 최종 지역 엔진이 아직 없음 (임시 엔진이거나 없음)
   busy=  true면 월간 갱신을 앞뒀거나 아직 못 끝낸 때 (KST 18~22일): 채우기를 쉬어 그날 호출 한도를 월간 갱신이 다 쓰게 한다
 
@@ -38,7 +38,7 @@ def main():
     eng = ROOT / "data" / "region_engine.json"
     fix = json.loads(eng.read_text()).get("provisional", True) if eng.exists() else True
     out = {"left": ",".join(r for r in REGIONS if r not in have), "names": len(region_backfill.names_todo()[1]),
-           "bldg": bldg_fetch.left(True), "fix": "true" if fix else "false", "busy": "true" if monthly_busy() else "false"}
+           "bldg": bldg_fetch.left(True) + bldg_fetch.land_left(True), "fix": "true" if fix else "false", "busy": "true" if monthly_busy() else "false"}
     print("\n".join(f"{k}={v}" for k, v in out.items()))
 
 

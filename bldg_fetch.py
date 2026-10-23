@@ -136,6 +136,9 @@ def call(op, params, key, page=1, rows=100, maxpage=10, _try=0):
                 time.sleep(1 + _try)
                 return call(op, params, key, page, rows, maxpage, _try + 1)
             halt(QuotaExceeded(f"{op}: {err.get('errMsg')} (6번 연속)"), op)  # 계속이면 하루 한도가 찬 것 (서버가 하루 한도도 초당 한도로 답할 때가 있다) → 다음 실행에
+        if "SERVICETIMEOUT" in str(err.get("errMsg", "")) and _try < 3:  # 대장 서버가 바쁠 때 (2026-10-23 부속지번 조회가 연달아): 쉬었다 다시 (2+4+6초)
+            time.sleep(2 + 2 * _try)
+            return call(op, params, key, page, rows, maxpage, _try + 1)
         bad(f"{op}: {err.get('errMsg')}")
     resp = d.get("response", {})
     code = str(resp.get("header", {}).get("resultCode", ""))
@@ -396,6 +399,13 @@ def land_area(lot, vkey):
     raise RuntimeError(f"토지 면적: 응답 해석 실패 · {out.replace(vkey, '***')[:120]}")
 
 
+def ratio_todo(r):
+    """용적률 단계에서 볼 단지: 대지는 있는데 용적률·건폐율이 비었거나, 하루 한도로 층별 어림값을 쓴 단지(대장 값으로 다시)."""
+    src = r.get("landSrc", "")
+    return bool(r["status"] == "ok" and r["lot"] and r["platArea"]
+                and (((not r["vlRat"] or not r["bcRat"]) and src in ("", "면적")) or src.endswith("·층별")))
+
+
 def fill_land(workers=3, budget_s=None, region=False):
     """오래된 단지(구대장)는 대장에 대지면적·용적률·건폐율이 0이다. 토지대장 면적으로 채운다.
     1단계: 대지 = 대표 지번 + 대장의 부속지번 토지대장 면적 합 (대지면적이 있는 단지 80곳으로 시험: 99%가 ±5% 안).
@@ -423,7 +433,9 @@ def fill_land(workers=3, budget_s=None, region=False):
     def area_(r):
         p = params(r)
         lots = {tuple(p.values())} | {(x["atchSigunguCd"], x["atchBjdongCd"], str(x["atchPlatGbCd"]), x["atchBun"], x["atchJi"])
-                                      for x in call("getBrAtchJibunInfo", p, key, maxpage=30)}
+                                      for x in call("getBrAtchJibunInfo", p, key, maxpage=30)
+                                      if str(x.get("atchBjdongCd", "")).strip() and str(x.get("atchBun", "")).strip("0 ")}
+        # 부속지번이 없으면 빈 줄(법정동 없음, 번지 0000)이 올 때가 있다 (대전 신탄진동 162-12): 지번으로 치지 않는다
         areas = [land_area(x, vkey) for x in sorted(lots)]
         return r["aptSeq"], None if any(a is None for a in areas) else int(round(sum(areas)))
 
@@ -492,8 +504,7 @@ def fill_land(workers=3, budget_s=None, region=False):
                     rows[seq]["landSrc"] = "면적" if plat else "없음"
                     n_area += bool(plat)
                 save(list(rows.values()), out)
-            todo = [r for r in ok if r["platArea"] and (((not r["vlRat"] or not r["bcRat"]) and r.get("landSrc", "") in ("", "면적"))
-                                                        or r.get("landSrc", "").endswith("·층별"))]  # 층별 어림값은 대장 값으로 다시
+            todo = [r for r in ok if ratio_todo(r)]
             for i in range(0, len(todo), 30):
                 if over():
                     msg = " (시간 한도로 중단, 다음 실행에 이어서)"
@@ -586,6 +597,14 @@ def left(region=False):
     old = pd.read_csv(out, dtype=str, keep_default_na=False) if out.exists() else pd.DataFrame(columns=COLS)
     st = dict(zip(old["aptSeq"], old["status"]))
     return sum(1 for s in complexes(region)["aptSeq"] if st.get(s) not in ("ok", "missing", "nocode"))
+
+
+def land_left(region=False):
+    """용적률 단계에 남은 단지 수 (토지대장 키 없이 자동 갱신에서도 할 수 있는 일: 워크플로가 볼 때)."""
+    out = OUT_KR if region else OUT
+    if not out.exists():
+        return 0
+    return sum(map(ratio_todo, pd.read_csv(out, dtype=str, keep_default_na=False).to_dict("records")))
 
 
 if __name__ == "__main__":
