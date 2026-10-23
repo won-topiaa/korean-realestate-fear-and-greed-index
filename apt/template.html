@@ -160,6 +160,7 @@ details summary { cursor: pointer; color: var(--ink-2); font-size: 13px; }
 .g-track span:nth-child(5) { background: color-mix(in srgb, var(--greed) 80%, var(--surface)); }
 .g-pin { position: absolute; bottom: -4px; width: 4px; height: 20px; background: var(--ink); border-radius: 2px; transform: translateX(-2px); box-shadow: 0 0 0 2px var(--bg); }
 .g-pin i { position: absolute; bottom: 24px; left: 50%; transform: translateX(-50%); font-style: normal; font-size: 11.5px; font-weight: 600; white-space: nowrap; color: var(--ink); background: var(--surface); border: 1px solid var(--hair); border-radius: 6px; padding: 0 6px; }
+.g-pin.l i { left: -2px; transform: none; } .g-pin.r i { left: auto; right: -2px; transform: none; }
 .g-names { display: grid; grid-template-columns: repeat(5, 1fr); gap: 2px; font-size: 11.5px; color: var(--muted); text-align: center; }
 .g-ends { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 2px 10px; font-size: 13px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
 .g-ends span:last-child { margin-left: auto; }
@@ -488,7 +489,7 @@ function renderType(it, t, body) {
     const gg = H("div", { class: "gauge", role: "img", "aria-label": `비교한 거래 중 가장 싼 ${wonR(t.lo)}, 가장 비싼 ${wonR(t.hi)} 사이에서 ${Math.round(t.k)}점, ${ZONES[z]}` }, v);
     const tr = H("div", { class: "g-track" }, gg);
     for (let i = 0; i < 5; i++) H("span", {}, tr);
-    const pin = H("div", { class: "g-pin", style: `left:${Math.max(1, Math.min(99, t.k))}%` }, tr);
+    const pin = H("div", { class: "g-pin" + (t.k < 12 ? " l" : t.k > 88 ? " r" : ""), style: `left:${Math.max(1, Math.min(99, t.k))}%` }, tr);  // 끝쪽이면 이름표를 안쪽으로 (카드 밖으로 삐져나가지 않게)
     H("i", {}, pin, "최근 거래");
     const nm = H("div", { class: "g-names", "aria-hidden": "true" }, gg);
     ZONES.forEach((x) => H("span", {}, nm, x));

@@ -56,6 +56,7 @@ p { margin: 0; }
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.14); cursor: pointer; text-decoration: none; color: var(--ink); line-height: 1.15; z-index: 2; }
 .pin .n { font-size: 12px; font-size: clamp(10px, 2.15cqw, 12px); font-weight: 600; white-space: nowrap; }
 .pin .v { font-size: 18px; font-size: clamp(13px, 3.2cqw, 18px); font-weight: 800; font-variant-numeric: tabular-nums; }
+.pin::after { content: ""; position: absolute; inset: -7px -2px; }  /* 누르는 영역만 위아래로 넓힘 (옆 이름표와는 겹치지 않게) */
 .lead { stroke: var(--ink-2); stroke-width: 1; fill: none; pointer-events: none; }
 .lead.hot { stroke: var(--ink); stroke-width: 1.8; }
 .pin:hover, .pin.hot { background: var(--ink); color: var(--surface); }

@@ -168,3 +168,17 @@ body.sk-intro .panel { backdrop-filter: blur(6px); -webkit-backdrop-filter: blur
   .sk-foot .sk-in > div:nth-child(3) { display: none; }  /* 바닥글 '자료' 칸 */
   .sk-foot .sk-in { padding-top: 36px; gap: 22px 24px; }
 }
+
+/* ---------- 휴대폰 손보기 (2026-10-23 휴대폰 화면 점검: 360·390px) ---------- */
+/* 한글 낱말이 줄 끝에서 쪼개지지 않게 ('갱/신' → '갱신'). 한 낱말이 칸보다 길면(주소·이메일) 그때만 끊음 */
+body { word-break: keep-all; overflow-wrap: break-word; }
+@media (max-width: 600px) {
+  /* 아이폰 Safari는 16px보다 작은 입력칸을 누르면 화면을 확대함 (신고가 검색·정렬, 지도 구 선택, 모의 투자 금리 칸이 13~14px이었음) */
+  input:not([type="range"]):not([type="checkbox"]):not([type="radio"]), select, textarea { font-size: 16px !important; }
+  /* 손가락으로 누르기 쉽게: 바닥글 링크(높이 16px → 32px), 지역 고르기(30 → 38px), 월·시기 막대(16 → 32px) */
+  .sk-foot ul { gap: 2px; }
+  .sk-foot ul a { display: inline-block; padding: 8px 0; }
+  .rg > a { min-height: 38px; display: inline-flex; align-items: center; }
+  input[type="range"] { height: 32px; }
+  .btn.icon { min-width: 40px; min-height: 40px; }  /* 지도 월 이동 ◀ ▶ (30px이었음) */
+}
