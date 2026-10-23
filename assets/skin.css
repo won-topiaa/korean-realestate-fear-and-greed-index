@@ -87,7 +87,7 @@ body { overflow-x: clip; }  /* 화면 폭 띠가 가로 스크롤을 만들지 �
 .rg .off { color: var(--muted); border: 1px dashed var(--hair); cursor: default; }
 .sk-hero .sk-dot { position: absolute; z-index: -1; display: block; border-radius: 50%; border: 2px solid rgba(255, 255, 255, 0.5); pointer-events: none; }
 .sk-hero .sk-dot.a { width: 120px; height: 120px; right: calc(50% - 50vw + 56px); top: 34px; }  /* 화면 오른쪽 끝 기준 (글과 겹치지 않게) */
-.sk-hero .sk-dot.b { width: 52px; height: 52px; right: calc(50% - 50vw + 210px); bottom: 36px; background: rgba(255, 255, 255, 0.85); border: 0; }
+.sk-hero .sk-dot.b { width: 40px; height: 40px; right: calc(50% - 50vw + 96px); top: 170px; background: rgba(255, 255, 255, 0.85); border: 0; }  /* 고리 바로 아래 (예전엔 띠 아래쪽 사진 위에 따로 떠 얼룩처럼 보였음) */
 @media (max-width: 1240px) { .sk-hero .sk-dot.b { display: none; } }
 @media (max-width: 760px) { .sk-hero { padding-block: 28px 32px; } .sk-hero .sk-dot { display: none; } }
 .eyebrow { font-family: var(--font) !important; font-size: 13px; letter-spacing: 0.12em; color: var(--muted); }
@@ -127,7 +127,8 @@ a.btn { background: var(--ink) !important; color: var(--on-ink) !important; bord
 .sk-foot > .sk-foot-bg { position: absolute; inset: 0; background-size: cover; background-position: center; background-repeat: no-repeat; opacity: 0.28; filter: grayscale(0.35); }
 .sk-foot .sk-in { position: relative; max-width: var(--sk-max, 1180px); margin: 0 auto; padding: 56px 16px 28px; display: grid; grid-template-columns: minmax(0, 1.5fr) repeat(2, minmax(0, 1fr)) minmax(0, 1.3fr); gap: 32px 40px; }
 @media (max-width: 760px) { .sk-foot .sk-in { grid-template-columns: 1fr 1fr; } .sk-foot .sk-about, .sk-foot .sk-contact { grid-column: 1 / -1; } }
-.sk-foot .sk-logo { color: #fff; font-size: 26px; white-space: normal; line-height: 1.2; }
+.sk-foot .sk-about { container-type: inline-size; }
+.sk-foot .sk-logo { color: #fff; font-size: 26px; font-size: min(26px, 8.4cqw); white-space: nowrap; line-height: 1.2; }  /* 좁은 페이지(단지 검색·모의 투자)에서 두 줄로 꺾이지 않게 */
 .sk-foot p { color: #cfcfcf; font-size: 13px; line-height: 1.7; max-width: 46ch; margin-top: 12px; }
 .sk-foot h4 { margin: 0 0 14px; font-size: 16px; font-weight: 700; color: #fff; }
 .sk-foot ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; font-size: 13.5px; }

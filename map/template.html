@@ -117,6 +117,9 @@ p { margin: 0; }
 .pin.gu .n { font-size: 10.5px; }
 .pin.gu .v { font-size: 14px; }
 .pin.sel { border-color: var(--ink); box-shadow: 0 0 0 1px var(--ink), 0 2px 8px rgba(0, 0, 0, 0.12); }
+.pin.crowd { display: none; }  /* 자리가 없어 숨긴 이름표 (지역을 누르면 보임) */
+.leads line { stroke: var(--ink-2); stroke-width: 1; vector-effect: non-scaling-stroke; pointer-events: none; }
+.leads circle { fill: var(--ink); pointer-events: none; }
 .gu-name { position: absolute; transform: translate(-50%, -50%); font-size: 11.5px; color: var(--ink-2); pointer-events: none; white-space: nowrap; text-shadow: 0 0 3px var(--surface), 0 0 3px var(--surface); }
 .mapbox.compact .pin.gu .n { display: none; }
 .mapbox.compact .pin.gu .v { font-size: 12px; }
@@ -417,10 +420,11 @@ Object.values(g.gu).forEach((v) => S("path", { d: v.d, class: "gu-line" }, svg))
 const zoneBorders = ZONES.map((z) => S("path", { d: g.zones[z].d, class: "zone-border" }, svg));
 if (g.river) S("path", { d: g.river, class: "river" }, svg);
 const selOutline = S("path", { class: "sel-outline", d: "" }, svg);
-const pins = {}, guNames = [];
+const pins = {}, guNames = [], ANCHOR = new Map();  // 이름표 → 지역 가운데 (지도 좌표)
 ZONES.forEach((z) => {
   const [x, y] = LABEL_POS[z] || g.zones[z].label;
   const pin = H("div", { class: "pin", style: `left:${(x / g.w) * 100}%;top:${(y / g.h) * 100}%` }, box);
+  ANCHOR.set(pin, [x, y]);
   H("span", { class: "n" }, pin, z);
   H("span", { class: "v" }, pin);
   H("span", { class: "d" }, pin);
@@ -430,6 +434,7 @@ const guPins = {};
 GUS.forEach((gn) => {
   const [x, y] = g.gu[gn].label;
   const pin = H("div", { class: "pin gu", style: `left:${(x / g.w) * 100}%;top:${(y / g.h) * 100}%`, hidden: "" }, box);
+  ANCHOR.set(pin, [x, y]);
   H("span", { class: "n" }, pin, (D.short_name || {})[gn] || gn);
   H("span", { class: "v" }, pin);
   guPins[gn] = pin;
@@ -439,6 +444,64 @@ Object.entries(g.gu).forEach(([name, v]) => {
   guNames.push([v.zone, el]);
 });
 svg.addEventListener("click", (e) => { if (e.target === svg) select(TOP); });
+
+/* 이름표 겹침 풀기: 겹치는 이름표끼리 밀어내고, 지역 가운데에서 많이 벗어나면 가는 선으로 잇는다.
+   그래도 자리가 없으면(휴대폰 경기 47곳 등) 작은 지역 이름표를 숨긴다 — 고른 지역은 늘 보이고, 숨긴 곳도 누르면 점수가 나온다.
+   (부산 서구·동구·중구, 인천 미추홀구, 경기 수원·안양 구가 서로 덮여 점수가 안 보였음, 2026-10-23) */
+const leads = S("g", { class: "leads" }, svg);
+const AREA = new Map([...Object.entries(pins).map(([n, el]) => [el, n]), ...Object.entries(guPins).map(([n, el]) => [el, n])]
+  .map(([el, n]) => { const p = zonePaths[n] || guPaths[n]; let a = 0; try { const b = p.getBBox(); a = b.width * b.height; } catch (e) {} return [el, a]; }));
+function relax(items, W, Hh) {
+  for (let it = 0; it < 150; it++) {
+    let moved = false;
+    for (let i = 0; i < items.length; i++) for (let j = i + 1; j < items.length; j++) {
+      const A = items[i], B = items[j];
+      const ox = (A.w + B.w) / 2 - Math.abs(A.x - B.x), oy = (A.h + B.h) / 2 - Math.abs(A.y - B.y);
+      if (ox <= 0 || oy <= 0) continue;
+      moved = true;
+      if (ox < oy) { const d = (A.x <= B.x ? -1 : 1) * ox / 2; A.x += d; B.x -= d; }
+      else { const d = (A.y <= B.y ? -1 : 1) * oy / 2; A.y += d; B.y -= d; }
+    }
+    items.forEach((A) => {
+      A.x += (A.ax - A.x) * 0.04; A.y += (A.ay - A.y) * 0.04;  // 제자리로 살짝 당김
+      A.x = Math.min(Math.max(A.x, A.w / 2), W - A.w / 2); A.y = Math.min(Math.max(A.y, A.h / 2), Hh - A.h / 2);
+    });
+    if (!moved) break;
+  }
+}
+function declutter() {
+  const W = box.clientWidth, Hh = box.clientHeight;
+  if (!W || !Hh) return;
+  const kx = W / g.w, ky = Hh / g.h;
+  const all = [...Object.values(pins), ...Object.values(guPins)].filter((el) => !el.hidden);
+  all.forEach((el) => el.classList.remove("crowd"));
+  let items = all.map((el) => {
+    const [x, y] = ANCHOR.get(el);
+    return { el, ax: x * kx, ay: y * ky, x: x * kx, y: y * ky, w: el.offsetWidth + 3, h: el.offsetHeight + 3,
+             pr: el.classList.contains("sel") ? Infinity : AREA.get(el) || 0 };
+  });
+  relax(items, W, Hh);
+  const placed = [];
+  items.slice().sort((a, b) => b.pr - a.pr).forEach((A) => {
+    const far = Math.hypot(A.x - A.ax, A.y - A.ay) > 2.2 * Math.max(A.w, A.h);
+    const hit = placed.some((B) => Math.abs(A.x - B.x) < (A.w + B.w) / 2 - 1 && Math.abs(A.y - B.y) < (A.h + B.h) / 2 - 1);
+    if ((far || hit) && A.pr !== Infinity) A.el.classList.add("crowd"); else placed.push(A);
+  });
+  items = items.filter((A) => !A.el.classList.contains("crowd"));
+  items.forEach((A) => { A.x = A.ax; A.y = A.ay; });
+  relax(items, W, Hh);
+  leads.textContent = "";
+  items.forEach((A) => {
+    A.el.style.left = (A.x / W) * 100 + "%";
+    A.el.style.top = (A.y / Hh) * 100 + "%";
+    const dx = A.x - A.ax, dy = A.y - A.ay;
+    if (Math.abs(dx) <= A.w / 2 && Math.abs(dy) <= A.h / 2) return;  // 이름표가 아직 지역 가운데를 덮고 있으면 선은 필요 없음
+    const s = Math.min(Math.abs(dx) > 0.01 ? (A.w / 2) / Math.abs(dx) : Infinity, Math.abs(dy) > 0.01 ? (A.h / 2) / Math.abs(dy) : Infinity);
+    const ex = A.x - dx * s, ey = A.y - dy * s;  // 이름표 가장자리
+    S("line", { x1: A.ax / kx, y1: A.ay / ky, x2: ex / kx, y2: ey / ky }, leads);
+    S("circle", { cx: A.ax / kx, cy: A.ay / ky, r: 2.2 / kx }, leads);
+  });
+}
 
 const chips = $("#chips");
 [TOP, ...ZONES].forEach((r) => {
@@ -695,6 +758,7 @@ function renderMap() {
   if (early) en.textContent = `${ym(D.official_start)} 이전은 지표가 다 갖춰지지 않아(${D.n_votes}표 중 일부만 계산) 참고용이에요.`;
   Object.values(pins).forEach((p) => (p.style.opacity = early ? 0.65 : 1));
   Object.values(zonePaths).forEach((p) => (p.style.opacity = early ? 0.7 : 1));
+  declutter();
 }
 
 function renderTable() {
@@ -832,7 +896,8 @@ function drawNow() {
 function render() { if (!raf) raf = requestAnimationFrame(drawNow); }  // 슬라이더를 끌 때 한 프레임에 한 번만
 if (tblDetails) tblDetails.addEventListener("toggle", () => { if (tblDetails.open) renderTable(); });
 drawNow();
-new ResizeObserver(() => box.classList.toggle("compact", !!D.compact_pins || box.clientWidth < 440)).observe(box);  // 아주 좁을 때(시군구가 많은 지역은 늘) 이름을 숨김
+new ResizeObserver(() => { box.classList.toggle("compact", !!D.compact_pins || box.clientWidth < 440); declutter(); }).observe(box);
+if (document.fonts) document.fonts.ready.then(declutter);  // 글꼴이 늦게 오면 이름표 크기가 바뀜  // 아주 좁을 때(시군구가 많은 지역은 늘) 이름을 숨김
 let ht;
 new ResizeObserver(() => { clearTimeout(ht); ht = setTimeout(renderHist, 150); }).observe($("#histcard"));
 document.addEventListener("keydown", (e) => {
