@@ -1,22 +1,22 @@
 {
- "run": "20261022_1927",
+ "run": "20261023_2323",
  "steps": [
   {
    "step": "수도권·광역시 원자료",
    "ok": true,
-   "sec": 2,
+   "sec": 3,
    "detail": "지역 부동산원 344/344개 · KB 시군구 21/21개"
   },
   {
    "step": "계산 molit_indicators.py",
    "ok": true,
-   "sec": 16,
+   "sec": 18,
    "detail": ""
   },
   {
    "step": "계산 rs_vintage.py",
    "ok": true,
-   "sec": 6,
+   "sec": 7,
    "detail": ""
   },
   {
@@ -28,7 +28,7 @@
   {
    "step": "계산 build_indicators.py",
    "ok": true,
-   "sec": 0,
+   "sec": 1,
    "detail": ""
   },
   {
@@ -40,13 +40,13 @@
   {
    "step": "계산 zone_index.py",
    "ok": true,
-   "sec": 31,
+   "sec": 41,
    "detail": ""
   },
   {
    "step": "계산 zone_v3.py",
    "ok": true,
-   "sec": 4,
+   "sec": 6,
    "detail": ""
   },
   {
@@ -82,49 +82,49 @@
   {
    "step": "계산 region_index.py",
    "ok": true,
-   "sec": 150,
+   "sec": 176,
    "detail": ""
   },
   {
    "step": "계산 region_engine_study.py",
    "ok": true,
-   "sec": 25,
+   "sec": 40,
    "detail": ""
   },
   {
    "step": "계산 region_v3.py",
    "ok": true,
-   "sec": 15,
+   "sec": 22,
    "detail": ""
   },
   {
    "step": "계산 export_region.py",
    "ok": true,
-   "sec": 1,
+   "sec": 2,
    "detail": ""
   },
   {
    "step": "계산 apt_region_study.py --missing",
    "ok": true,
-   "sec": 5,
+   "sec": 6,
    "detail": ""
   },
   {
    "step": "계산 highs_build.py",
    "ok": true,
-   "sec": 157,
+   "sec": 181,
    "detail": "신고가 서울: 2026-09 신고가 879건 (비교 가능 2,791건의 31%, 단지 725곳, 2배 초과 제외 24) · 422 KB / 신고가 광주: 2026-09 신고가 14건 (비교 가능 958건의 1%, 단지 14곳, 2배 초과 제외 0) · 7 KB / 신고가 대전: 2026-09 신고가 59건 (비교 가능 996건의 6%, 단지 40곳, 2배 초과 제외 0) · 20 KB / 신고가 울산: 2026-09 신고가 42건 (비교 가능 730건의 6%, 단지 35곳, 2배 초과 제외 0) · 22 KB / "
   },
   {
    "step": "계산 apt_score.py",
    "ok": true,
-   "sec": 309,
+   "sec": 369,
    "detail": "서울: 기준일 2026-10-18 · 단지 9,274 · 최근 2년 거래 평형 14,898 중 점수 10,650 (다른 평형 섞임 3,927) · 9.1 MB / 광주: 기준일 2026-10-19 · 단지 1,212 · 최근 2년 거래 평형 2,019 중 점수 1,789 (다른 평형 섞임 442) · 1.3 MB / 대전: 기준일 2026-10-19 · 단지 1,008 · 최근 2년 거래 평형 2,037 중 점수 1,752 (다른 평형 섞임 560) · 1.2 MB / 울산: 기준일 2026-10-19 · 단지 1"
   },
   {
    "step": "계산 sim_build.py",
    "ok": true,
-   "sec": 351,
+   "sec": 440,
    "detail": "모의 투자 서울: 단지 8,771 · 평형 22,468 · 분기 2006.1Q~2026.4Q · 6.7 MB + meta 52 KB / 모의 투자 광주: 단지 1,177 · 평형 2,572 · 분기 2006.1Q~2026.4Q · 1.4 MB + meta 15 KB / 모의 투자 대전: 단지 973 · 평형 2,777 · 분기 2006.1Q~2026.4Q · 1.2 MB + meta 15 KB / 모의 투자 울산: 단지 1,625 · 평형 3,512 · 분기 2006.1Q~2026.4Q · 1.3 MB + meta"
   },
   {
@@ -142,7 +142,7 @@
   {
    "step": "계산 site_build.py",
    "ok": true,
-   "sec": 0,
+   "sec": 1,
    "detail": ""
   }
  ],
