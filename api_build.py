@@ -17,7 +17,7 @@ import json
 from pathlib import Path
 
 ROOT = Path(__file__).parent
-SITE_URL = "https://won-topiaa.github.io/korean-realestate-fear-and-greed-index/"
+SITE_URL = "https://aptfeargreed.com/"  # 2026-10-23부터 (옛 github.io 주소는 GitHub이 이 주소로 넘겨 줌)
 BASE = SITE_URL + "api/v1/"
 ZONE_ID = {"도심권": "dosim", "동북권": "dongbuk", "서북권": "seobuk", "서남권": "seonam", "동남권": "dongnam"}
 # 구 이름 → 법정동 시군구 코드 5자리 (apt_score.LAWD2GU와 같은 표. 무거운 계산 모듈을 사이트 빌드에 끌어오지 않으려고 따로 둠)

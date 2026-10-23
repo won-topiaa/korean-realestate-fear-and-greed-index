@@ -16,7 +16,7 @@ from regions import REGIONS, sub_word
 ROOT = Path(__file__).parent
 OUT = ROOT / "assets" / "og"
 CHROME = os.environ.get("CHROME", "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome")
-SITE = "won-topiaa.github.io/korean-realestate-fear-and-greed-index"
+SITE = "aptfeargreed.com"
 
 # 페이지: (사진, 사진 세로 위치, 윗줄, 큰 제목, 설명). 지역 페이지(regions.REGIONS)는 아래에서 지역 사진으로 덧붙인다 (사진이 없으면 서울 사진)
 PAGES = {
@@ -27,6 +27,7 @@ PAGES = {
     "sim": ("bg-sim", "38%", "그때 샀다면 지금 얼마?", "모의 투자", "실거래로 계산하는 가상 투자 · 단지 2~3개 같은 기간 비교"),
     "report": ("bg-report", "50%", "서울 공포탐욕지수", "백테스트", "실거래 141만 건으로 검증한 지수의 정확도와 한계"),
 }
+TRADE_ONLY = {"apt", "highs", "sim"}  # 실거래만 쓰는 페이지. 지수 페이지는 원자료 출처에 KB부동산을 함께 적는다 (KB 담당자 답변, 2026-10-23)
 for _rid, _d in REGIONS.items():
     _img = f"bg-{_rid}" if (ROOT / "assets" / "img" / f"bg-{_rid}.jpg").exists() else "bg-map"
     _sw = sub_word(_rid)
@@ -57,7 +58,7 @@ html, body {{ width: 1200px; height: 630px; overflow: hidden; background: #14141
   <div class="logo"><span class="en">KOREA FEAR &amp; GREED</span><span class="ko">아파트 공포탐욕지도</span></div>
   <div class="h"><span class="a">{a}</span><span class="b">{b}</span></div>
   <p class="d">{d}</p>
-  <div class="foot"><span class="tag">매달 20일 갱신</span><span>국토교통부 실거래가 · 공공데이터</span><span style="margin-left:auto">{site}</span></div>
+  <div class="foot"><span class="tag">매달 20일 갱신</span><span>{src}</span><span style="margin-left:auto">{site}</span></div>
 </div></div></body></html>"""
 
 
@@ -69,7 +70,8 @@ def main(only=None):
             if only and name not in only:
                 continue
             html = Path(tmp) / f"{name}.html"
-            html.write_text(HTML.format(img=(ROOT / "assets" / "img" / f"{img}.jpg").as_uri(), y=y, a=a, b=b, d=d, site=SITE))
+            src = "국토교통부 실거래가 · 공공데이터" if name in TRADE_ONLY else "KB부동산 · 국토교통부 실거래가 · 공공데이터"
+            html.write_text(HTML.format(img=(ROOT / "assets" / "img" / f"{img}.jpg").as_uri(), y=y, a=a, b=b, d=d, src=src, site=SITE))
             png = Path(tmp) / f"{name}.png"
             subprocess.run([CHROME, "--headless=new", "--disable-gpu", "--hide-scrollbars", "--force-device-scale-factor=1",
                             "--virtual-time-budget=8000", "--allow-file-access-from-files", "--window-size=1200,630",

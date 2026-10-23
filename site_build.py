@@ -35,7 +35,7 @@ TAIL = "\n</body>\n</html>\n"
 FONTS = ('<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@100..125,400..900'
          '&family=Noto+Sans+KR:wght@400;500;600;700;900&family=Poiret+One&family=Work+Sans:wght@400;500;600;700&display=swap">')
 REPO = "https://github.com/won-topiaa/korean-realestate-fear-and-greed-index"
-SITE_URL = "https://won-topiaa.github.io/korean-realestate-fear-and-greed-index/"
+SITE_URL = "https://aptfeargreed.com/"  # 2026-10-23부터 (옛 github.io 주소는 GitHub이 이 주소로 넘겨 줌)
 # 링크 미리보기 (카카오톡·문자·SNS): 사이트 폴더 → (미리보기 그림 assets/og/*.jpg, 제목). 그림은 og_build.py로 만든다
 SITE_NAME = "아파트 공포탐욕지도"
 OG = {"": ("home", "아파트 공포탐욕지도 · 서울·수도권·광역시"), "seoul/": ("seoul", "서울 아파트 공포탐욕지도"),

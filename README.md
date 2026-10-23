@@ -2,18 +2,18 @@
 
 주식시장의 공포탐욕지수(CNN Fear & Greed Index)를 서울 아파트 시장에 옮긴 지수예요. 시장 심리를 0~100으로 나타내고(0 극단적 공포, 50 중립, 100 극단적 탐욕), 서울 전체·5대 권역·25개 구로 나눠 볼 수 있어요. 2026년 10월에 수도권(경기·인천)과 광역시(부산·대구·광주·대전·울산) 7곳으로 넓혔고, 7곳 모두 미리 정한 공개 기준을 넘어 공개했어요([아래](#수도권광역시-확장-2026-10-20)).
 
-**사이트 주소: https://won-topiaa.github.io/korean-realestate-fear-and-greed-index/**
+**사이트 주소: https://aptfeargreed.com/** (옛 주소 `won-topiaa.github.io/korean-realestate-fear-and-greed-index/`는 새 주소로 넘어가요)
 
 | 페이지 | 주소 | 하는 일 |
 |---|---|---|
-| 전국 지도 (첫 화면) | https://won-topiaa.github.io/korean-realestate-fear-and-greed-index/ | 대한민국 지도에서 지수가 있는 지역(점수 색)을 눌러 지역 페이지로. 공개 전인 지역은 빗금('검증 중') |
-| 서울 지도 | https://won-topiaa.github.io/korean-realestate-fear-and-greed-index/seoul/ | 지금 서울 점수와 0~100 막대, 5대 권역·25개 구 지도, 2006년부터의 추이, 서울 안 상대 강도 |
+| 전국 지도 (첫 화면) | https://aptfeargreed.com/ | 대한민국 지도에서 지수가 있는 지역(점수 색)을 눌러 지역 페이지로. 공개 전인 지역은 빗금('검증 중') |
+| 서울 지도 | https://aptfeargreed.com/seoul/ | 지금 서울 점수와 0~100 막대, 5대 권역·25개 구 지도, 2006년부터의 추이, 서울 안 상대 강도 |
 | 지역 지도 | …/busan/ 처럼 지역 id | 공개 기준을 넘은 수도권·광역시만. 서울 지도와 같은 화면(시군구 지도·게이지·추이) |
-| 단지 검색 | https://won-topiaa.github.io/korean-realestate-fear-and-greed-index/apt/ | 단지의 최근 실거래가가 최근 거래 중 비싼 편인지 싼 편인지(0~100), 세대수·용적률 등 단지 정보 |
-| 신고가 단지 | https://won-topiaa.github.io/korean-realestate-fear-and-greed-index/highs/ | 이번 달 같은 단지·같은 평형의 역대 최고가를 넘은 거래, 구·시군별 비중 |
-| 모의 투자 | https://won-topiaa.github.io/korean-realestate-fear-and-greed-index/sim/ | 그때 샀다면 지금 얼마? 실거래로 계산하는 가상 투자, 단지 2~3개 비교 |
-| 백테스트 보고서 | https://won-topiaa.github.io/korean-realestate-fear-and-greed-index/report/ | 지수를 실거래 141만 건으로 검증한 정확도와 한계 |
-| 데이터 API | https://won-topiaa.github.io/korean-realestate-fear-and-greed-index/api/ | 지수를 다른 서비스에서 가져다 쓰는 JSON·CSV 안내 (키 없이, 매달 20일 갱신) |
+| 단지 검색 | https://aptfeargreed.com/apt/ | 단지의 최근 실거래가가 최근 거래 중 비싼 편인지 싼 편인지(0~100), 세대수·용적률 등 단지 정보 |
+| 신고가 단지 | https://aptfeargreed.com/highs/ | 이번 달 같은 단지·같은 평형의 역대 최고가를 넘은 거래, 구·시군별 비중 |
+| 모의 투자 | https://aptfeargreed.com/sim/ | 그때 샀다면 지금 얼마? 실거래로 계산하는 가상 투자, 단지 2~3개 비교 |
+| 백테스트 보고서 | https://aptfeargreed.com/report/ | 지수를 실거래 141만 건으로 검증한 정확도와 한계 |
+| 데이터 API | https://aptfeargreed.com/api/ | 지수를 다른 서비스에서 가져다 쓰는 JSON·CSV 안내 (키 없이, 매달 20일 갱신) |
 
 단지 검색·신고가 단지·모의 투자는 서울과 수도권·광역시에서 쓸 수 있어요. 화면 위 지역 버튼으로 고르고, 주소로는 `apt/?r=busan`처럼 지역 id를 붙여요. 지금은 7개 지역 모두 열려 있어요(새 지역은 실거래를 다 받기 전까지 버튼이 흐리게 보여요). 공포탐욕지수는 공개한 지역만 함께 보여 줘요(아래 [지역별 단지 검색·신고가·모의 투자](#지역별-단지-검색신고가모의-투자-2026-10-21)).
 
@@ -155,7 +155,7 @@
 
 ### 데이터 API (`/api/`)
 - `api_build.py`: 지도와 같은 `results_zone/map_data.json`에서 직접 계산한 점수만 꺼내 정적 JSON·CSV로 만들어요(원자료 값은 넣지 않음). `site_build.py`가 사이트를 만들 때 함께 만들고, 월간 갱신 때 같이 바뀌어요.
-- 주소(앞: `https://won-topiaa.github.io/korean-realestate-fear-and-greed-index/api/v1/`):
+- 주소(앞: `https://aptfeargreed.com/api/v1/`):
   - `latest.json`: 최신 달 점수·구간·1·3·12개월 변화, 속도별 3그룹·주제 9개 점수, 구는 서울 안 상대 강도 순위
   - `history.json`, `history.csv`: 2006년 1월부터 월별 점수, 지역 31곳
   - `history/{id}.json`: 한 지역의 월별 점수. id는 `seoul`, 권역 `dosim`·`dongbuk`·`seobuk`·`seonam`·`dongnam`, 구는 시군구 코드 5자리(예: `11680` 강남구)
@@ -298,6 +298,8 @@
    - 공공데이터포털에서는 실거래가 API와 함께 **'국토교통부_건축HUB_건축물대장정보 서비스'** 활용신청이 필요해요(같은 키).
    - 브이월드 키(`VWORLD_KEY`, 오래된 단지 토지 면적)는 로컬 `.env`에만 둬요. 자동 갱신은 토지대장을 받지 않고 대장에 대지가 있는 단지의 비율만 계산해요. 새로 생긴 단지 중 대장에 대지가 빈 곳은 가끔 맥에서 `python bldg_fetch.py land`(지역은 `--regions`)로 채워 올려요.
 2. **Settings → Pages → Build and deployment → Source**를 `GitHub Actions`로 바꿔요.
+   - 주소 `aptfeargreed.com`(2026-10-23, Cloudflare에서 등록)은 Pages의 **Custom domain**으로 연결해요. Cloudflare DNS에는 GitHub Pages 주소 A 4개(185.199.108~111.153)·AAAA 4개(2606:50c0:8000~8003::153)와 `www` → `won-topiaa.github.io` CNAME을 **DNS only**(주황 구름 끔)로 둬요. 그래야 GitHub이 HTTPS 인증서를 발급해요. 사이트 안의 주소는 `site_build.py`·`api_build.py`의 `SITE_URL`, 미리보기 이미지는 `og_build.py`의 `SITE`예요.
+   - `.com.co`처럼 SK브로드밴드 DNS가 조회하지 못하는 주소가 있어서, 주소를 바꿀 때는 SK브로드밴드 DNS(210.220.163.82)에서도 조회되는지 확인해요.
 3. **Actions → 월간 자동 갱신 → Run workflow**로 한 번 실행해 봐요. 실행 목록 화면의 Run workflow를 눌러야 최신 코드로 돌아요. 예전 실행 안의 Re-run은 그때 코드로 돌아요.
 
 ## 로컬에서 돌리기
