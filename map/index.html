@@ -686,7 +686,7 @@ function renderHist() {
   el.replaceChildren();
   const head = H("div", { class: "hist-head" }, el);
   H("div", { class: "hist-title" }, head, `${isSeoul ? TOPF : state.region} 지수 추이`);
-  H("div", { class: "sec-title" }, head, "2006년부터 · 마우스를 올리면 그 달 값, 누르면 그 달로 이동");
+  H("div", { class: "sec-title" }, head, matchMedia("(hover: none)").matches ? "2006년부터 · 누르면 그 달 값과 그 달 지도" : "2006년부터 · 마우스를 올리면 그 달 값, 누르면 그 달로 이동");  // 휴대폰엔 마우스가 없음
   history_(H("div", { class: "hist" }, el), R);
   const note = H("div", { class: "note m-hide" }, el);
   const ic = R.ic;
