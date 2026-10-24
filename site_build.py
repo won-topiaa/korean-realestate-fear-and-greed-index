@@ -1,6 +1,8 @@
 """GitHub Pages용 정적 사이트: site/index.html (첫 화면: 대한민국 지도), site/seoul/ (서울 지도), site/{지역id}/ (공개한
 수도권·광역시 지도, 서울과 같은 템플릿), site/report/ (보고서), site/apt/·highs/·sim/ (단지 검색·신고가·모의 투자:
-주소 뒤 ?r=지역id로 지역을 고르고, 자료는 data/ 아래 지역별), site/api/ (데이터 API 안내 페이지 + api_build.py가 만드는 JSON·CSV).
+주소 뒤 ?r=지역id로 지역을 고르고, 자료는 data/ 아래 지역별), site/api/ (데이터 API 안내 페이지 + api_build.py가 만드는 JSON·CSV),
+site/use/ (데이터 사용하기), site/news/ (주간 소식: news_build.py가 쌓은 호를 news/template.html에 넣음).
+바닥글 스크립트가 페이지를 열 때마다 방문을 세고(register/worker.js의 /visit) 누적 방문자 수를 바닥글에 보여 준다.
 
 아티팩트용 HTML에는 문서 머리말이 없어서, 문자 인코딩·뷰포트·doctype을 감싸 정식 문서로 만든다.
 페이지마다 공통 겉모습(assets/skin.css: 레퍼런스 'Legacy Homes' 스타일)과 머리글·첫 화면 사진 띠(어둡게 깐 배경)·바닥글을 입힌다.
@@ -15,6 +17,7 @@ from urllib.parse import quote
 
 import api_build
 import home_build
+import news_build
 from map.build import render as map_render
 from regions import REGIONS, josa
 
@@ -42,7 +45,7 @@ OG = {"": ("home", "아파트 공포탐욕지도 · 서울·수도권·광역시
       "apt/": ("apt", "단지 검색 · 아파트 공포탐욕지도"),
       "highs/": ("highs", "신고가 단지 · 아파트 공포탐욕지도"), "sim/": ("sim", "모의 투자 · 아파트 공포탐욕지도"),
       "report/": ("report", "백테스트 보고서 · 서울 아파트 공포탐욕지도"), "api/": ("api", "데이터 API · 아파트 공포탐욕지도"),
-      "use/": ("use", "데이터 사용하기 · 아파트 공포탐욕지도")}
+      "use/": ("use", "데이터 사용하기 · 아파트 공포탐욕지도"), "news/": ("news", "주간 소식 · 아파트 공포탐욕지도")}
 
 
 def og_meta(dst, desc):
@@ -65,7 +68,7 @@ def ver(rel):
     return "?v=" + hashlib.md5((ROOT / rel).read_bytes()).hexdigest()[:8]
 
 
-PAGES = [("", "지도"), ("apt/", "단지 검색"), ("highs/", "신고가 단지"), ("sim/", "모의 투자"), ("use/", "데이터 사용하기"), ("report/", "보고서")]
+PAGES = [("", "지도"), ("apt/", "단지 검색"), ("highs/", "신고가 단지"), ("sim/", "모의 투자"), ("news/", "주간 소식"), ("use/", "데이터 사용하기"), ("report/", "보고서")]
 CONTACT = "wontopiaaa@gmail.com"
 MAILTO = f"mailto:{CONTACT}?subject=" + quote(f"[{SITE_NAME}] 문의")
 
@@ -76,7 +79,7 @@ TOOLS = ("apt/", "highs/", "sim/")  # 지역을 고를 수 있는 화면 (주소
 def nav(base, cur, rq="", narrow=False):
     """rq: 지역 페이지에서 도구 링크에 붙일 지역 (예: ?r=busan). narrow: 본문 폭이 좁은 페이지 (화면 밝기를 버튼 하나로, 머리글을 한 줄로)."""
     q = lambda h: h + (rq if h in TOOLS else "")
-    short = lambda n: n.replace(" 사용하기", '<span class="sk-long"> 사용하기</span>')  # 휴대폰에서는 '데이터'만
+    short = lambda n: n.replace(" 사용하기", '<span class="sk-long"> 사용하기</span>').replace("주간 ", '<span class="sk-long">주간 </span>').replace("신고가 단지", '신고가<span class="sk-long"> 단지</span>')  # 휴대폰에서는 '데이터'·'소식'·'신고가'
     links = "".join(f'<a href="{base}{q(h)}" aria-label="{n}"' + (' aria-current="page"' if n == cur else "") + f">{short(n)}</a>"
                     for h, n in PAGES if n != "보고서")  # 보고서·문의는 바닥글에만
     cta = ("", "지도 보기") if cur == "단지 검색" else ("apt/", "단지 검색")
@@ -102,16 +105,32 @@ def footer(base, rq=""):
             who.append(f'<a href="{v["page"]}">{v["artist"]}</a>')
     who = ", ".join(who)
     links = "".join(f'<li><a href="{base}{h}{rq if h in TOOLS else ""}">{n}</a></li>' for h, n in
-                    [("", "전국 지도"), ("seoul/", "서울 지도"), ("apt/", "단지 검색"), ("highs/", "신고가 단지"), ("sim/", "모의 투자"), ("report/", "백테스트 보고서"), ("use/", "데이터 사용하기"), ("api/", "데이터 API")])
+                    [("", "전국 지도"), ("seoul/", "서울 지도"), ("apt/", "단지 검색"), ("highs/", "신고가 단지"), ("sim/", "모의 투자"), ("news/", "주간 소식"),
+                     ("report/", "백테스트 보고서"), ("use/", "데이터 사용하기"), ("api/", "데이터 API")])
     return (f'\n<footer class="sk-foot"><div class="sk-foot-bg" aria-hidden="true" style="background-image:url(\'{base}assets/img/footer.jpg{ver("assets/img/footer.jpg")}\')"></div><div class="sk-in">'
             f'<div class="sk-about"><a class="sk-logo" href="{base}">KOREA FEAR &amp; GREED</a>'
-            '<p>아파트 시장의 공포와 탐욕을 0~100으로 보여주는 지수예요. 서울에서 시작해 수도권·광역시로 넓히고 있고, 매달 20일에 갱신해요.</p></div>'
+            '<p>아파트 시장의 공포와 탐욕을 0~100으로 보여주는 지수예요. 서울에서 시작해 수도권·광역시로 넓히고 있어요. 지수는 매달 20일, '
+            '실거래·신고가와 주간 소식은 매주 월요일에 갱신해요.</p></div>'
             f'<div><h4>둘러보기</h4><ul>{links}<li><a href="{REPO}">소스 코드 (GitHub)</a></li></ul></div>'
             '<div><h4>자료</h4><ul><li>가공 자료(지수·점수): 원토피아</li><li>원자료: KB부동산 · 국토교통부 실거래가 · 건축물대장</li>'
             '<li>한국부동산원 · 청약홈 · 한국은행 · 네이버 금융 · 구글 트렌드</li><li>자세한 출처는 각 페이지 설명에 있어요</li></ul></div>'
             f'<div class="sk-contact"><h4>문의</h4><p>지수나 데이터 오류, 제안, 제휴 문의는 메일로 보내 주세요.</p>'
             f'<a class="sk-mail" href="{MAILTO}">{CONTACT}</a><a class="sk-mailbtn" href="{MAILTO}">메일 보내기 →</a></div>'
-            f'<p class="sk-copy">사진: 위키미디어 공용 CC0·퍼블릭 도메인 (저작권 없음) — {who}</p></div></footer>\n')
+            f'<p class="sk-copy">사진: 위키미디어 공용 CC0·퍼블릭 도메인 (저작권 없음) — {who}</p>'
+            '<p class="sk-copy sk-visits">누적 방문자 <b id="sk-visits">–</b>명 <span>(2026년 10월 25일부터) · 방문자 수를 세려고 이 브라우저에 무작위 번호 하나를 저장해요. '
+            '이름·IP와 연결하지 않아요.</span></p></div></footer>\n')
+
+
+# 방문 세기: 이 브라우저의 무작위 번호(처음 오면 만듦)와 페이지 주소만 보낸다 → 누적 방문자 수를 받아 바닥글에.
+# 자동으로 여는 브라우저(검색 로봇·시험)와 '?nocount=1'로 연 브라우저(사이트 주인, '?nocount=0'으로 되돌림)는 세지 않고 수만 받는다.
+# 본문은 text/plain이라 미리 묻는 요청(CORS preflight) 없이 한 번에 간다
+VISIT_URL = "https://register.aptfeargreed.com/visit"
+VISIT_JS = ('<script>(() => { const el = document.getElementById("sk-visits"); let v = null, n = navigator.webdriver ? 1 : 0;'
+            ' try { const s = location.search; if (/[?&]nocount=1\\b/.test(s)) localStorage.setItem("fgi-nocount", "1"); if (/[?&]nocount=0\\b/.test(s)) localStorage.removeItem("fgi-nocount");'
+            ' if (localStorage.getItem("fgi-nocount")) n = 1; v = localStorage.getItem("fgi-vid");'
+            ' if (!/^[0-9a-f]{32}$/.test(v || "")) { v = [...crypto.getRandomValues(new Uint8Array(16))].map((x) => x.toString(16).padStart(2, "0")).join(""); localStorage.setItem("fgi-vid", v); } } catch (e) { v = null; }'
+            f' fetch("{VISIT_URL}", {{ method: "POST", body: JSON.stringify({{ v, p: location.pathname, n }}), keepalive: true }})'
+            ' .then((r) => r.json()).then((j) => { if (el && j.total) el.textContent = j.total.toLocaleString("ko-KR"); }).catch(() => {}); })();</script>\n')
 
 
 def skin(html, base, cur, hero, h1, photo_args, maxw, intro=None, rq=""):
@@ -150,6 +169,7 @@ def skin(html, base, cur, hero, h1, photo_args, maxw, intro=None, rq=""):
              ' b.addEventListener("click", () => { const o = el.classList.toggle("m-open"); b.textContent = lab + (o ? " ▴" : " ▾");'
              ' if (o && typeof drawAll === "function") drawAll(); });'  # 접혀 있던 칸의 그래프는 펼칠 때 다시 그린다 (보고서)
              ' el.before(b); });</script>\n')  # 휴대폰에서 접어 둔 칸 펼치기
+    tail += VISIT_JS
     if intro:  # 결과 칸이 보이면 첫 화면 모드를 끈다
         tail += ('<script>(() => { const el = document.querySelector(' + json.dumps(intro) + '); if (!el) return;'
                  ' const f = () => document.body.classList.toggle("sk-intro", el.hidden); f();'
@@ -347,5 +367,11 @@ if __name__ == "__main__":
          skin_args=("../", "데이터 사용하기", ('<header style="display:grid;gap:6px">', "</header>"),
                     ("<h1>데이터 사용하기</h1>", '<h1><span class="sk-h1a">아파트 공포탐욕지수</span><span class="sk-h1b">데이터 사용하기</span></h1>'),
                     ("bg-report", "40%"), 960))
+    wrap(ROOT / "news" / "template.html", SITE / "news" / "index.html",
+         "지난 한 주 부동산·금리 소식을 공포탐욕지수의 주제(자금·가격·거래·전세·공급)별로 모으고, 그 주제의 서울 지수 점수를 함께. 매주 월요일.",
+         inject=[("<!--NEWS-->", news_build.render())],
+         skin_args=("../", "주간 소식", ('<header style="display:grid;gap:6px">', "</header>"),
+                    ("<h1>주간 소식</h1>", '<h1><span class="sk-h1a">지수와 엮은</span><span class="sk-h1b">주간 소식</span></h1>'),
+                    ("bg-report", "45%"), 960))
     (SITE / ".nojekyll").write_text("")
     print("site:", [str(p.relative_to(ROOT)) for p in SITE.rglob("*.html")])

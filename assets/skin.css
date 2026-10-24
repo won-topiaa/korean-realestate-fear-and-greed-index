@@ -43,7 +43,7 @@ body { background: var(--bg); font-family: var(--font); padding-block: 0 !import
   .sk-nav { padding-block: 12px 10px; }
   .sk-nav .sk-in { gap: 10px 10px; flex-wrap: wrap; }
   .sk-menu { order: 3; flex-basis: 100%; justify-content: flex-start; gap: 4px 18px; }
-  .sk-menu .sk-long { display: none; }  /* 휴대폰: '데이터 사용하기' → '데이터' (메뉴를 한 줄로) */
+  .sk-menu .sk-long { display: none; }  /* 휴대폰: '데이터 사용하기' → '데이터', '주간 소식' → '소식', '신고가 단지' → '신고가' (메뉴를 한 줄로) */
   .sk-right { margin-left: auto; gap: 8px; }
   .sk-logo { font-size: 17px; }
   .sk-logo .ko { font-size: 12px; }
@@ -57,10 +57,11 @@ body { background: var(--bg); font-family: var(--font); padding-block: 0 !import
 .sk-nav .theme-ctl .tl { font-size: 13px; color: var(--ink-2); padding: 0 8px 0 10px; }
 .theme-ctl button { font-size: 13px !important; padding: 4px 10px !important; }
 .sk-theme-m { display: none; font: inherit; font-size: 13px; font-weight: 600; color: var(--ink); background: transparent; border: 1px solid var(--line); padding: 8px 10px; cursor: pointer; white-space: nowrap; }
-/* 본문 폭이 좁은 페이지(단지 검색·모의 투자·API·데이터 사용하기): 메뉴가 5개라 화면 밝기를 버튼 하나로 (머리글 한 줄) */
+/* 본문 폭이 좁은 페이지(단지 검색·모의 투자·API·데이터 사용하기·주간 소식)와 1100px 이하 화면: 메뉴가 6개라 화면 밝기를 버튼 하나로 (머리글 한 줄) */
 .sk-nav.sk-narrow .sk-right .theme-ctl { display: none !important; }
 .sk-nav.sk-narrow .sk-right .sk-theme-m { display: inline-block; }
-@media (max-width: 380px) { .sk-nav .sk-cta { display: none; } }  /* 아주 좁은 휴대폰: 메뉴에도 있는 '단지 검색' 버튼을 빼서 로고와 한 줄로 */
+@media (max-width: 1100px) { .sk-nav .sk-right .theme-ctl { display: none !important; } .sk-nav .sk-right .sk-theme-m { display: inline-block; } }
+@media (max-width: 380px) { .sk-nav .sk-cta { display: none; } .sk-nav .sk-menu { gap: 4px 13px; } }  /* 아주 좁은 휴대폰: 메뉴에도 있는 '단지 검색' 버튼을 빼서 로고와 한 줄로, 메뉴 간격을 좁혀 한 줄로 */
 
 /* ---------- 첫 화면: 페이지 사진을 어둡게 깐 띠 위에 두 단 제목 (바닥글과 같은 느낌) ---------- */
 body { overflow-x: clip; }  /* 화면 폭 띠가 가로 스크롤을 만들지 않게 */
@@ -115,6 +116,7 @@ div.verdict { background: var(--surface) !important; border-color: var(--line) !
 
 /* ---------- 버튼: 검정 사각 / 테두리 사각 ---------- */
 .btn, .quick button, .seg, .seg button, .gu-select, .chip, .zone-chip, .g-chip, .search input, .sw, .pick { border-radius: 0 !important; }
+.fav-btn, .favs li, .favs .st.new, .favs .rm, .th, .sc, .use-btn, .steps li, .facts span, .fg input, .fg select, .fg textarea, .act button, .pv { border-radius: 0 !important; }  /* 관심 단지·주간 소식·데이터 사용하기도 같은 각진 모양 */
 .btn, .quick button, .gu-select { border: 1px solid var(--line) !important; background: transparent; color: var(--ink); }
 .btn:hover, .quick button:hover { background: var(--ink) !important; color: var(--on-ink) !important; }
 .btn[aria-pressed="true"], .seg button[aria-pressed="true"] { background: var(--ink) !important; color: var(--on-ink) !important; border-color: var(--ink) !important; box-shadow: none !important; }

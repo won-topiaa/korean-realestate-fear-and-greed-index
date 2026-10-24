@@ -1,0 +1,117 @@
+<title>주간 소식</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap">
+<style>
+/* 주간 소식: news_build.py가 매주 월요일 만든 호(data/news/*.json)를 site_build.py가 아래 NEWS 자리표시에 넣는다 (맨 위가 이번 호, 지난 호는 접어서).
+   색·글꼴은 데이터 사용하기 페이지와 같다. 점수 색은 지도와 같은 구간 (공포 파랑 · 중립 회색 · 탐욕 빨강) */
+:root {
+  --bg: #f3f4f6; --surface: #fcfcfb; --ink: #111316; --ink-2: #4a4e55; --muted: #7d8189;
+  --grid: #e3e5e8; --hair: rgba(17, 19, 22, 0.1); --hl: #eaeef4;
+  --fear: #2a78d6; --greed: #e34948; --neutral: #9a9ca1;
+  --font: "IBM Plex Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f1012; --surface: #18191b; --ink: #eef0f2; --ink-2: #c1c5cb; --muted: #8b8f96;
+    --grid: #2a2c30; --hair: rgba(255, 255, 255, 0.1); --hl: #22262d;
+    --fear: #3987e5; --greed: #e66767; --neutral: #74777d; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f1012; --surface: #18191b; --ink: #eef0f2; --ink-2: #c1c5cb; --muted: #8b8f96;
+  --grid: #2a2c30; --hair: rgba(255, 255, 255, 0.1); --hl: #22262d;
+  --fear: #3987e5; --greed: #e66767; --neutral: #74777d; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font); font-size: 15px; line-height: 1.6; padding-inline: 16px; padding-block: 28px 56px; -webkit-font-smoothing: antialiased; }
+.wrap { max-width: 960px; margin: 0 auto; display: grid; gap: 18px; }
+.wrap > *, .panel > * { min-width: 0; }
+h1, h2, h3 { margin: 0; line-height: 1.3; text-wrap: balance; }
+h1 { font-size: clamp(26px, 3.6vw, 34px); font-weight: 700; letter-spacing: -0.02em; }
+h2 { font-size: 20px; font-weight: 700; }
+h2 small { font-size: 14px; font-weight: 500; color: var(--muted); margin-left: 4px; display: inline-block; }  /* 날짜 줄이 중간에서 꺾이지 않게 */
+h3 { font-size: 17px; font-weight: 700; }
+h3 small { font-size: 13.5px; font-weight: 500; color: var(--muted); margin-left: 2px; }
+p { margin: 0; }
+a { color: var(--ink); }
+.eyebrow { font-family: var(--mono); font-size: 13px; letter-spacing: 0.06em; color: var(--muted); text-transform: uppercase; }
+.topbar { display: flex; justify-content: space-between; align-items: center; gap: 8px 12px; flex-wrap: wrap; }
+.theme-ctl { display: inline-flex; align-items: center; gap: 2px; padding: 2px; border: 1px solid var(--hair); border-radius: 999px; background: var(--surface); }
+.theme-ctl .tl { font-size: 13px; color: var(--muted); padding: 0 6px 0 8px; }
+.theme-ctl button { font: inherit; font-size: 13px; border: 0; background: transparent; color: var(--ink-2); padding: 3px 10px; border-radius: 999px; cursor: pointer; }
+.theme-ctl button[aria-pressed="true"] { background: var(--ink); color: var(--surface); font-weight: 600; }
+.theme-ctl button:focus-visible, a:focus-visible, summary:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.sub { color: var(--ink-2); max-width: 70ch; }
+.facts { display: flex; flex-wrap: wrap; gap: 8px; }
+.facts span { font-size: 13.5px; border: 1px solid var(--hair); border-radius: 999px; padding: 4px 12px; color: var(--ink-2); background: var(--surface); }
+.panel { background: var(--surface); border: 1px solid var(--hair); border-radius: 12px; padding: 18px 20px; display: grid; gap: 14px; }
+.none { color: var(--muted); font-size: 14px; }
+/* 한 호 = 주제 다섯 칸 */
+.ths { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.ths > .th:first-child { grid-column: 1 / -1; }
+@media (max-width: 760px) { .ths { grid-template-columns: minmax(0, 1fr); } }
+.th { border: 1px solid var(--hair); border-radius: 10px; padding: 14px 16px; display: grid; gap: 8px; align-content: start; background: var(--bg); }
+.th-h { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 12px; }
+.sc { font-size: 13px; color: var(--ink-2); border-radius: 999px; padding: 2px 10px; border: 1px solid var(--hair); background: var(--surface); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.sc b { font-size: 14px; }
+.sc.fear2, .sc.fear { border-color: var(--fear); } .sc.fear2 b, .sc.fear b { color: var(--fear); }
+.sc.greed2, .sc.greed { border-color: var(--greed); } .sc.greed2 b, .sc.greed b { color: var(--greed); }
+.why { font-size: 13.5px; color: var(--ink-2); }
+.items { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.items li { display: grid; gap: 1px; padding: 7px 0; border-top: 1px solid var(--hair); }
+.items a { font-weight: 600; text-decoration: none; line-height: 1.45; }
+.items a:hover { text-decoration: underline; }
+.items small { font-size: 12.5px; color: var(--muted); }
+details.past summary { cursor: pointer; list-style: none; }
+details.past summary::-webkit-details-marker { display: none; }
+details.past summary h2 { font-size: 17px; }
+details.past summary h2::after { content: " ▾"; color: var(--muted); font-size: 13px; }
+details.past[open] summary h2::after { content: " ▴"; }
+.foot { font-size: 13px; color: var(--muted); display: grid; gap: 6px; max-width: 90ch; }
+.foot b { color: var(--ink-2); }
+</style>
+<script>try { const m = localStorage.getItem("fgi-theme"); if (m === "light" || m === "dark") document.documentElement.setAttribute("data-theme", m); } catch (e) {}</script>
+
+<div class="wrap">
+  <header style="display:grid;gap:6px">
+    <div class="topbar">
+      <div class="eyebrow">아파트 · 지수와 엮은 소식</div>
+      <div class="theme-ctl" id="theme-ctl" role="group" aria-label="화면 밝기"><span class="tl" aria-hidden="true">화면</span><button type="button" data-m="auto" aria-pressed="true" title="기기 설정을 따라요">자동</button><button type="button" data-m="light" aria-pressed="false">밝게</button><button type="button" data-m="dark" aria-pressed="false">어둡게</button></div>
+    </div>
+    <h1>주간 소식</h1>
+    <p class="sub">지난 한 주 부동산·금리 소식을 지수의 주제(자금·가격·거래·전세·공급)별로 모았어요. 주제마다 서울 지수의 그 주제 점수를 함께 붙여서, 이번 주 소식이 지수의 어느 칸에 닿는지 볼 수 있어요.</p>
+    <div class="facts"><span>매주 월요일 아침</span><span>주제 5개</span><span>제목·링크만 (기사는 각 언론사에서)</span></div>
+  </header>
+
+<!--NEWS-->
+
+  <footer class="foot">
+    <p><b>고르는 방법</b> · 구글 뉴스 검색에서 지난 7일 국내 기사를 주제별 검색어로 찾아, 관련도 순으로 고르되 서울·수도권·정부·한국은행·통계처럼 시장 전체를 다룬 기사를 앞에 둬요. 해외 기사와 분양 홍보 기사는 빼고, 같은 사건을 다룬 기사는 하나만, 한 주제에서 언론사는 하나씩 골라요. 사람이 고르거나 고쳐 쓰지 않아요.</p>
+    <p><b>점수</b> · 주제 점수는 발행할 때 나와 있던 가장 새 달의 서울 지수 값이에요(높을수록 탐욕, 낮을수록 공포). 소식이 점수에 반영되는 건 다음 달 20일 갱신 때예요. 시장 분위기를 재는 온도계일 뿐, 사고팔 시점을 알려 주는 신호가 아니에요.</p>
+    <p><b>저작권</b> · 기사 제목과 링크만 보여 드리고, 기사 내용은 각 언론사에 있어요. 문제가 있는 기사는 <a href="mailto:wontopiaaa@gmail.com">wontopiaaa@gmail.com</a>으로 알려 주시면 바로 뺄게요.</p>
+  </footer>
+</div>
+
+<script>
+/* ---------- 화면 밝기 (자동 · 밝게 · 어둡게, 다른 화면과 같은 설정) ---------- */
+(() => {
+  const ctl = document.getElementById("theme-ctl"), root = document.documentElement, KEY = "fgi-theme";
+  if (!ctl) return;
+  const apply = (m) => {
+    if (m === "light" || m === "dark") root.setAttribute("data-theme", m); else root.removeAttribute("data-theme");
+    ctl.querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.m === (m === "light" || m === "dark" ? m : "auto"))));
+  };
+  let saved = "auto";
+  try { saved = localStorage.getItem(KEY) || "auto"; } catch (e) {}
+  apply(saved);
+  ctl.addEventListener("click", (e) => {
+    const b = e.target.closest("button");
+    if (!b) return;
+    apply(b.dataset.m);
+    try { if (b.dataset.m === "auto") localStorage.removeItem(KEY); else localStorage.setItem(KEY, b.dataset.m); } catch (e2) {}
+  });
+})();
+</script>

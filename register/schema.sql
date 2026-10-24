@@ -16,5 +16,10 @@ CREATE TABLE IF NOT EXISTS registrations (
 );
 CREATE INDEX IF NOT EXISTS idx_registrations_ip ON registrations (ip_hash, created_kst);
 
--- worker.js가 처음 신청 때 만든다: ip_salt = IP에 섞는 무작위 값 (공개 저장소에 없게 D1에만)
+-- worker.js가 처음 신청 때 만든다: ip_salt = IP에 섞는 무작위 값 (공개 저장소에 없게 D1에만), visitors_total = 누적 방문자
 CREATE TABLE IF NOT EXISTS meta (k TEXT PRIMARY KEY, v TEXT NOT NULL);
+
+-- 방문자 세기 (/visit, worker.js가 처음 방문 때 만든다). 브라우저의 무작위 번호만 저장하고 IP·브라우저 정보는 저장하지 않는다
+CREATE TABLE IF NOT EXISTS visitors (vid TEXT PRIMARY KEY, first_day TEXT NOT NULL, last_day TEXT NOT NULL, days INTEGER NOT NULL);  -- 400일 안 오면 지움
+CREATE TABLE IF NOT EXISTS visit_days (day TEXT PRIMARY KEY, visitors INTEGER NOT NULL DEFAULT 0, first_time INTEGER NOT NULL DEFAULT 0, revisit INTEGER NOT NULL DEFAULT 0);
+CREATE TABLE IF NOT EXISTS page_views (day TEXT NOT NULL, page TEXT NOT NULL, views INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (day, page));

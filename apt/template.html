@@ -73,6 +73,21 @@ a { color: var(--ink); }
 .chip { font-size: 13px; padding: 3px 10px; border-radius: 999px; border: 1px solid var(--hair); background: var(--hl); color: var(--ink-2); text-decoration: none; white-space: nowrap; }
 a.chip:hover { border-color: var(--ink-2); color: var(--ink); }
 .chip b { color: var(--ink); font-variant-numeric: tabular-nums; }
+/* 관심 단지 (이 브라우저에만 저장) */
+.fav-btn { font: inherit; font-size: 13px; padding: 3px 12px; border-radius: 999px; border: 1px solid var(--ink); background: transparent; color: var(--ink); cursor: pointer; white-space: nowrap; }
+.fav-btn[aria-pressed="true"] { background: var(--ink); color: var(--surface); font-weight: 600; }
+.fav-btn:focus-visible, .favs button:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.favs { display: grid; gap: 6px; }
+.favs .fh { font-size: 13px; color: var(--muted); padding-inline: 2px; }
+.favs ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.favs li { display: flex; align-items: center; gap: 8px; border: 1px solid var(--hair); border-radius: 10px; padding: 4px 4px 4px 12px; background: var(--bg); }
+.favs .go { flex: 1; min-width: 0; text-align: left; font: inherit; border: 0; background: none; color: var(--ink); cursor: pointer; display: grid; gap: 1px; padding: 5px 0; }
+.favs .go b { font-size: 14.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.favs .go small { font-size: 12.5px; color: var(--muted); }
+.favs .st { font-size: 12.5px; color: var(--ink-2); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.favs .st.new { color: #fff; background: var(--greed); border-radius: 999px; padding: 2px 9px; font-weight: 700; }
+.favs .rm { border: 0; background: none; color: var(--muted); font-size: 18px; line-height: 1; width: 36px; height: 36px; cursor: pointer; border-radius: 8px; flex: none; }
+.favs .rm:hover { background: var(--hl); color: var(--ink); }
 .sec-title { font-size: 13px; color: var(--muted); font-weight: 500; letter-spacing: 0.02em; margin-bottom: 6px; }
 .facts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
 @media (max-width: 640px) { .facts { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
@@ -202,6 +217,7 @@ details.more[open] > summary { margin-bottom: 10px; }
            role="combobox" aria-expanded="false" aria-controls="results" aria-autocomplete="list">
     <p class="hint" id="hint">불러오는 중…</p>
     <div class="quick" id="quick" hidden><span>예시</span></div>
+    <div class="favs" id="favs" hidden><div class="fh">관심 단지 · 이 브라우저에만 저장돼요</div><ul id="fav-list"></ul></div>
     <ul class="results" id="results" role="listbox" aria-label="검색 결과" hidden></ul>
   </section>
 
@@ -220,7 +236,7 @@ details.more[open] > summary { margin-bottom: 10px; }
         <p id="t-info"><b>단지 기본 정보</b> · 국토교통부 건축물대장(건축HUB)의 총괄표제부, 없으면 동별 표제부를 합친 값이에요. 동수는 세대가 있는 동만 세요. 오래된 단지는 대장에 대지면적이 비어 있어서, 대장의 대표 지번과 부속지번의 토지대장 면적(브이월드)을 더해 대지면적으로 쓰고 용적률(용적률 산정 연면적 ÷ 대지)과 건폐율(건축면적 ÷ 대지)을 계산했어요. 대지면적이 있는 단지 80곳으로 시험했을 때 79곳이 ±5% 안으로 맞았어요. 일부 단지는 건물 면적도 층별 면적의 합(지상층 합 ≈ 용적률 산정 연면적, 1층 합 ≈ 건축면적)으로 어림했어요. 은마는 이렇게 203%, 대장 연면적으로는 204%예요. 계산 결과가 용적률 60% 미만·1,000% 초과이거나 건폐율 90% 초과면 지번 짝이 일부만 맞은 것으로 보고 비워 둬요.</p>
       </div>
     </details>
-    <p><b>자료</b> · 국토교통부 아파트 매매 실거래가(<span id="t-src">서울</span>, 2006년~)와 건축물대장. 실거래는 계약 후 30일 안에 신고되므로 최근 한 달 거래는 아직 덜 들어왔을 수 있어요. <span id="asof"></span> 매달 20일에 지도와 함께 갱신해요.</p>
+    <p><b>자료</b> · 국토교통부 아파트 매매 실거래가(<span id="t-src">서울</span>, 2006년~)와 건축물대장. 실거래는 계약 후 30일 안에 신고되므로 최근 한 달 거래는 아직 덜 들어왔을 수 있어요. <span id="asof"></span> 새 거래는 매주 월요일에 넣어요(지수는 매달 20일).</p>
   </footer>
 </div>
 
@@ -306,9 +322,10 @@ function renderResults() {
   shown = q ? search(q) : [];
   active = -1;
   const qk = $("#quick");
-  if (!q) { resEl.hidden = true; qEl.setAttribute("aria-expanded", "false"); hint.hidden = false; qk.hidden = qk.children.length < 2; return; }
+  if (!q) { resEl.hidden = true; qEl.setAttribute("aria-expanded", "false"); hint.hidden = false; qk.hidden = qk.children.length < 2; $("#favs").hidden = !favLoad().length; return; }
   hint.hidden = true;
   qk.hidden = true;
+  $("#favs").hidden = true;
   resEl.hidden = false;
   qEl.setAttribute("aria-expanded", "true");
   if (!shown.length) { H("li", { class: "none", role: "option", "aria-disabled": "true" }, resEl, "찾는 단지가 없어요. 이름 일부나 동 이름으로 다시 찾아보세요."); return; }
@@ -337,7 +354,61 @@ qEl.addEventListener("keydown", (e) => {
   else if (e.key === "Escape") { qEl.value = ""; renderResults(); }
 });
 qEl.addEventListener("focus", () => { if (qEl.value.trim()) renderResults(); });
-qEl.addEventListener("blur", () => setTimeout(() => { resEl.hidden = true; qEl.setAttribute("aria-expanded", "false"); }, 120));
+qEl.addEventListener("blur", () => setTimeout(() => { resEl.hidden = true; qEl.setAttribute("aria-expanded", "false"); $("#favs").hidden = !favLoad().length; }, 120));
+
+/* ---------- 관심 단지: 이 브라우저(localStorage)에만 저장하고, 다시 오면 저장한 뒤 새 거래가 들어온 단지를 표시 ---------- */
+const FAV_KEY = "fgi-fav", FAV_MAX = 30;
+function favLoad() { try { const a = JSON.parse(localStorage.getItem(FAV_KEY) || "[]"); return Array.isArray(a) ? a.filter((f) => f && f.r && f.seq) : []; } catch (e) { return []; } }
+function favSave(a) { try { localStorage.setItem(FAV_KEY, JSON.stringify(a.slice(0, FAV_MAX))); } catch (e) {} }
+const favHas = (seq) => favLoad().some((f) => f.r === RG.id && f.seq === seq);
+const favSnap = (it, d) => ({ r: RG.id, rn: RG.name, seq: it.seq, code: it.code, name: it.name, sub: `${it.gu} ${it.dong}`.trim(), last: (d && d.lastAll) || "" });
+function favToggle(it, d) {
+  const a = favLoad(), i = a.findIndex((f) => f.r === RG.id && f.seq === it.seq);
+  if (i >= 0) a.splice(i, 1); else a.unshift(favSnap(it, d));
+  favSave(a);
+  renderFavs();
+  return i < 0;
+}
+function favSeen(it, d) {  // 단지를 열어 봤으면 '새 거래' 표시를 지움 (지금 마지막 거래를 기억)
+  const a = favLoad(), f = a.find((x) => x.r === RG.id && x.seq === it.seq);
+  if (!f || !d || !d.lastAll || f.last === d.lastAll) return;
+  Object.assign(f, favSnap(it, d));
+  favSave(a);
+  renderFavs();
+}
+const FAVGU = {};  // 다른 지역 관심 단지의 구 자료 (주소별로 한 번만)
+function favGu(f) {
+  if (f.r === RG.id) return loadGu(f.code);
+  const u = `${f.r === "seoul" ? "data/" : "data/" + f.r + "/"}gu/${f.code}.json`;
+  if (!FAVGU[u]) FAVGU[u] = fetch(u).then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); });
+  return FAVGU[u];
+}
+function renderFavs() {
+  const box = $("#favs"), ul = $("#fav-list"), a = favLoad();
+  ul.textContent = "";
+  box.hidden = !a.length || !resEl.hidden;  // 검색 결과 목록이 열려 있을 때만 숨김
+  a.forEach((f) => {
+    const li = H("li", {}, ul);
+    const go = H("button", { type: "button", class: "go", title: `${f.name} 열기` }, li);
+    H("b", {}, go, f.name);
+    H("small", {}, go, f.sub + (f.r !== RG.id ? ` · ${f.rn}` : ""));
+    const st = H("span", { class: "st" }, li);
+    const rm = H("button", { type: "button", class: "rm", "aria-label": `${f.name} 관심 단지에서 빼기`, title: "관심 단지에서 빼기" }, li, "×");
+    go.addEventListener("click", () => {
+      if (f.r === RG.id) { choose(f.seq); window.scrollTo({ top: $("#detail").offsetTop - 80, behavior: "smooth" }); }
+      else location.href = `?r=${f.r}#${f.seq}`;
+    });
+    rm.addEventListener("click", () => { favSave(favLoad().filter((x) => !(x.r === f.r && x.seq === f.seq))); renderFavs(); });
+    favGu(f).then((g) => {
+      const d = g[f.seq];
+      if (!d || !d.lastAll) return;
+      const fresh = f.last && d.lastAll > f.last;
+      st.className = "st" + (fresh ? " new" : "");
+      st.textContent = fresh ? `새 거래 ${dstr(d.lastAll).slice(5)}` : `최근 ${dstr(d.lastAll).slice(2)}`;
+      if (fresh) st.title = `저장한 뒤 새 거래가 들어왔어요 (마지막 거래 ${dstr(d.lastAll)})`;
+    }).catch(() => {});
+  });
+}
 
 /* ---------- 단지 ---------- */
 const state = { seq: null, type: null };
@@ -353,6 +424,7 @@ async function choose(seq, type) {
   qEl.value = it.name;
   resEl.hidden = true;
   qEl.setAttribute("aria-expanded", "false");
+  $("#favs").hidden = !favLoad().length;
   const det = $("#detail");
   det.hidden = false;
   det.textContent = "";
@@ -394,6 +466,11 @@ function renderDetail(it, d) {
     const c = H("span", { class: "chip" }, chips, "최근 2년 거래 ");
     H("b", {}, c, d.n2y + "건");
   }
+  const fb = H("button", { type: "button", class: "fav-btn", "aria-pressed": String(favHas(it.seq)) }, chips);
+  const favLab = () => { const on = favHas(it.seq); fb.setAttribute("aria-pressed", String(on)); fb.textContent = on ? "★ 관심 단지" : "☆ 관심 단지에 저장"; fb.title = on ? "누르면 관심 단지에서 빼요" : "저장해 두면 다음에 와서 새 거래가 있는지 바로 볼 수 있어요"; };
+  favLab();
+  fb.addEventListener("click", () => { favToggle(it, d); favLab(); });
+  favSeen(it, d);
 
   // 기본 정보
   const info = (d && d.info) || null;
@@ -627,6 +704,7 @@ fetch(RG.data + "index.json").then((r) => { if (!r.ok) throw new Error(r.status)
     b.addEventListener("click", () => choose(seq));
   });
   qk.hidden = qk.children.length < 2;
+  renderFavs();
   const ft = $("#ftab");
   Object.entries(META.floor).forEach(([k, v]) => { const s = H("span", {}, ft); H("span", {}, s, k); H("span", {}, s, (v > 0 ? "+" : v < 0 ? "−" : "") + Math.abs(v).toFixed(1) + "%"); });
   const fromHash = () => {

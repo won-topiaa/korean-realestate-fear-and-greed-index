@@ -1,0 +1,77 @@
+name: 주간 갱신 (실거래·신고가 · 주간 소식)
+
+# 매주 월요일 아침: 최근 3개 계약월의 서울·수도권·광역시 실거래를 다시 받고(weekly_trades.py), 지수와 엮은 주간 소식을
+# 정리해(news_build.py) 올린 뒤 '화면만 다시 배포'를 불러 단지 검색·신고가·모의 투자와 주간 소식 화면을 새로 만든다.
+# 지수는 그대로 매달 20일(월간 자동 갱신). 월간 갱신 무렵(KST 18~22일, 아직 안 끝났을 때)은 실거래 받기를 쉰다.
+# 한쪽이 실패해도 다른 쪽은 올리고, 실패한 쪽이 있으면 실행을 실패로 남겨 알 수 있게 한다.
+on:
+  schedule:
+    - cron: "7 21 * * 0"   # 월요일 06:07 KST
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: write   # 화면 배포 부르기
+
+concurrency:
+  group: weekly-update
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      TZ: Asia/Seoul
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+
+      - name: 실거래 받기 (이번 달과 지난 두 달)
+        id: trades
+        continue-on-error: true
+        env:
+          DATA_GO_KR_KEY: ${{ secrets.DATA_GO_KR_KEY }}
+        run: |
+          printf 'DATA_GO_KR_KEY=%s\n' "$DATA_GO_KR_KEY" > .env
+          set +e
+          python weekly_trades.py
+          code=$?
+          set -e
+          rm -f .env
+          [ "$code" != 1 ]   # 1 = 서울·지역 모두 못 받음 (2 = 월간 갱신 무렵이라 쉼)
+
+      - name: 주간 소식 정리
+        id: news
+        continue-on-error: true
+        run: python news_build.py
+
+      - name: 올리기
+        id: push
+        run: |
+          rm -f .env
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A data/molit data/molit_kr data/news
+          if git diff --cached --quiet; then echo "changed=false" >> "$GITHUB_OUTPUT"; exit 0; fi
+          git commit -m "주간 갱신 $(date +%Y-%m-%d) (실거래·주간 소식)"
+          bash automation/push.sh  # 다른 작업과 겹치면 얹어서 (단지 표는 단지 번호로 합침)
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+
+      - name: 화면 배포 부르기
+        if: steps.push.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run site-deploy.yml -R "$GITHUB_REPOSITORY" --ref main
+
+      - name: 실패한 쪽이 있으면 실패로 남기기
+        if: steps.trades.outcome == 'failure' || steps.news.outcome == 'failure'
+        run: |
+          echo "실거래: ${{ steps.trades.outcome }} · 주간 소식: ${{ steps.news.outcome }}" >> "$GITHUB_STEP_SUMMARY"
+          exit 1

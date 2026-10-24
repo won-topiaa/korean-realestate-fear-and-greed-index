@@ -4,6 +4,8 @@
 // 개인정보 (use/template.html의 안내와 같게): IP는 저장소 밖(D1 meta 표)에 무작위로 만든 값을 섞어 해시하고(이 공개 코드만으로는 되돌릴 수 없게)
 // 하루 뒤 지운다. 신청은 2년 지나면 지운다 — 매일 예약 작업(트리거 Cron "0 18 * * *", 한국 시간 새벽 3시)과 신청이 들어올 때마다.
 // 새 신청은 메일로도 알린다: 바인딩 MAIL(Send Email) → wontopiaaa@gmail.com (aptfeargreed.com Email Routing에서 확인한 받는 주소만 됨).
+// 방문자 세기(/visit)도 여기서: 사이트 바닥글 스크립트가 페이지를 열 때마다 보내고, 누적 방문자 수를 돌려받아 바닥글에 보여 준다.
+// 매주 월요일 새벽 예약 작업이 지난주 방문 요약을 같은 메일로 보낸다.
 // 고친 뒤에는 Cloudflare 대시보드 → Workers → aptfeargreed-register → 코드 편집에 이 파일을 붙여 넣고 배포한다.
 import { EmailMessage } from "cloudflare:email";
 
@@ -41,24 +43,79 @@ function word(s) {
   return out.map((x) => `=?UTF-8?B?${b64(x)}?=`).join("\r\n ");
 }
 
+// 알림 메일 (받는 주소는 NOTIFY.to 하나, Email Routing에서 확인한 주소만 됨)
+async function send(env, subject, body, replyTo = "") {
+  const reply = /^[\w.+-]+@[\w-]+(\.[\w-]+)+$/.test(replyTo) ? `Reply-To: ${replyTo}\r\n` : "";  // 머리글에 이상한 글자가 끼지 않게 단순한 주소만
+  const raw = `From: ${word("아파트 공포탐욕지도")} <${NOTIFY.from}>\r\nTo: ${NOTIFY.to}\r\n${reply}Subject: ${word(subject)}\r\n`
+    + `Date: ${new Date().toUTCString()}\r\nMessage-ID: <${crypto.randomUUID()}@aptfeargreed.com>\r\nMIME-Version: 1.0\r\n`
+    + `Content-Type: text/plain; charset=UTF-8\r\nContent-Transfer-Encoding: base64\r\n\r\n${b64(body).replace(/.{76}/g, "$&\r\n")}\r\n`;
+  await env.MAIL.send(new EmailMessage(NOTIFY.from, NOTIFY.to, raw));
+}
+
 // 새 신청 알림 메일. 실패해도(받는 주소 확인 전 등) 신청은 이미 저장됨
 async function notify(env, r) {
   const body = ["아파트 공포탐욕지수 데이터 사용 신청이 들어왔어요.", "",
     `회사·기관: ${r.org}`, `담당자: ${r.name || "-"}`, `이메일: ${r.email}`, `사용 목적: ${PURPOSE_KO[r.purpose]}`,
     `상업적 이용: ${r.commercial ? "예" : "아니오"}`, `서비스 주소: ${r.url || "-"}`, "", "어디에 어떻게 쓰나요:", r.purpose_detail || "-", "",
     "이 메일에 답장하면 신청한 분께 가요. 전체 목록: Cloudflare 대시보드 → D1 → aptfeargreed-api → registrations"].join("\r\n");
-  const reply = /^[\w.+-]+@[\w-]+(\.[\w-]+)+$/.test(r.email) ? `Reply-To: ${r.email}\r\n` : "";  // 머리글에 이상한 글자가 끼지 않게 단순한 주소만
-  const raw = `From: ${word("아파트 공포탐욕지도")} <${NOTIFY.from}>\r\nTo: ${NOTIFY.to}\r\n${reply}Subject: ${word(`[데이터 사용 신청] ${r.org.slice(0, 40)}`)}\r\n`
-    + `Date: ${new Date().toUTCString()}\r\nMessage-ID: <${crypto.randomUUID()}@aptfeargreed.com>\r\nMIME-Version: 1.0\r\n`
-    + `Content-Type: text/plain; charset=UTF-8\r\nContent-Transfer-Encoding: base64\r\n\r\n${b64(body).replace(/.{76}/g, "$&\r\n")}\r\n`;
-  await env.MAIL.send(new EmailMessage(NOTIFY.from, NOTIFY.to, raw));
+  await send(env, `[데이터 사용 신청] ${r.org.slice(0, 40)}`, body, r.email);
 }
 
-// 보유 기간: 신청은 2년, IP 값은 하루 제한에만 쓰니 하루
+// ---------- 방문자 세기 ----------
+// 브라우저에 저장한 무작위 번호(v)로 '처음 온 사람'과 '다른 날 다시 온 사람(재방문)'을 나눠 센다. IP·브라우저 정보는 저장하지 않는다.
+// visitors: 번호별 첫 방문일·마지막 방문일·방문한 날 수 (400일 넘게 안 온 번호는 지움) · visit_days: 날짜별 방문자(first_time 처음·revisit 재방문)
+// page_views: 날짜·페이지별 조회 · meta.visitors_total: 누적 방문자 (바닥글에 보여 줄 때 전체를 세지 않게 새 방문자마다 1씩)
+const VISIT_TABLES = [
+  "CREATE TABLE IF NOT EXISTS visitors (vid TEXT PRIMARY KEY, first_day TEXT NOT NULL, last_day TEXT NOT NULL, days INTEGER NOT NULL)",
+  "CREATE TABLE IF NOT EXISTS visit_days (day TEXT PRIMARY KEY, visitors INTEGER NOT NULL DEFAULT 0, first_time INTEGER NOT NULL DEFAULT 0, revisit INTEGER NOT NULL DEFAULT 0)",
+  "CREATE TABLE IF NOT EXISTS page_views (day TEXT NOT NULL, page TEXT NOT NULL, views INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (day, page))",
+  "CREATE TABLE IF NOT EXISTS meta (k TEXT PRIMARY KEY, v TEXT NOT NULL)",
+];
+const kstDay = (ms = Date.now()) => new Date(ms + 9 * 3600e3).toISOString().slice(0, 10);
+const total = async (db) => +((await db.prepare("SELECT v FROM meta WHERE k = 'visitors_total'").first("v")) || 0);
+
+async function visit(db, b) {
+  const day = kstDay(), page = /^\/(?:[a-z-]{1,20}\/)?$/.test(b.p || "") ? b.p : "기타";  // "/", "/seoul/", "/apt/" …
+  const v = /^[0-9a-f]{32}$/.test(b.v || "") ? b.v : null;  // 저장을 막아 둔 브라우저는 번호 없이 조회만 셈
+  let kind = null;
+  if (v) {  // 문장 하나씩 조건을 걸어, 같은 사람이 탭 두 개로 동시에 열어도 두 번 세지 않게
+    if ((await db.prepare("INSERT OR IGNORE INTO visitors (vid, first_day, last_day, days) VALUES (?, ?, ?, 1)").bind(v, day, day).run()).meta.changes) kind = "first_time";
+    else if ((await db.prepare("UPDATE visitors SET last_day = ?, days = days + 1 WHERE vid = ? AND last_day < ?").bind(day, v, day).run()).meta.changes) kind = "revisit";
+  }
+  const st = [db.prepare("INSERT INTO page_views (day, page, views) VALUES (?, ?, 1) ON CONFLICT (day, page) DO UPDATE SET views = views + 1").bind(day, page)];
+  if (kind) st.push(db.prepare(`INSERT INTO visit_days (day, visitors, ${kind}) VALUES (?, 1, 1) ON CONFLICT (day) DO UPDATE SET visitors = visitors + 1, ${kind} = ${kind} + 1`).bind(day));
+  if (kind === "first_time") st.push(db.prepare("INSERT INTO meta (k, v) VALUES ('visitors_total', '1') ON CONFLICT (k) DO UPDATE SET v = CAST(v AS INTEGER) + 1"));
+  await db.batch(st);
+  return total(db);
+}
+
+// 지난주(월~일) 방문 요약 메일 (월요일 새벽 예약 작업)
+async function weekly(env, now) {
+  const db = env.DB, from = kstDay(now - 7 * 864e5), to = kstDay(now - 864e5);
+  const w = await db.prepare("SELECT COALESCE(SUM(visitors), 0) AS v, COALESCE(SUM(first_time), 0) AS n, COALESCE(SUM(revisit), 0) AS r FROM visit_days WHERE day BETWEEN ? AND ?").bind(from, to).first();
+  const people = await db.prepare("SELECT COUNT(*) AS c FROM visitors WHERE last_day >= ?").bind(from).first("c");
+  const loyal = await db.prepare("SELECT COUNT(*) AS c FROM visitors WHERE days >= 2").first("c");
+  const pages = (await db.prepare("SELECT page, SUM(views) AS views FROM page_views WHERE day BETWEEN ? AND ? GROUP BY page ORDER BY views DESC LIMIT 12").bind(from, to).all()).results;
+  const regs = await db.prepare("SELECT COUNT(*) AS c FROM registrations WHERE created_kst >= ?").bind(from).first("c");
+  const days = (await db.prepare("SELECT day, visitors, first_time, revisit FROM visit_days WHERE day BETWEEN ? AND ? ORDER BY day").bind(from, to).all()).results;
+  const pct = (a, b) => (b ? Math.round((a / b) * 100) + "%" : "-");
+  const body = [`아파트 공포탐욕지수 지난주 방문 요약 (${from} ~ ${to}, 한국 시간)`, "",
+    `방문한 사람: ${people.toLocaleString("ko-KR")}명 (같은 사람은 한 번)`,
+    `날마다 센 방문: ${w.v.toLocaleString("ko-KR")}회 — 처음 온 사람 ${w.n.toLocaleString("ko-KR")} · 다른 날 다시 온 사람 ${w.r.toLocaleString("ko-KR")} (재방문 ${pct(w.r, w.v)})`,
+    `누적 방문자: ${(await total(db)).toLocaleString("ko-KR")}명 · 그중 두 번 이상 온 사람 ${loyal.toLocaleString("ko-KR")}명`,
+    `데이터 사용 신청: ${regs}건`, "", "날짜별 (방문 · 새 · 재방문):", ...days.map((x) => `  ${x.day}  ${x.visitors} · ${x.first_time} · ${x.revisit}`),
+    "", "페이지별 조회:", ...pages.map((x) => `  ${x.page}  ${x.views.toLocaleString("ko-KR")}`),
+    "", "자세히: Cloudflare 대시보드 → D1 → aptfeargreed-api → visit_days · page_views"].join("\r\n");
+  await send(env, `[주간 방문] ${from.slice(5)}~${to.slice(5)} 방문한 사람 ${people}명 · 재방문 ${pct(w.r, w.v)}`, body);
+}
+
+// 보유 기간: 신청은 2년, IP 값은 하루 제한에만 쓰니 하루, 방문자 번호는 400일 동안 안 오면 (방문 수 합계는 남음)
 async function cleanup(db) {
   await db.batch([
+    ...VISIT_TABLES.map((s) => db.prepare(s)),  // 방문 표가 아직 없을 때도 (신청이 먼저 들어온 경우)
     db.prepare("DELETE FROM registrations WHERE created_kst < datetime('now', '+9 hours', '-2 years')"),
     db.prepare("UPDATE registrations SET ip_hash = NULL WHERE ip_hash IS NOT NULL AND created_kst < datetime('now', '+9 hours', '-1 day')"),
+    db.prepare("DELETE FROM visitors WHERE last_day < date('now', '+9 hours', '-400 days')"),
   ]);
 }
 
@@ -69,6 +126,19 @@ export default {
                    "Access-Control-Allow-Headers": "Content-Type", "Access-Control-Max-Age": "86400", Vary: "Origin" };
     const path = new URL(req.url).pathname;
     if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: cors });
+    if (path === "/visit" && req.method === "POST") {  // 바닥글 스크립트: 본문은 text/plain JSON (미리 묻는 요청 없이)
+      if (!ORIGINS.includes(origin)) return json({ ok: false }, 403, cors);
+      let v = {};
+      try { v = JSON.parse(await req.text()) || {}; } catch {}
+      const run = () => (v.n || typeof v.p !== "string" ? total(env.DB) : visit(env.DB, v));  // n: 이 브라우저는 세지 않음 (?nocount=1, 사이트 주인용) · 주소가 없는 본문은 세지 않음
+      let n;
+      try { n = await run(); } catch (e) {
+        if (!/no such table/.test(e.message)) throw e;
+        await env.DB.batch(VISIT_TABLES.map((s) => env.DB.prepare(s)));  // 처음 한 번: 방문 표 만들기
+        n = await run();
+      }
+      return json({ ok: true, total: n }, 200, cors);
+    }
     if (path !== "/register") return new Response("아파트 공포탐욕지수 데이터 API 이용 등록 창구예요. 신청은 https://aptfeargreed.com/use/ 에서 해 주세요.\n", { headers: { "Content-Type": "text/plain; charset=utf-8" } });
     if (req.method !== "POST") return json({ ok: false, error: "POST로 보내 주세요" }, 405, cors);
     if (!ORIGINS.includes(origin)) return json({ ok: false, error: "사이트의 신청 칸에서 보내 주세요" }, 403, cors);
@@ -99,8 +169,11 @@ export default {
     return json({ ok: true }, 200, cors);
   },
 
-  // 매일 한 번 (대시보드 → aptfeargreed-register → 설정 → 트리거 이벤트 → Cron "0 18 * * *")
+  // 매일 한 번 (대시보드 → aptfeargreed-register → 설정 → 트리거 이벤트 → Cron "0 18 * * *", 한국 시간 새벽 3시). 월요일이면 지난주 방문 요약 메일도
   async scheduled(event, env, ctx) {
-    ctx.waitUntil(cleanup(env.DB));
+    ctx.waitUntil((async () => {
+      await cleanup(env.DB);
+      if (env.MAIL && new Date(event.scheduledTime + 9 * 3600e3).getUTCDay() === 1) await weekly(env, event.scheduledTime);
+    })());
   },
 };

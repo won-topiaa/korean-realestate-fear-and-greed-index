@@ -3,6 +3,7 @@
 사이트와 같은 모습(페이지 사진을 어둡게 깐 바탕 + 로고 + 굵은 제목)에, 오른쪽에 그 페이지를 보여 주는 그림을 얹는다.
 - 지도 페이지(첫 화면·서울·지역): 이번 달 점수와 0~100 막대, 점수 색으로 칠한 지도 (사이트 지도와 같은 색)
 - 단지 검색: 0~100점 막대 · 신고가: 신고가 비중 막대그래프 · 모의 투자: 서울 실거래 지수 · 보고서: 지수 추이 · API: 응답 예시
+- 주간 소식: 주제 다섯 개의 서울 점수 막대
 점수가 들어가므로 월간 자동 갱신이 매달 다시 만든다 (monthly-update.yml, 실패해도 갱신은 계속). 화면을 고쳤을 때는 로컬에서 같은 명령.
 그릴 자료가 없는 페이지(그달 단지 검색·신고가 계산이 실패)는 건너뛰고, 한 페이지가 실패해도 나머지는 그린다 — 둘 다 지난 이미지가 그대로 남는다.
 헤드리스 Chrome으로 찍고, 글꼴은 사이트와 같은 Google Fonts라 인터넷 연결이 필요하다 (서버는 한글이 빠지지 않게 Noto CJK도 설치).
@@ -25,6 +26,7 @@ OUT = ROOT / "assets" / "og"
 CHROME = os.environ.get("CHROME", "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome")
 SITE = "aptfeargreed.com"
 TRADE_ONLY = {"apt", "highs", "sim"}  # 실거래만 쓰는 페이지. 지수 페이지는 원자료 출처에 KB부동산을 함께 적는다 (KB 담당자 답변, 2026-10-23)
+WEEKLY = TRADE_ONLY | {"news"}  # 매주 월요일 갱신하는 페이지 (나머지는 매달 20일)
 
 # 사이트 어두운 화면의 색 (map/template.html)
 FEAR, GREED, NEUTRAL, MAP_NEUTRAL, MAP_NA = "#3987e5", "#e66767", "#74777d", "#2b2c2f", "#222326"
@@ -229,6 +231,17 @@ def tool_page(name):
                 '<div class="lead">아파트 공포탐욕지수를<br>JSON·CSV로 가져다 쓰세요</div>'
                 '<div class="lead small">서울·5대 권역·25개 구와 수도권·광역시 시군구, 2006년부터 월별</div>')
         return "아파트 공포탐욕지수", "데이터 API", left, f'<pre class="code">{esc(code).replace("GET", '<span class="c">GET</span>', 1)}</pre>'
+    if name == "news":
+        import news_build
+        sc, month = news_build.theme_scores()
+        rows = "".join(
+            f'<div class="tr"><span class="tn">{esc(n)}</span><span class="tb"><i style="width:{max(2, sc[n][0]):.0f}%;background:{band_color(sc[n][0])}"></i></span>'
+            f'<b style="color:{band_color(sc[n][0])}">{round(sc[n][0])}</b></div>' for n, *_ in news_build.THEMES if n in sc)
+        left = ('<div class="kicker">매주 월요일 · 제목과 링크만</div>'
+                '<div class="lead">지난 한 주 부동산·금리 소식을<br>지수의 주제별로 모았어요</div>'
+                '<div class="lead small">소식마다 그 주제의 서울 지수 점수를 함께</div>')
+        right = f'<div class="panel"><div class="pt">서울 주제 점수 · {ym(month)}</div><div class="trs">{rows}</div></div>'
+        return "지수와 엮은", "주간 소식", left, right
     if name == "use":
         n = 0
         for rid in ["seoul", *REGIONS]:
@@ -244,10 +257,11 @@ def tool_page(name):
 
 
 PHOTO = {"home": ("bg-map", "50%"), "seoul": ("bg-map", "50%"), "apt": ("bg-apt", "40%"), "highs": ("bg-highs", "45%"),
-         "sim": ("bg-sim", "38%"), "report": ("bg-report", "50%"), "api": ("bg-report", "40%"), "use": ("bg-report", "40%")}
+         "sim": ("bg-sim", "38%"), "report": ("bg-report", "50%"), "api": ("bg-report", "40%"), "use": ("bg-report", "40%"),
+         "news": ("bg-report", "45%")}
 for _rid in REGIONS:
     PHOTO[_rid] = (f"bg-{_rid}" if (ROOT / "assets" / "img" / f"bg-{_rid}.jpg").exists() else "bg-map", "50%")
-PAGES = ["home", "seoul", *REGIONS, "apt", "highs", "sim", "report", "api", "use"]
+PAGES = ["home", "seoul", *REGIONS, "apt", "highs", "sim", "report", "api", "use", "news"]
 
 CSS = """
 * { box-sizing: border-box; margin: 0; }
@@ -310,6 +324,12 @@ html, body { width: 1200px; height: 630px; overflow: hidden; background: #121212
 .steps li::before { content: counter(st); grid-row: span 2; width: 44px; height: 44px; border-radius: 50%; background: #fff; color: #111; display: grid; place-items: center; font-family: "Archivo", sans-serif; font-weight: 900; font-size: 22px; }
 .steps b { font-size: 26px; font-weight: 800; }
 .steps span { font-size: 17px; color: #bdbdbd; }
+.trs { display: grid; gap: 14px; }
+.tr { display: grid; grid-template-columns: 70px 1fr 52px; align-items: center; gap: 14px; }
+.tn { font-size: 22px; font-weight: 700; }
+.tb { height: 16px; background: rgba(255,255,255,.1); }
+.tb i { display: block; height: 100%; }
+.tr b { font-family: "Archivo", sans-serif; font-size: 30px; font-weight: 900; text-align: right; font-variant-numeric: tabular-nums; }
 .ring { position: absolute; width: 150px; height: 150px; border-radius: 50%; border: 3px solid rgba(255,255,255,.35); right: -40px; top: -40px; }
 """
 
@@ -324,7 +344,7 @@ HTML = """<!doctype html><html lang="ko"><head><meta charset="utf-8">
   </div>
   <div class="r">__RIGHT__</div>
 </div>
-<div class="foot"><span class="tag">매달 20일 갱신</span><span>__SRC__</span><span class="site">__SITE__</span></div>
+<div class="foot"><span class="tag">__TAG__</span><span>__SRC__</span><span class="site">__SITE__</span></div>
 </div></body></html>"""
 
 
@@ -342,7 +362,7 @@ def draw(name, tmp):
     src = "국토교통부 실거래가 · 공공데이터" if name in TRADE_ONLY else "KB부동산 · 국토교통부 실거래가 · 공공데이터"
     doc = (HTML.replace("__CSS__", CSS.replace("__IMG__", (ROOT / "assets" / "img" / f"{img}.jpg").as_uri()).replace("__Y__", y))
            .replace("__A__", a).replace("__B__", b).replace("__LEFT__", left).replace("__RIGHT__", right)
-           .replace("__SRC__", src).replace("__SITE__", SITE))
+           .replace("__SRC__", src).replace("__SITE__", SITE).replace("__TAG__", "매주 월요일 갱신" if name in WEEKLY else "매달 20일 갱신"))
     html = Path(tmp) / f"{name}.html"
     html.write_text(doc)
     png = Path(tmp) / f"{name}.png"
