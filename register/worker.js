@@ -1,6 +1,8 @@
 // 데이터 API 이용 등록 창구 (Cloudflare Worker aptfeargreed-register, 주소 https://register.aptfeargreed.com/register)
 // API는 키 없이 열려 있고, 누가 어떤 목적으로 쓰는지 알기 위해 등록을 받는다 (등록하지 않아도 API는 그대로 쓸 수 있음).
 // 사이트 '데이터 사용하기' 페이지(use/template.html)의 신청 칸이 JSON으로 보내면 D1(바인딩 이름 DB)의 registrations 표에 넣는다 (register/schema.sql).
+// 개인정보 (use/template.html의 안내와 같게): IP는 저장소 밖(D1 meta 표)에 무작위로 만든 값을 섞어 해시하고(이 공개 코드만으로는 되돌릴 수 없게)
+// 하루 뒤 지운다. 신청은 2년 지나면 지운다 — 매일 예약 작업(트리거 Cron "0 18 * * *", 한국 시간 새벽 3시)과 신청이 들어올 때마다.
 // 고친 뒤에는 Cloudflare 대시보드 → Workers → aptfeargreed-register → 코드 편집에 이 파일을 붙여 넣고 배포한다.
 const ORIGINS = ["https://aptfeargreed.com", "https://www.aptfeargreed.com"];
 const PURPOSES = ["service", "research", "media", "education", "personal", "other"];
@@ -14,6 +16,23 @@ async function sha256(s) {
   return [...new Uint8Array(b)].map((x) => x.toString(16).padStart(2, "0")).join("").slice(0, 24);
 }
 
+// IP에 섞는 값: 처음 한 번 D1이 무작위로 만들어 meta 표에 둔다 (예전엔 이 코드에 적힌 고정값이라, IPv4를 다 해시해 보면 원래 IP가 나왔음)
+async function salt(db) {
+  await db.batch([
+    db.prepare("CREATE TABLE IF NOT EXISTS meta (k TEXT PRIMARY KEY, v TEXT NOT NULL)"),
+    db.prepare("INSERT OR IGNORE INTO meta (k, v) VALUES ('ip_salt', lower(hex(randomblob(32))))"),
+  ]);
+  return db.prepare("SELECT v FROM meta WHERE k = 'ip_salt'").first("v");
+}
+
+// 보유 기간: 신청은 2년, IP 값은 하루 제한에만 쓰니 하루
+async function cleanup(db) {
+  await db.batch([
+    db.prepare("DELETE FROM registrations WHERE created_kst < datetime('now', '+9 hours', '-2 years')"),
+    db.prepare("UPDATE registrations SET ip_hash = NULL WHERE ip_hash IS NOT NULL AND created_kst < datetime('now', '+9 hours', '-1 day')"),
+  ]);
+}
+
 export default {
   async fetch(req, env) {
     const origin = req.headers.get("Origin") || "";
@@ -25,8 +44,9 @@ export default {
     if (req.method !== "POST") return json({ ok: false, error: "POST로 보내 주세요" }, 405, cors);
     if (!ORIGINS.includes(origin)) return json({ ok: false, error: "사이트의 신청 칸에서 보내 주세요" }, 403, cors);
 
-    let b;
-    try { b = await req.json(); } catch { return json({ ok: false, error: "보낸 내용을 읽지 못했어요" }, 400, cors); }
+    let b = null;
+    try { b = await req.json(); } catch {}
+    if (!b || typeof b !== "object" || Array.isArray(b)) return json({ ok: false, error: "보낸 내용을 읽지 못했어요" }, 400, cors);  // null·배열도 (예전엔 null에 오류로 멈췄음)
     if (b.website) return json({ ok: true }, 200, cors);  // 사람에게는 안 보이는 칸: 채워져 있으면 자동 프로그램이라 조용히 버림
     const s = (k) => String(b[k] ?? "").replace(/\s+/g, " ").trim().slice(0, MAX[k]);
     const r = { org: s("org"), name: s("name"), email: s("email").toLowerCase(), purpose: PURPOSES.includes(b.purpose) ? b.purpose : "",
@@ -39,12 +59,18 @@ export default {
     if (b.agree !== true) bad.push("개인정보 수집·이용 동의");
     if (bad.length) return json({ ok: false, error: `다음 칸을 확인해 주세요: ${bad.join(", ")}` }, 400, cors);
 
-    const ip = await sha256((req.headers.get("CF-Connecting-IP") || "") + "|aptfeargreed-register");
+    await cleanup(env.DB);  // 예약 작업이 꺼져 있어도 보유 기간이 지켜지게
+    const ip = await sha256(`${await salt(env.DB)}|${req.headers.get("CF-Connecting-IP") || ""}`);
     const n = await env.DB.prepare("SELECT COUNT(*) AS n FROM registrations WHERE ip_hash = ? AND created_kst > datetime('now', '+9 hours', '-1 day')").bind(ip).first("n");
     if (n >= PER_DAY) return json({ ok: false, error: "오늘은 더 받을 수 없어요. 내일 다시 보내 주세요" }, 429, cors);
     await env.DB.prepare(`INSERT INTO registrations (created_kst, org, name, email, purpose, purpose_detail, url, commercial, ip_hash, user_agent)
                           VALUES (datetime('now', '+9 hours'), ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
       .bind(r.org, r.name, r.email, r.purpose, r.purpose_detail, r.url, r.commercial, ip, (req.headers.get("User-Agent") || "").slice(0, 200)).run();
     return json({ ok: true }, 200, cors);
+  },
+
+  // 매일 한 번 (대시보드 → aptfeargreed-register → 설정 → 트리거 이벤트 → Cron "0 18 * * *")
+  async scheduled(event, env, ctx) {
+    ctx.waitUntil(cleanup(env.DB));
   },
 };

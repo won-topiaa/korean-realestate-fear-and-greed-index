@@ -896,8 +896,8 @@ function drawNow() {
 function render() { if (!raf) raf = requestAnimationFrame(drawNow); }  // 슬라이더를 끌 때 한 프레임에 한 번만
 if (tblDetails) tblDetails.addEventListener("toggle", () => { if (tblDetails.open) renderTable(); });
 drawNow();
-new ResizeObserver(() => { box.classList.toggle("compact", !!D.compact_pins || box.clientWidth < 440); declutter(); }).observe(box);
-if (document.fonts) document.fonts.ready.then(declutter);  // 글꼴이 늦게 오면 이름표 크기가 바뀜  // 아주 좁을 때(시군구가 많은 지역은 늘) 이름을 숨김
+new ResizeObserver(() => { box.classList.toggle("compact", !!D.compact_pins || box.clientWidth < 440); declutter(); }).observe(box);  // 아주 좁을 때(시군구가 많은 지역은 늘) 이름을 숨김
+if (document.fonts) document.fonts.ready.then(declutter);  // 글꼴이 늦게 오면 이름표 크기가 바뀜
 let ht;
 new ResizeObserver(() => { clearTimeout(ht); ht = setTimeout(renderHist, 150); }).observe($("#histcard"));
 document.addEventListener("keydown", (e) => {

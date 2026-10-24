@@ -4,6 +4,7 @@
 - 지도 페이지(첫 화면·서울·지역): 이번 달 점수와 0~100 막대, 점수 색으로 칠한 지도 (사이트 지도와 같은 색)
 - 단지 검색: 0~100점 막대 · 신고가: 신고가 비중 막대그래프 · 모의 투자: 서울 실거래 지수 · 보고서: 지수 추이 · API: 응답 예시
 점수가 들어가므로 월간 자동 갱신이 매달 다시 만든다 (monthly-update.yml, 실패해도 갱신은 계속). 화면을 고쳤을 때는 로컬에서 같은 명령.
+그릴 자료가 없는 페이지(그달 단지 검색·신고가 계산이 실패)는 건너뛰고, 한 페이지가 실패해도 나머지는 그린다 — 둘 다 지난 이미지가 그대로 남는다.
 헤드리스 Chrome으로 찍고, 글꼴은 사이트와 같은 Google Fonts라 인터넷 연결이 필요하다 (서버는 한글이 빠지지 않게 Noto CJK도 설치).
 사용: python og_build.py [페이지 ...]   (없으면 전부, 예: python og_build.py home seoul. Chrome 위치는 CHROME 환경변수)
 """
@@ -11,6 +12,7 @@ import html as _html
 import json
 import os
 import subprocess
+import sys
 import tempfile
 from pathlib import Path
 
@@ -27,6 +29,10 @@ TRADE_ONLY = {"apt", "highs", "sim"}  # 실거래만 쓰는 페이지. 지수 �
 # 사이트 어두운 화면의 색 (map/template.html)
 FEAR, GREED, NEUTRAL, MAP_NEUTRAL, MAP_NA = "#3987e5", "#e66767", "#74777d", "#2b2c2f", "#222326"
 BANDS = ["극단적 공포", "공포", "중립", "탐욕", "극단적 탐욕"]
+
+
+class Skip(Exception):
+    """그릴 자료가 없음: 지난 이미지를 그대로 둔다 (예전엔 숫자·그래프 없는 그림으로 덮었음)."""
 
 
 def band(v):
@@ -159,8 +165,10 @@ def tool_page(name):
     md = load("results_zone/map_data.json")
     dates = md["dates"]
     if name == "apt":
-        n = sum(len(json.loads(f.read_text())["items"]) for f in (ROOT / "results_apt").glob("**/index.json")) if (ROOT / "results_apt").exists() else 0
-        left = (f'<div class="kicker">서울·수도권·광역시 {n:,}개 단지 · 최근 2년 실거래</div>' if n else '<div class="kicker">서울·수도권·광역시 · 최근 2년 실거래</div>')
+        n = sum(len(json.loads(f.read_text())["items"]) for f in (ROOT / "results_apt").glob("**/index.json"))
+        if not n:
+            raise Skip("단지 검색 자료(results_apt) 없음")
+        left = f'<div class="kicker">서울·수도권·광역시 {n:,}개 단지 · 최근 2년 실거래</div>'
         left += '<div class="lead">우리 단지 가장 최근 거래가<br>최근 거래 중 어디쯤인지 0~100점으로</div>'
         segs = "".join(f'<i style="background:{c};opacity:{o}"></i>' for c, o in [(FEAR, 1), (FEAR, .55), (NEUTRAL, .8), (GREED, .55), (GREED, 1)])
         right = (f'<div class="panel"><div class="pt">가장 최근 거래</div><div class="pbig">비싼 편<span>72 / 100점</span></div>'
@@ -170,24 +178,23 @@ def tool_page(name):
                  '<div class="pex">보기 그림이에요</div></div>')
         return "최근 실거래가, 비싼 편일까?", "단지 검색", left, right
     if name == "highs":
-        h = load("results_highs/highs.json") if (ROOT / "results_highs" / "highs.json").exists() else None
-        if h:
-            full = [m for m in h["months"] if m["ym"] <= dates[-1]][0]
-            share = full["high"] / full["cmp"] if full["cmp"] else 0
-            tr = [(a, b / c if c else 0) for a, b, c in h["trend"] if a <= full["ym"]][-30:]
-            top = max(s for _, s in tr) or 1
-            bw = 420 / len(tr)
-            bars = "".join(f'<rect x="{k * bw + 2:.1f}" y="{280 - s / top * 260:.1f}" width="{bw - 4:.1f}" height="{s / top * 260:.1f}" '
-                           f'fill="{GREED if k == len(tr) - 1 else "#5a5a5a"}"/>' for k, (_, s) in enumerate(tr))
-            left = (f'<div class="kicker">{ym(full["ym"])} 서울</div>'
-                    f'<div class="stats"><div><b>{full["high"]:,}</b><span>신고가 거래</span></div><div><b>{share * 100:.0f}%</b><span>신고가 비중</span></div>'
-                    f'<div><b>{full["complexes"]:,}</b><span>신고가 단지</span></div></div>'
-                    '<div class="lead small">같은 단지·같은 평형의 지난 모든 거래보다 비싸게 팔린 거래</div>')
-            right = (f'<div class="panel"><div class="pt">서울 신고가 비중 · 최근 {len(tr)}개월</div>'
-                     f'<svg class="chart" width="420" height="290" viewBox="0 0 420 290">{bars}</svg>'
-                     f'<div class="axis"><span>{ym(tr[0][0])}</span><span>{ym(tr[-1][0])}</span></div></div>')
-        else:
-            left, right = '<div class="lead">같은 단지·같은 평형의 지난 모든 거래보다 비싸게 팔린 거래</div>', ""
+        if not (ROOT / "results_highs" / "highs.json").exists():
+            raise Skip("신고가 자료(results_highs) 없음")
+        h = load("results_highs/highs.json")
+        full = [m for m in h["months"] if m["ym"] <= dates[-1]][0]
+        share = full["high"] / full["cmp"] if full["cmp"] else 0
+        tr = [(a, b / c if c else 0) for a, b, c in h["trend"] if a <= full["ym"]][-30:]
+        top = max(s for _, s in tr) or 1
+        bw = 420 / len(tr)
+        bars = "".join(f'<rect x="{k * bw + 2:.1f}" y="{280 - s / top * 260:.1f}" width="{bw - 4:.1f}" height="{s / top * 260:.1f}" '
+                       f'fill="{GREED if k == len(tr) - 1 else "#5a5a5a"}"/>' for k, (_, s) in enumerate(tr))
+        left = (f'<div class="kicker">{ym(full["ym"])} 서울</div>'
+                f'<div class="stats"><div><b>{full["high"]:,}</b><span>신고가 거래</span></div><div><b>{share * 100:.0f}%</b><span>신고가 비중</span></div>'
+                f'<div><b>{full["complexes"]:,}</b><span>신고가 단지</span></div></div>'
+                '<div class="lead small">같은 단지·같은 평형의 지난 모든 거래보다 비싸게 팔린 거래</div>')
+        right = (f'<div class="panel"><div class="pt">서울 신고가 비중 · 최근 {len(tr)}개월</div>'
+                 f'<svg class="chart" width="420" height="290" viewBox="0 0 420 290">{bars}</svg>'
+                 f'<div class="axis"><span>{ym(tr[0][0])}</span><span>{ym(tr[-1][0])}</span></div></div>')
         return "이번 달 가장 비싸게 팔린 집", "신고가 단지", left, right
     if name == "sim":
         rs = md["regions"]["서울"]["rs"]
@@ -329,30 +336,42 @@ def page(name):
     return tool_page(name)
 
 
+def draw(name, tmp):
+    a, b, left, right = page(name)
+    img, y = PHOTO[name]
+    src = "국토교통부 실거래가 · 공공데이터" if name in TRADE_ONLY else "KB부동산 · 국토교통부 실거래가 · 공공데이터"
+    doc = (HTML.replace("__CSS__", CSS.replace("__IMG__", (ROOT / "assets" / "img" / f"{img}.jpg").as_uri()).replace("__Y__", y))
+           .replace("__A__", a).replace("__B__", b).replace("__LEFT__", left).replace("__RIGHT__", right)
+           .replace("__SRC__", src).replace("__SITE__", SITE))
+    html = Path(tmp) / f"{name}.html"
+    html.write_text(doc)
+    png = Path(tmp) / f"{name}.png"
+    subprocess.run([CHROME, "--headless=new", "--disable-gpu", "--hide-scrollbars", "--force-device-scale-factor=1",
+                    "--virtual-time-budget=10000", "--allow-file-access-from-files", "--window-size=1200,630",
+                    f"--screenshot={png}", html.as_uri()], check=True, capture_output=True, timeout=120)
+    im = Image.open(png).convert("RGB").crop((0, 0, 1200, 630))
+    im.save(OUT / f"{name}.jpg", "JPEG", quality=86, optimize=True, progressive=True)
+    print(name, (OUT / f"{name}.jpg").stat().st_size // 1000, "KB")
+
+
 def main(only=None):
     OUT.mkdir(parents=True, exist_ok=True)
     (OUT / "map.jpg").unlink(missing_ok=True)  # 예전 이름 (첫 화면이 서울 지도이던 때) → home·seoul
+    failed = []
     with tempfile.TemporaryDirectory() as tmp:
         for name in PAGES:
             if only and name not in only:
                 continue
-            a, b, left, right = page(name)
-            img, y = PHOTO[name]
-            src = "국토교통부 실거래가 · 공공데이터" if name in TRADE_ONLY else "KB부동산 · 국토교통부 실거래가 · 공공데이터"
-            doc = (HTML.replace("__CSS__", CSS.replace("__IMG__", (ROOT / "assets" / "img" / f"{img}.jpg").as_uri()).replace("__Y__", y))
-                   .replace("__A__", a).replace("__B__", b).replace("__LEFT__", left).replace("__RIGHT__", right)
-                   .replace("__SRC__", src).replace("__SITE__", SITE))
-            html = Path(tmp) / f"{name}.html"
-            html.write_text(doc)
-            png = Path(tmp) / f"{name}.png"
-            subprocess.run([CHROME, "--headless=new", "--disable-gpu", "--hide-scrollbars", "--force-device-scale-factor=1",
-                            "--virtual-time-budget=10000", "--allow-file-access-from-files", "--window-size=1200,630",
-                            f"--screenshot={png}", html.as_uri()], check=True, capture_output=True, timeout=120)
-            im = Image.open(png).convert("RGB").crop((0, 0, 1200, 630))
-            im.save(OUT / f"{name}.jpg", "JPEG", quality=86, optimize=True, progressive=True)
-            print(name, (OUT / f"{name}.jpg").stat().st_size // 1000, "KB")
+            try:
+                draw(name, tmp)
+            except Skip as e:
+                print(name, f"건너뜀 ({e}) — 지난 이미지 그대로")
+            except Exception as e:  # 한 페이지가 실패해도 나머지는 그린다
+                failed.append(name)
+                print(name, f"실패: {type(e).__name__}: {e}"[:300])
+    if failed:
+        sys.exit(f"미리보기 이미지를 그리지 못한 페이지 (지난 이미지 그대로): {', '.join(failed)}")
 
 
 if __name__ == "__main__":
-    import sys
     main(sys.argv[1:])
