@@ -161,6 +161,10 @@
   - `history/{id}.json`: 한 지역의 월별 점수. id는 `seoul`, 권역 `dosim`·`dongbuk`·`seobuk`·`seonam`·`dongnam`, 구는 시군구 코드 5자리(예: `11680` 강남구)
   - `regions.json`(지역 목록), `index.json`(안내·필드 설명)
 - 키가 없고, GitHub Pages가 CORS(`Access-Control-Allow-Origin: *`)를 열어 두어 다른 사이트의 브라우저에서 바로 불러갈 수 있어요. 누가 얼마나 쓰는지는 알 수 없어요(업체별 키·사용량 제한이 필요해지면 그때 앞에 API 서버를 둠).
+- **이용 등록 (2026-10-24)**: 키는 없지만 쓰기 전에 API 페이지의 [이용 등록](https://aptfeargreed.com/api/#register) 칸으로 회사·기관, 이메일, 사용 목적, 상업적 이용 여부를 받아요(담당자 이름·사용 방법·서비스 주소는 선택, 개인정보 수집·이용 동의 필수, 보유 2년). 등록하지 않아도 API는 그대로 열려 있어요.
+  - 접수: Cloudflare Worker `aptfeargreed-register`(주소 `https://register.aptfeargreed.com/register`, 코드 `register/worker.js`) → D1 데이터베이스 `aptfeargreed-api`의 `registrations` 표(`register/schema.sql`). 사이트(aptfeargreed.com)에서 보낸 요청만 받고, 같은 곳(IP)에서는 하루 5건까지. 사람에게 안 보이는 칸이 채워진 요청(자동 프로그램)은 저장하지 않아요.
+  - 확인: Cloudflare 대시보드 → Storage & databases → D1 → `aptfeargreed-api` → Explore data(`registrations` 표), 또는 Console에서 `SELECT * FROM registrations ORDER BY id DESC;`. 시각은 한국 시간(`created_kst`).
+  - 코드를 고치면 대시보드 → Workers & Pages → `aptfeargreed-register` → Edit code에 `register/worker.js`를 붙여 넣고 Deploy해요.
 - 주소 형식을 바꿀 때는 `v1`을 그대로 두고 `v2`를 새로 만들어요.
 
 ## 수도권·광역시 확장 (2026-10-20~)
