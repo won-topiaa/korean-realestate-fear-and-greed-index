@@ -31,7 +31,7 @@ body { background: var(--bg); font-family: var(--font); padding-block: 0 !import
 .sk-logo { font-family: "Poiret One", var(--font); font-size: 22px; letter-spacing: 0.04em; color: var(--ink); text-decoration: none; white-space: nowrap; font-weight: 400; display: inline-grid; line-height: 1.15; }
 .sk-logo .ko { font-family: var(--font); font-size: 13px; letter-spacing: 0; font-weight: 600; color: var(--ink-2); }
 .sk-logo b { font-weight: 400; }
-.sk-menu { display: flex; gap: 6px 30px; flex: 1 1 auto; justify-content: center; flex-wrap: wrap; }
+.sk-menu { display: flex; gap: 6px 22px; flex: 1 1 auto; justify-content: center; flex-wrap: wrap; }
 .sk-menu a { font-size: 14px; color: var(--ink-2); text-decoration: none; padding: 4px 0; border-bottom: 2px solid transparent; white-space: nowrap; }
 .sk-menu a:hover { color: var(--ink); }
 .sk-menu a[aria-current="page"] { color: var(--ink); font-weight: 600; border-bottom-color: var(--ink); }
@@ -42,7 +42,8 @@ body { background: var(--bg); font-family: var(--font); padding-block: 0 !import
 @media (max-width: 760px) {  /* 휴대폰: 1줄 로고·화면 밝기·버튼, 2줄 메뉴 */
   .sk-nav { padding-block: 12px 10px; }
   .sk-nav .sk-in { gap: 10px 10px; flex-wrap: wrap; }
-  .sk-menu { order: 3; flex-basis: 100%; justify-content: flex-start; gap: 4px 20px; }
+  .sk-menu { order: 3; flex-basis: 100%; justify-content: flex-start; gap: 4px 18px; }
+  .sk-menu .sk-long { display: none; }  /* 휴대폰: '데이터 사용하기' → '데이터' (메뉴를 한 줄로) */
   .sk-right { margin-left: auto; gap: 8px; }
   .sk-logo { font-size: 17px; }
   .sk-logo .ko { font-size: 12px; }
@@ -56,6 +57,10 @@ body { background: var(--bg); font-family: var(--font); padding-block: 0 !import
 .sk-nav .theme-ctl .tl { font-size: 13px; color: var(--ink-2); padding: 0 8px 0 10px; }
 .theme-ctl button { font-size: 13px !important; padding: 4px 10px !important; }
 .sk-theme-m { display: none; font: inherit; font-size: 13px; font-weight: 600; color: var(--ink); background: transparent; border: 1px solid var(--line); padding: 8px 10px; cursor: pointer; white-space: nowrap; }
+/* 본문 폭이 좁은 페이지(단지 검색·모의 투자·API·데이터 사용하기): 메뉴가 5개라 화면 밝기를 버튼 하나로 (머리글 한 줄) */
+.sk-nav.sk-narrow .sk-right .theme-ctl { display: none !important; }
+.sk-nav.sk-narrow .sk-right .sk-theme-m { display: inline-block; }
+@media (max-width: 380px) { .sk-nav .sk-cta { display: none; } }  /* 아주 좁은 휴대폰: 메뉴에도 있는 '단지 검색' 버튼을 빼서 로고와 한 줄로 */
 
 /* ---------- 첫 화면: 페이지 사진을 어둡게 깐 띠 위에 두 단 제목 (바닥글과 같은 느낌) ---------- */
 body { overflow-x: clip; }  /* 화면 폭 띠가 가로 스크롤을 만들지 않게 */

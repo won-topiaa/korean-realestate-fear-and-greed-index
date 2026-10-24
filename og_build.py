@@ -222,14 +222,25 @@ def tool_page(name):
                 '<div class="lead">아파트 공포탐욕지수를<br>JSON·CSV로 가져다 쓰세요</div>'
                 '<div class="lead small">서울·5대 권역·25개 구와 수도권·광역시 시군구, 2006년부터 월별</div>')
         return "아파트 공포탐욕지수", "데이터 API", left, f'<pre class="code">{esc(code).replace("GET", '<span class="c">GET</span>', 1)}</pre>'
+    if name == "use":
+        n = 0
+        for rid in ["seoul", *REGIONS]:
+            _, d, _, pub = region(rid)
+            n += len(d["regions"]) if pub else 0
+        left = ('<div class="kicker">키 없이 무료 · 매달 20일 갱신</div>'
+                '<div class="lead">서비스·리서치에 쓰시려면<br>1분 사용 신청부터</div>'
+                f'<div class="lead small">{n}개 지역 · 2006년부터 월별 · JSON·CSV</div>')
+        steps = "".join(f'<li><b>{k}</b><span>{t}</span></li>' for k, t in
+                        [("사용 신청", "회사·이메일·사용 목적"), ("주소로 불러오기", "키 없이 GET · JSON·CSV"), ("출처 적기", "자료: 원토피아 아파트 공포탐욕지수")])
+        return "아파트 공포탐욕지수", "데이터 사용하기", left, f'<div class="panel"><div class="pt">이렇게 쓰세요</div><ol class="steps">{steps}</ol></div>'
     raise KeyError(name)
 
 
 PHOTO = {"home": ("bg-map", "50%"), "seoul": ("bg-map", "50%"), "apt": ("bg-apt", "40%"), "highs": ("bg-highs", "45%"),
-         "sim": ("bg-sim", "38%"), "report": ("bg-report", "50%"), "api": ("bg-report", "40%")}
+         "sim": ("bg-sim", "38%"), "report": ("bg-report", "50%"), "api": ("bg-report", "40%"), "use": ("bg-report", "40%")}
 for _rid in REGIONS:
     PHOTO[_rid] = (f"bg-{_rid}" if (ROOT / "assets" / "img" / f"bg-{_rid}.jpg").exists() else "bg-map", "50%")
-PAGES = ["home", "seoul", *REGIONS, "apt", "highs", "sim", "report", "api"]
+PAGES = ["home", "seoul", *REGIONS, "apt", "highs", "sim", "report", "api", "use"]
 
 CSS = """
 * { box-sizing: border-box; margin: 0; }
@@ -287,6 +298,11 @@ html, body { width: 1200px; height: 630px; overflow: hidden; background: #121212
 .axis { display: flex; justify-content: space-between; font-size: 16px; color: #a8a8a8; }
 .code { width: 480px; margin-top: -40px; padding: 24px 28px; overflow: hidden; background: rgba(10,10,10,.85); border: 1px solid rgba(255,255,255,.16); font-family: "JetBrains Mono", ui-monospace, monospace; font-size: 18px; line-height: 1.55; color: #e6e6e6; white-space: pre; }
 .code .c { color: #111; background: #fff; padding: 1px 7px; font-weight: 700; }
+.steps { margin: 0; padding: 0; list-style: none; counter-reset: st; display: grid; gap: 14px; }
+.steps li { counter-increment: st; display: grid; grid-template-columns: 44px 1fr; column-gap: 14px; align-items: center; }
+.steps li::before { content: counter(st); grid-row: span 2; width: 44px; height: 44px; border-radius: 50%; background: #fff; color: #111; display: grid; place-items: center; font-family: "Archivo", sans-serif; font-weight: 900; font-size: 22px; }
+.steps b { font-size: 26px; font-weight: 800; }
+.steps span { font-size: 17px; color: #bdbdbd; }
 .ring { position: absolute; width: 150px; height: 150px; border-radius: 50%; border: 3px solid rgba(255,255,255,.35); right: -40px; top: -40px; }
 """
 

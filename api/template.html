@@ -65,32 +65,11 @@ ul { margin: 0; padding-left: 20px; display: grid; gap: 4px; }
 .foot { font-size: 13px; color: var(--muted); display: grid; gap: 6px; max-width: 90ch; }
 .foot b { color: var(--ink-2); }
 .loading { color: var(--muted); font-size: 13px; }
-/* 이용 등록 칸 */
-.reg form { display: grid; gap: 14px; }
-.fg { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 16px; }
-.fg .wide { grid-column: 1 / -1; }
-.fg label, .fg fieldset { display: grid; gap: 5px; font-size: 14px; font-weight: 600; color: var(--ink-2); }
-.fg b, .agree b { color: var(--greed); }
-.fg input, .fg select, .fg textarea { font: inherit; font-size: 15px; font-weight: 400; color: var(--ink); background: var(--bg); border: 1px solid var(--hair); border-radius: 8px; padding: 9px 11px; width: 100%; }
-.fg textarea { resize: vertical; min-height: 72px; }
-.fg input:focus, .fg select:focus, .fg textarea:focus { outline: 2px solid var(--ink); outline-offset: 1px; }
-.fg fieldset { border: 0; padding: 0; margin: 0; grid-template-columns: auto auto 1fr; align-items: center; column-gap: 18px; }
-.fg fieldset legend { padding: 0; margin-bottom: 6px; grid-column: 1 / -1; }
-.fg .inl { display: inline-flex; align-items: center; gap: 6px; font-weight: 500; color: var(--ink); }
-.fg .inl input { width: auto; }
-.hp { position: absolute; left: -9999px; width: 1px; height: 1px; opacity: 0; }  /* 사람에게는 안 보이는 칸 (자동 프로그램 거르기) */
-.pv { font-size: 13px; color: var(--ink-2); background: var(--hl); border-radius: 8px; padding: 10px 12px; }
-.pv summary { cursor: pointer; font-weight: 600; color: var(--ink); }
-.pv ul { margin-top: 8px; }
-.agree { display: flex; gap: 8px; align-items: flex-start; font-size: 14px; }
-.agree input { margin-top: 4px; }
-.act { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: center; }
-.act button { font: inherit; font-size: 15px; font-weight: 700; color: var(--surface); background: var(--ink); border: 0; border-radius: 8px; padding: 10px 22px; cursor: pointer; }
-.act button[disabled] { opacity: 0.5; cursor: default; }
-#reg-msg { font-size: 14px; }
-#reg-msg.ok { color: var(--ink); font-weight: 600; }
-#reg-msg.err { color: var(--greed); }
-@media (max-width: 600px) { .fg { grid-template-columns: 1fr; } }
+/* 데이터 사용하기(신청 페이지)로 가는 칸 */
+.use { grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 12px 20px; }
+.use > div { display: grid; gap: 6px; }
+.use-btn { font-size: 15px; font-weight: 700; text-decoration: none; color: var(--surface); background: var(--ink); border-radius: 8px; padding: 11px 20px; white-space: nowrap; }
+@media (max-width: 600px) { .use { grid-template-columns: minmax(0, 1fr); } .use-btn { justify-self: start; } }
 </style>
 <script>try { const m = localStorage.getItem("fgi-theme"); if (m === "light" || m === "dark") document.documentElement.setAttribute("data-theme", m); } catch (e) {}</script>
 
@@ -105,35 +84,10 @@ ul { margin: 0; padding-left: 20px; display: grid; gap: 4px; }
     <div class="facts"><span>키 없이 GET</span><span>다른 사이트에서 바로 호출 (CORS 허용)</span><span>매달 20일 갱신</span><span>JSON · CSV</span></div>
   </header>
 
-  <section class="panel reg" id="register" aria-label="이용 등록">
-    <h2>이용 등록 <small style="font-size:14px;font-weight:500;color:var(--muted)">키는 없어요 · 1분이면 돼요</small></h2>
-    <p class="sub" style="font-size:14.5px">API는 키 없이 누구나 쓸 수 있어요. 다만 어디서 어떻게 쓰이는지 알고 싶어서, 쓰기 전에 아래 칸을 채워 주세요. 등록하시면 주소나 형식이 바뀌거나 갱신이 늦어질 때 미리 메일로 알려 드려요.</p>
-    <form id="reg-form" novalidate>
-      <div class="fg">
-        <label><span>회사·기관 <b>*</b></span><input name="org" maxlength="100" required autocomplete="organization" placeholder="개인이면 '개인'"></label>
-        <label><span>담당자 이름</span><input name="name" maxlength="50" autocomplete="name"></label>
-        <label><span>이메일 <b>*</b></span><input name="email" type="email" maxlength="120" required autocomplete="email" placeholder="변경 안내를 받을 주소"></label>
-        <label><span>사용 목적 <b>*</b></span><select name="purpose" required>
-          <option value="">고르세요</option><option value="service">서비스·앱에 점수 보여 주기</option><option value="research">리서치·투자 분석</option>
-          <option value="media">언론·콘텐츠</option><option value="education">교육·학술 연구</option><option value="personal">개인 공부·취미</option><option value="other">기타</option></select></label>
-        <label class="wide"><span>어디에 어떻게 쓰시나요</span><textarea name="purpose_detail" maxlength="1000" rows="3" placeholder="예: 부동산 앱의 지역 화면에 이번 달 점수를 보여 줘요"></textarea></label>
-        <label class="wide"><span>서비스 주소</span><input name="url" type="url" maxlength="300" placeholder="https://"></label>
-        <fieldset class="wide"><legend>돈을 버는 서비스(유료·광고 수익)에 쓰시나요? <b>*</b></legend>
-          <label class="inl"><input type="radio" name="commercial" value="yes"> 예</label><label class="inl"><input type="radio" name="commercial" value="no"> 아니오</label></fieldset>
-        <input class="hp" name="website" tabindex="-1" autocomplete="off" aria-hidden="true">
-      </div>
-      <details class="pv"><summary>개인정보 수집·이용 안내</summary>
-        <ul>
-          <li><b>수집 항목</b>: 회사·기관, 이메일, 사용 목적, 상업적 이용 여부(필수) · 담당자 이름, 사용 방법, 서비스 주소(선택). 같은 곳에서 여러 번 보내는 것을 막으려고 접속 IP를 되돌릴 수 없게 바꾼 값과 브라우저 정보도 함께 저장해요.</li>
-          <li><b>이용 목적</b>: API 이용 현황 파악, 주소·형식 변경이나 갱신 지연 안내, 이용과 관련한 연락</li>
-          <li><b>보유 기간</b>: 등록한 날부터 2년, 또는 삭제를 요청하실 때까지</li>
-          <li><b>보관 위치</b>: 원토피아가 쓰는 Cloudflare(미국 Cloudflare, Inc.)의 데이터베이스, 아시아·태평양 지역 서버</li>
-          <li>동의하지 않으셔도 API는 그대로 쓸 수 있어요(등록만 되지 않아요). 확인·수정·삭제 요청은 <a href="mailto:wontopiaaa@gmail.com">wontopiaaa@gmail.com</a>으로 보내 주세요.</li>
-        </ul>
-      </details>
-      <label class="agree"><input type="checkbox" name="agree"> <span>위 개인정보 수집·이용에 동의해요 <b>*</b></span></label>
-      <div class="act"><button type="submit">등록하기</button><span id="reg-msg" role="status" aria-live="polite"></span></div>
-    </form>
+  <section class="panel use" aria-label="데이터 사용하기">
+    <div><h2>쓰기 전에 사용 신청을 해 주세요</h2>
+      <p class="sub" style="font-size:14.5px">키는 없어요. 어디에 어떻게 쓰시는지만 알려 주시면, 주소나 형식이 바뀌거나 갱신이 늦어질 때 미리 메일로 알려 드려요.</p></div>
+    <a class="use-btn" href="../use/#apply">데이터 사용하기 →</a>
   </section>
 
   <section class="panel" aria-label="지금 값">
@@ -190,41 +144,13 @@ ul { margin: 0; padding-left: 20px; display: grid; gap: 4px; }
     <p><b>이용 안내</b> · 시장 분위기를 재는 지표이고, 사고팔 시점을 알려주는 신호가 아니에요. 계산 방법이나 자료가 바뀌면 지난 달 값도 다시 계산될 수 있어요(<code>engine</code>으로 구분). 계산에 쓴 원자료 값은 들어 있지 않고 직접 계산한 점수만 있어요.</p>
     <p><b>계산 방법</b> · 서울은 지표 34개(같은 출처끼리 묶어 25표)를 선행·동행·후행 3그룹으로 나눠 평균해요. 정확도와 한계는 <a href="../report/">백테스트 보고서</a>에 있어요. 수도권·광역시는 지역마다 받을 수 있는 지표로 표를 만들고, 여러 엔진 후보 중 교차검증으로 고른 비중으로 합쳐요(각 지역 페이지 아래 설명).</p>
     <p><b>출처</b> · 이 점수는 원토피아가 원자료(KB부동산, 한국부동산원 R-ONE, 국토교통부 실거래가, 청약홈, 한국은행 ECOS, 네이버 금융, 구글 트렌드)를 가공해 만든 자료예요. 가져다 쓰실 때는 '자료: 원토피아 아파트 공포탐욕지수'로 표기해 주세요.</p>
-    <p><b>쓰기 전에</b> · 위 <a href="#register">이용 등록</a>을 해 주세요. 갱신 시각이나 형식이 바뀔 때 미리 알려 드릴게요. 그 밖의 문의는 <a href="mailto:wontopiaaa@gmail.com">wontopiaaa@gmail.com</a>으로 보내 주세요.</p>
+    <p><b>쓰기 전에</b> · <a href="../use/">데이터 사용하기</a>에서 사용 신청을 해 주세요. 갱신 시각이나 형식이 바뀔 때 미리 알려 드릴게요. 그 밖의 문의는 <a href="mailto:wontopiaaa@gmail.com">wontopiaaa@gmail.com</a>으로 보내 주세요.</p>
   </footer>
 </div>
 
 <script>
 const $ = (s) => document.querySelector(s);
 
-/* 이용 등록: register.aptfeargreed.com (Cloudflare Worker, register/worker.js) → D1 registrations 표 */
-const REG_URL = "https://register.aptfeargreed.com/register";
-$("#reg-form").addEventListener("input", () => { const m = $("#reg-msg"); if (m.className === "err") { m.className = ""; m.textContent = ""; } });  // 고치기 시작하면 안내를 지움
-$("#reg-form").addEventListener("submit", async (e) => {
-  e.preventDefault();
-  const f = e.target, msg = $("#reg-msg"), btn = f.querySelector("button");
-  const v = (n) => (f.elements[n].value || "").trim();
-  const data = { org: v("org"), name: v("name"), email: v("email"), purpose: v("purpose"), purpose_detail: v("purpose_detail"), url: v("url"),
-                 commercial: (f.querySelector('input[name="commercial"]:checked') || {}).value || "", agree: f.elements.agree.checked, website: v("website") };
-  const miss = [];
-  if (!data.org) miss.push("회사·기관");
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email)) miss.push("이메일");
-  if (!data.purpose) miss.push("사용 목적");
-  if (!data.commercial) miss.push("상업적 이용 여부");
-  if (!data.agree) miss.push("개인정보 동의");
-  msg.className = "";
-  if (miss.length) { msg.className = "err"; msg.textContent = "다음 칸을 확인해 주세요: " + miss.join(", "); return; }
-  btn.disabled = true; msg.textContent = "보내는 중…";
-  try {
-    const r = await fetch(REG_URL, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) });
-    const j = await r.json().catch(() => ({}));
-    if (!r.ok || !j.ok) throw new Error(j.error || "잠시 뒤 다시 시도해 주세요");
-    f.reset();
-    msg.className = "ok"; msg.textContent = "등록됐어요. 고마워요! 주소나 형식이 바뀌면 이메일로 알려 드릴게요.";
-  } catch (err) {
-    msg.className = "err"; msg.textContent = "등록하지 못했어요: " + err.message;
-  } finally { btn.disabled = false; }
-});
 const BASE = new URL("v1/", location.href).href;
 $("#base").textContent = BASE;
 const exJs = (out) => `// 자바스크립트 (브라우저·Node 18+)

@@ -14,6 +14,7 @@
 | 모의 투자 | https://aptfeargreed.com/sim/ | 그때 샀다면 지금 얼마? 실거래로 계산하는 가상 투자, 단지 2~3개 비교 |
 | 백테스트 보고서 | https://aptfeargreed.com/report/ | 지수를 실거래 141만 건으로 검증한 정확도와 한계 |
 | 데이터 API | https://aptfeargreed.com/api/ | 지수를 다른 서비스에서 가져다 쓰는 JSON·CSV 안내 (키 없이, 매달 20일 갱신) |
+| 데이터 사용하기 | https://aptfeargreed.com/use/ | 데이터를 쓰려는 분이 쓰는 순서·받을 수 있는 데이터·이용 조건을 보고 사용 신청(회사·이메일·목적)을 하는 곳. 신청 내용은 Cloudflare D1에 쌓여요 |
 
 단지 검색·신고가 단지·모의 투자는 서울과 수도권·광역시에서 쓸 수 있어요. 화면 위 지역 버튼으로 고르고, 주소로는 `apt/?r=busan`처럼 지역 id를 붙여요. 지금은 7개 지역 모두 열려 있어요(새 지역은 실거래를 다 받기 전까지 버튼이 흐리게 보여요). 공포탐욕지수는 공개한 지역만 함께 보여 줘요(아래 [지역별 단지 검색·신고가·모의 투자](#지역별-단지-검색신고가모의-투자-2026-10-21)).
 
@@ -161,7 +162,7 @@
   - `history/{id}.json`: 한 지역의 월별 점수. id는 `seoul`, 권역 `dosim`·`dongbuk`·`seobuk`·`seonam`·`dongnam`, 구는 시군구 코드 5자리(예: `11680` 강남구)
   - `regions.json`(지역 목록), `index.json`(안내·필드 설명)
 - 키가 없고, GitHub Pages가 CORS(`Access-Control-Allow-Origin: *`)를 열어 두어 다른 사이트의 브라우저에서 바로 불러갈 수 있어요. 누가 얼마나 쓰는지는 알 수 없어요(업체별 키·사용량 제한이 필요해지면 그때 앞에 API 서버를 둠).
-- **이용 등록 (2026-10-24)**: 키는 없지만 쓰기 전에 API 페이지의 [이용 등록](https://aptfeargreed.com/api/#register) 칸으로 회사·기관, 이메일, 사용 목적, 상업적 이용 여부를 받아요(담당자 이름·사용 방법·서비스 주소는 선택, 개인정보 수집·이용 동의 필수, 보유 2년). 등록하지 않아도 API는 그대로 열려 있어요.
+- **사용 신청 (2026-10-24)**: 키는 없지만 쓰기 전에 [데이터 사용하기](https://aptfeargreed.com/use/) 페이지(`use/template.html`, 위 메뉴·바닥글·API 페이지에서 이어짐)의 신청 칸으로 회사·기관, 이메일, 사용 목적, 상업적 이용 여부를 받아요(담당자 이름·사용 방법·서비스 주소는 선택, 개인정보 수집·이용 동의 필수, 보유 2년). 등록하지 않아도 API는 그대로 열려 있어요.
   - 접수: Cloudflare Worker `aptfeargreed-register`(주소 `https://register.aptfeargreed.com/register`, 코드 `register/worker.js`) → D1 데이터베이스 `aptfeargreed-api`의 `registrations` 표(`register/schema.sql`). 사이트(aptfeargreed.com)에서 보낸 요청만 받고, 같은 곳(IP)에서는 하루 5건까지. 사람에게 안 보이는 칸이 채워진 요청(자동 프로그램)은 저장하지 않아요.
   - 확인: Cloudflare 대시보드 → Storage & databases → D1 → `aptfeargreed-api` → Explore data(`registrations` 표), 또는 Console에서 `SELECT * FROM registrations ORDER BY id DESC;`. 시각은 한국 시간(`created_kst`).
   - 코드를 고치면 대시보드 → Workers & Pages → `aptfeargreed-register` → Edit code에 `register/worker.js`를 붙여 넣고 Deploy해요.

@@ -1,6 +1,6 @@
 // 데이터 API 이용 등록 창구 (Cloudflare Worker aptfeargreed-register, 주소 https://register.aptfeargreed.com/register)
 // API는 키 없이 열려 있고, 누가 어떤 목적으로 쓰는지 알기 위해 등록을 받는다 (등록하지 않아도 API는 그대로 쓸 수 있음).
-// 사이트 데이터 API 페이지(api/template.html)의 등록 칸이 JSON으로 보내면 D1(바인딩 이름 DB)의 registrations 표에 넣는다 (register/schema.sql).
+// 사이트 '데이터 사용하기' 페이지(use/template.html)의 신청 칸이 JSON으로 보내면 D1(바인딩 이름 DB)의 registrations 표에 넣는다 (register/schema.sql).
 // 고친 뒤에는 Cloudflare 대시보드 → Workers → aptfeargreed-register → 코드 편집에 이 파일을 붙여 넣고 배포한다.
 const ORIGINS = ["https://aptfeargreed.com", "https://www.aptfeargreed.com"];
 const PURPOSES = ["service", "research", "media", "education", "personal", "other"];
@@ -21,9 +21,9 @@ export default {
                    "Access-Control-Allow-Headers": "Content-Type", "Access-Control-Max-Age": "86400", Vary: "Origin" };
     const path = new URL(req.url).pathname;
     if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: cors });
-    if (path !== "/register") return new Response("아파트 공포탐욕지수 데이터 API 이용 등록 창구예요. 등록은 https://aptfeargreed.com/api/ 에서 해 주세요.\n", { headers: { "Content-Type": "text/plain; charset=utf-8" } });
+    if (path !== "/register") return new Response("아파트 공포탐욕지수 데이터 API 이용 등록 창구예요. 신청은 https://aptfeargreed.com/use/ 에서 해 주세요.\n", { headers: { "Content-Type": "text/plain; charset=utf-8" } });
     if (req.method !== "POST") return json({ ok: false, error: "POST로 보내 주세요" }, 405, cors);
-    if (!ORIGINS.includes(origin)) return json({ ok: false, error: "사이트의 등록 칸에서 보내 주세요" }, 403, cors);
+    if (!ORIGINS.includes(origin)) return json({ ok: false, error: "사이트의 신청 칸에서 보내 주세요" }, 403, cors);
 
     let b;
     try { b = await req.json(); } catch { return json({ ok: false, error: "보낸 내용을 읽지 못했어요" }, 400, cors); }

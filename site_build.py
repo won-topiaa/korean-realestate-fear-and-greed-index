@@ -41,7 +41,8 @@ SITE_NAME = "아파트 공포탐욕지도"
 OG = {"": ("home", "아파트 공포탐욕지도 · 서울·수도권·광역시"), "seoul/": ("seoul", "서울 아파트 공포탐욕지도"),
       "apt/": ("apt", "단지 검색 · 아파트 공포탐욕지도"),
       "highs/": ("highs", "신고가 단지 · 아파트 공포탐욕지도"), "sim/": ("sim", "모의 투자 · 아파트 공포탐욕지도"),
-      "report/": ("report", "백테스트 보고서 · 서울 아파트 공포탐욕지도"), "api/": ("api", "데이터 API · 아파트 공포탐욕지도")}
+      "report/": ("report", "백테스트 보고서 · 서울 아파트 공포탐욕지도"), "api/": ("api", "데이터 API · 아파트 공포탐욕지도"),
+      "use/": ("use", "데이터 사용하기 · 아파트 공포탐욕지도")}
 
 
 def og_meta(dst, desc):
@@ -64,7 +65,7 @@ def ver(rel):
     return "?v=" + hashlib.md5((ROOT / rel).read_bytes()).hexdigest()[:8]
 
 
-PAGES = [("", "지도"), ("apt/", "단지 검색"), ("highs/", "신고가 단지"), ("sim/", "모의 투자"), ("report/", "보고서")]
+PAGES = [("", "지도"), ("apt/", "단지 검색"), ("highs/", "신고가 단지"), ("sim/", "모의 투자"), ("use/", "데이터 사용하기"), ("report/", "보고서")]
 CONTACT = "wontopiaaa@gmail.com"
 MAILTO = f"mailto:{CONTACT}?subject=" + quote(f"[{SITE_NAME}] 문의")
 
@@ -72,13 +73,14 @@ MAILTO = f"mailto:{CONTACT}?subject=" + quote(f"[{SITE_NAME}] 문의")
 TOOLS = ("apt/", "highs/", "sim/")  # 지역을 고를 수 있는 화면 (주소 뒤 ?r=지역id)
 
 
-def nav(base, cur, rq=""):
-    """rq: 지역 페이지에서 도구 링크에 붙일 지역 (예: ?r=busan)."""
+def nav(base, cur, rq="", narrow=False):
+    """rq: 지역 페이지에서 도구 링크에 붙일 지역 (예: ?r=busan). narrow: 본문 폭이 좁은 페이지 (화면 밝기를 버튼 하나로, 머리글을 한 줄로)."""
     q = lambda h: h + (rq if h in TOOLS else "")
-    links = "".join(f'<a href="{base}{q(h)}"' + (' aria-current="page"' if n == cur else "") + f">{n}</a>"
+    short = lambda n: n.replace(" 사용하기", '<span class="sk-long"> 사용하기</span>')  # 휴대폰에서는 '데이터'만
+    links = "".join(f'<a href="{base}{q(h)}" aria-label="{n}"' + (' aria-current="page"' if n == cur else "") + f">{short(n)}</a>"
                     for h, n in PAGES if n != "보고서")  # 보고서·문의는 바닥글에만
     cta = ("", "지도 보기") if cur == "단지 검색" else ("apt/", "단지 검색")
-    return (f'<header class="sk-nav"><div class="sk-in"><a class="sk-logo" href="{base}" aria-label="{SITE_NAME} 처음으로">'
+    return (f'<header class="sk-nav{" sk-narrow" if narrow else ""}"><div class="sk-in"><a class="sk-logo" href="{base}" aria-label="{SITE_NAME} 처음으로">'
             f'<span>KOREA FEAR &amp; GREED</span><span class="ko">{SITE_NAME}</span></a><nav class="sk-menu" aria-label="사이트 메뉴">{links}</nav>'
             f'<div class="sk-right" id="sk-right"><button type="button" class="sk-theme-m" id="sk-theme-m">화면: 자동</button>'
             f'<a class="sk-cta" href="{base}{q(cta[0])}">{cta[1]}</a></div></div></header>\n')
@@ -100,7 +102,7 @@ def footer(base, rq=""):
             who.append(f'<a href="{v["page"]}">{v["artist"]}</a>')
     who = ", ".join(who)
     links = "".join(f'<li><a href="{base}{h}{rq if h in TOOLS else ""}">{n}</a></li>' for h, n in
-                    [("", "전국 지도"), ("seoul/", "서울 지도"), ("apt/", "단지 검색"), ("highs/", "신고가 단지"), ("sim/", "모의 투자"), ("report/", "백테스트 보고서"), ("api/", "데이터 API")])
+                    [("", "전국 지도"), ("seoul/", "서울 지도"), ("apt/", "단지 검색"), ("highs/", "신고가 단지"), ("sim/", "모의 투자"), ("report/", "백테스트 보고서"), ("use/", "데이터 사용하기"), ("api/", "데이터 API")])
     return (f'\n<footer class="sk-foot"><div class="sk-foot-bg" aria-hidden="true" style="background-image:url(\'{base}assets/img/footer.jpg{ver("assets/img/footer.jpg")}\')"></div><div class="sk-in">'
             f'<div class="sk-about"><a class="sk-logo" href="{base}">KOREA FEAR &amp; GREED</a>'
             '<p>아파트 시장의 공포와 탐욕을 0~100으로 보여주는 지수예요. 서울에서 시작해 수도권·광역시로 넓히고 있고, 매달 20일에 갱신해요.</p></div>'
@@ -124,7 +126,7 @@ def skin(html, base, cur, hero, h1, photo_args, maxw, intro=None, rq=""):
         name = photo_args[0]
         pagebg = (f'<div class="sk-pagebg" aria-hidden="true" style="background-image:url(\'{base}assets/img/{name}.jpg'
                   f'{ver(f"assets/img/{name}.jpg")}\')"></div>\n')
-    html = html[:j] + pagebg + nav(base, cur, rq) + html[j:]
+    html = html[:j] + pagebg + nav(base, cur, rq, narrow=maxw < 1100) + html[j:]
     op, cl = hero
     assert html.count(op) == 1, op
     a = html.index(op)
@@ -340,5 +342,10 @@ if __name__ == "__main__":
                     ("<h1>데이터 API</h1>", '<h1><span class="sk-h1a">아파트 공포탐욕지수</span><span class="sk-h1b">데이터 API</span></h1>'),
                     ("bg-report", "50%"), 960))
     print(f"api: {month} · 지역 {n}곳")
+    wrap(ROOT / "use" / "template.html", SITE / "use" / "index.html",
+         "아파트 공포탐욕지수를 서비스·리서치에 쓰려면: 키 없이 무료, 1분 사용 신청, JSON·CSV, 매달 20일 갱신.",
+         skin_args=("../", "데이터 사용하기", ('<header style="display:grid;gap:6px">', "</header>"),
+                    ("<h1>데이터 사용하기</h1>", '<h1><span class="sk-h1a">아파트 공포탐욕지수</span><span class="sk-h1b">데이터 사용하기</span></h1>'),
+                    ("bg-report", "40%"), 960))
     (SITE / ".nojekyll").write_text("")
     print("site:", [str(p.relative_to(ROOT)) for p in SITE.rglob("*.html")])
