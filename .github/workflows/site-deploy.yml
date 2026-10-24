@@ -23,6 +23,7 @@ on:
       - "highs_build.py"
       - "sim_build.py"
       - "api/**"
+      - "use/**"
       - "api_build.py"
       - "home/template.html"
       - "home_build.py"
