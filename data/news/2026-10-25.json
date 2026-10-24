@@ -2,7 +2,7 @@
  "issue": "2026-10-25",
  "from": "2026-10-18",
  "to": "2026-10-24",
- "made": "2026-10-25T02:32+09:00",
+ "made": "2026-10-25T02:46+09:00",
  "month": "2026-09",
  "source": "구글 뉴스 검색 (제목·언론사·날짜·링크만)",
  "themes": [
@@ -59,16 +59,16 @@
      "u": "https://news.google.com/rss/articles/CBMiW0FVX3lxTFBEbk01MGYyVlZ3VXVaN0lUOEhOcDRwRGJCQnFfM1EyYThvT3gzb3dfdnh3LXhnamZGWDNaM2k5VmpvYjFyR0s5Qmhua0JzdDlrUmVrOGNiQXdYb2vSAWBBVV95cUxOclR2Qlk4RGJ0NldqOXNXR25xQ3dUUmRYbnZ5MFRPX1NNZkhremstWklHd09wUDFFQzRMYVBGSmQ1YzY1ajFCcmQ4RHd3QmxTREQ4eEd5b1NWN3k2ZVh3Ukw?oc=5"
     },
     {
-     "t": "KB부동산 \"서울서 강남구만 나홀로 하락…화성시 매매·전세 급등\"",
-     "s": "연합인포맥스",
-     "d": "2026-10-22",
-     "u": "https://news.google.com/rss/articles/CBMidEFVX3lxTE9FM1dqY1hYRU0tNWc5Y1g5RHRnQk1ISkRqcWstSjRzSXFWd0Z5alJnZVFpQVQ0ZmstUndDMHd5RndiTV9wak96LWo1OUZWb0pXOFRJaUNYN0JQbnAyZG9ZZ1p5SG1zQU13b2xreXBYWFdfU3ds?oc=5"
-    },
-    {
      "t": "\"서울 집값 어쨌든 연말에도 오른다\"…둔화 vs 확대가 관건",
      "s": "파이낸셜뉴스",
      "d": "2026-10-20",
      "u": "https://news.google.com/rss/articles/CBMiWkFVX3lxTE5vdnc0bXoydE1jb2JVMjQ5NFZrZnpkLWhuZTQ3bXlFczZadjRyZU5CdV9tQUNBemx0dU9NY011QlhFREcyWnRwZ0RDZ0Rnd2pmWWxFc19VMzNFZw?oc=5"
+    },
+    {
+     "t": "강남 하락에 집값 잡았다고?…정부 \"시장 안정 강화될 것\"",
+     "s": "메트로신문",
+     "d": "2026-10-19",
+     "u": "https://news.google.com/rss/articles/CBMiYEFVX3lxTFB0bkdGeWJkd2Fnd2todF9GZ251SmlYZ0dNVG45X3A2SHZkNTQ2OE53WTFpTDRyZVEwVkw5S3NHU3ZFbmJYaXRwN3R5WV82OHNxVWotQnFUajhKWkhpVFhCbA?oc=5"
     }
    ]
   },
