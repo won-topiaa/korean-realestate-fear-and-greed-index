@@ -3,11 +3,16 @@
 // 사이트 '데이터 사용하기' 페이지(use/template.html)의 신청 칸이 JSON으로 보내면 D1(바인딩 이름 DB)의 registrations 표에 넣는다 (register/schema.sql).
 // 개인정보 (use/template.html의 안내와 같게): IP는 저장소 밖(D1 meta 표)에 무작위로 만든 값을 섞어 해시하고(이 공개 코드만으로는 되돌릴 수 없게)
 // 하루 뒤 지운다. 신청은 2년 지나면 지운다 — 매일 예약 작업(트리거 Cron "0 18 * * *", 한국 시간 새벽 3시)과 신청이 들어올 때마다.
+// 새 신청은 메일로도 알린다: 바인딩 MAIL(Send Email) → wontopiaaa@gmail.com (aptfeargreed.com Email Routing에서 확인한 받는 주소만 됨).
 // 고친 뒤에는 Cloudflare 대시보드 → Workers → aptfeargreed-register → 코드 편집에 이 파일을 붙여 넣고 배포한다.
+import { EmailMessage } from "cloudflare:email";
+
 const ORIGINS = ["https://aptfeargreed.com", "https://www.aptfeargreed.com"];
 const PURPOSES = ["service", "research", "media", "education", "personal", "other"];
 const MAX = { org: 100, name: 50, email: 120, purpose_detail: 1000, url: 300 };
-const PER_DAY = 5;  // 같은 곳(IP)에서 하루에 받는 등록 수
+const PER_DAY = 5;  // 같은 곳(IP)에서 하루에 받는 등록 수 (알림 메일도 그만큼만)
+const NOTIFY = { from: "register@aptfeargreed.com", to: "wontopiaaa@gmail.com" };
+const PURPOSE_KO = { service: "서비스·앱에 점수 보여 주기", research: "리서치·투자 분석", media: "언론·콘텐츠", education: "교육·학술 연구", personal: "개인 공부·취미", other: "기타" };
 
 const json = (body, status, headers) => new Response(JSON.stringify(body), { status, headers: { ...headers, "Content-Type": "application/json; charset=utf-8" } });
 
@@ -25,6 +30,30 @@ async function salt(db) {
   return db.prepare("SELECT v FROM meta WHERE k = 'ip_salt'").first("v");
 }
 
+const b64 = (s) => { let t = ""; for (const x of new TextEncoder().encode(s)) t += String.fromCharCode(x); return btoa(t); };
+// 메일 머리글의 한글: 45바이트씩 끊은 =?UTF-8?B?…?= 여러 개 (한 조각 75자 제한)
+function word(s) {
+  const out = [""];
+  for (const ch of s) {
+    if (new TextEncoder().encode(out[out.length - 1] + ch).length > 45) out.push("");
+    out[out.length - 1] += ch;
+  }
+  return out.map((x) => `=?UTF-8?B?${b64(x)}?=`).join("\r\n ");
+}
+
+// 새 신청 알림 메일. 실패해도(받는 주소 확인 전 등) 신청은 이미 저장됨
+async function notify(env, r) {
+  const body = ["아파트 공포탐욕지수 데이터 사용 신청이 들어왔어요.", "",
+    `회사·기관: ${r.org}`, `담당자: ${r.name || "-"}`, `이메일: ${r.email}`, `사용 목적: ${PURPOSE_KO[r.purpose]}`,
+    `상업적 이용: ${r.commercial ? "예" : "아니오"}`, `서비스 주소: ${r.url || "-"}`, "", "어디에 어떻게 쓰나요:", r.purpose_detail || "-", "",
+    "이 메일에 답장하면 신청한 분께 가요. 전체 목록: Cloudflare 대시보드 → D1 → aptfeargreed-api → registrations"].join("\r\n");
+  const reply = /^[\w.+-]+@[\w-]+(\.[\w-]+)+$/.test(r.email) ? `Reply-To: ${r.email}\r\n` : "";  // 머리글에 이상한 글자가 끼지 않게 단순한 주소만
+  const raw = `From: ${word("아파트 공포탐욕지도")} <${NOTIFY.from}>\r\nTo: ${NOTIFY.to}\r\n${reply}Subject: ${word(`[데이터 사용 신청] ${r.org.slice(0, 40)}`)}\r\n`
+    + `Date: ${new Date().toUTCString()}\r\nMessage-ID: <${crypto.randomUUID()}@aptfeargreed.com>\r\nMIME-Version: 1.0\r\n`
+    + `Content-Type: text/plain; charset=UTF-8\r\nContent-Transfer-Encoding: base64\r\n\r\n${b64(body).replace(/.{76}/g, "$&\r\n")}\r\n`;
+  await env.MAIL.send(new EmailMessage(NOTIFY.from, NOTIFY.to, raw));
+}
+
 // 보유 기간: 신청은 2년, IP 값은 하루 제한에만 쓰니 하루
 async function cleanup(db) {
   await db.batch([
@@ -34,7 +63,7 @@ async function cleanup(db) {
 }
 
 export default {
-  async fetch(req, env) {
+  async fetch(req, env, ctx) {
     const origin = req.headers.get("Origin") || "";
     const cors = { "Access-Control-Allow-Origin": ORIGINS.includes(origin) ? origin : ORIGINS[0], "Access-Control-Allow-Methods": "POST, OPTIONS",
                    "Access-Control-Allow-Headers": "Content-Type", "Access-Control-Max-Age": "86400", Vary: "Origin" };
@@ -66,6 +95,7 @@ export default {
     await env.DB.prepare(`INSERT INTO registrations (created_kst, org, name, email, purpose, purpose_detail, url, commercial, ip_hash, user_agent)
                           VALUES (datetime('now', '+9 hours'), ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
       .bind(r.org, r.name, r.email, r.purpose, r.purpose_detail, r.url, r.commercial, ip, (req.headers.get("User-Agent") || "").slice(0, 200)).run();
+    if (env.MAIL) ctx.waitUntil(notify(env, r).catch((e) => console.log("알림 메일 실패:", e.message)));  // 답은 기다리지 않고 바로
     return json({ ok: true }, 200, cors);
   },
 
