@@ -1,4 +1,4 @@
-# 서울 아파트 공포탐욕지수
+# 아파트 공포탐욕지수 (서울·수도권·광역시)
 
 주식시장의 공포탐욕지수(CNN Fear & Greed Index)를 서울 아파트 시장에 옮긴 지수예요. 시장 심리를 0~100으로 나타내고(0 극단적 공포, 50 중립, 100 극단적 탐욕), 서울 전체·5대 권역·25개 구로 나눠 볼 수 있어요. 2026년 10월에 수도권(경기·인천)과 광역시(부산·대구·광주·대전·울산) 7곳으로 넓혔고, 7곳 모두 미리 정한 공개 기준을 넘어 공개했어요([아래](#수도권광역시-확장-2026-10-20)).
 
@@ -242,7 +242,7 @@
 - 확인: D1 Console에서 `SELECT * FROM visit_days ORDER BY day DESC;`, `SELECT page, SUM(views) FROM page_views GROUP BY page ORDER BY 2 DESC;`.
 
 ## 겉모습과 쓰기 편하게
-- 여섯 페이지(지도·단지 검색·신고가 단지·모의 투자·보고서·데이터 API)에 같은 겉모습을 입혀요: `assets/skin.css`. Figma 커뮤니티의 'Legacy Homes' 디자인을 참고한 회색 바탕·검정 포인트·아주 굵은 제목·각진 카드와 버튼·검정 원 장식·어두운 바닥글이에요. 페이지 구성과 데이터 색(공포 파랑·탐욕 빨강)은 그대로예요.
+- 모든 페이지(지도·단지 검색·신고가 단지·모의 투자·주간 소식·보고서·데이터 API·데이터 사용하기)에 같은 겉모습을 입혀요: `assets/skin.css`. Figma 커뮤니티의 'Legacy Homes' 디자인을 참고한 회색 바탕·검정 포인트·아주 굵은 제목·각진 카드와 버튼·검정 원 장식·어두운 바닥글이에요. 페이지 구성과 데이터 색(공포 파랑·탐욕 빨강)은 그대로예요.
 - 머리글 메뉴, 첫 화면 사진 띠(페이지 사진을 어둡게 깐 화면 폭 배경, 글자는 흰색), 바닥글은 `site_build.py`가 사이트를 만들 때 끼워 넣어요(원래 템플릿은 그대로). 사진은 인라인 배경으로 넣어요(CSS 변수로 넘기면 주소가 스타일 파일 기준이 돼 최상위 페이지에서 틀어져요). 단지 검색·모의 투자는 검색 전(`body.sk-intro`)에는 그 페이지 사진 한 장을 화면 전체 배경으로 은은하게 깔고, 결과 칸이 보이면 위 띠·아래 바닥글 사진으로 돌아가요. 사진·스타일 주소에는 내용 지문(`?v=`)을 붙여 바꾸면 바로 새 파일이 보여요.
 - 사진은 모두 위키미디어 공용의 **CC0·퍼블릭 도메인**(저작권 없음) 대형 건물 사진이라 출처 표기 의무가 없지만, 바닥글과 `assets/img/credits.json`에 출처를 적어 뒀어요: 63빌딩(USAGI_POST), 롯데월드타워 낮·야경(mauveine.kim), 여의도 스카이라인(pixabay @heecheol890102), 롯데월드타워 불꽃놀이(HyunJae Park), 송파 석촌호수 노을(cmmellow). 지역 페이지: 부산 광안대교(lumoplank), 인천 송도(Hon Kim, Unsplash CC0), 경기 수원 화성 동장대(Bernard Gagnon), 광주 시내(Dohuskor, PD-self), 대전 야경(Bernard Gagnon). 대구 수성못(Choi2451), 울산 현대중공업 조선소(Wvdp). 지역 사진이 없으면 서울 사진을 써요(`bg-{지역}.jpg`가 있으면 그 사진).
 - 링크 미리보기(카카오톡·문자·SNS): 페이지마다 1200×630 그림 `assets/og/*.jpg`(사이트와 같은 사진 띠 + 로고 + 두 단 제목, `python og_build.py`로 헤드리스 Chrome에서 만듦)과 og·twitter 메타 태그를 `site_build.py`가 넣어요.
@@ -276,6 +276,9 @@
 | 겉모습 (10/16) | 레퍼런스 디자인(회색·검정·굵은 제목·각진 카드), 대형 건물 CC0 사진 띠, 초보자용 단지 화면(결론 먼저), 지도 한눈에 보기, 링크 미리보기 그림 |
 | 읽기 쉽게·점검 (10/16) | 나이대별 가상 사용자 토론 뒤 글씨·대비·머리글 정리. 코드 점검: 건축물대장 한도·오류 처리, 월간 갱신 시간 나누기, 다섯 페이지 자동 조작 시험 |
 | 지역 도구 (10/21) | 단지 검색·신고가·모의 투자를 수도권·광역시로: 지역 단지 표·건축물대장, 지역별 층 효과·면적 탄력성 다시 재기와 검증(`apt_region_study.py`), 화면 위 지역 고르기. 월간 갱신 정시 출발(`monthly-kick.yml`)과 예비 예약 추가, 월간 갱신 무렵 지역 채우기의 호출 한도 양보, 건축물대장 서버가 답하지 않을 때 마감 안에 멈추기 |
+| 주소·데이터 (10/23~24) | 사이트 주소 aptfeargreed.com, 데이터 API(키 없이 JSON·CSV), '데이터 사용하기' 페이지와 사용 신청(Cloudflare Worker → D1, 새 신청은 메일로 알림) |
+| 다시 오게 (10/25) | 실거래·신고가 매주 월요일 갱신(`weekly-update.yml`), 관심 단지 저장(이 브라우저에만, 새 거래 표시), 방문자·재방문 세기(바닥글 누적 방문자, 매주 요약 메일), 지수와 엮은 주간 소식(`/news/`) |
+| 점검·갱신 강화 (10/25) | 주간 갱신 예비 실행(월·화)과 할 일 확인, 배포가 사이트에 올라갔는지 확인(`status.json`), 실거래 시간 한도·다시 받기, 실패하면 GitHub 이슈로 알림(`automation/issue.sh`), Cloudflare Worker의 매일 사이트 감시 메일, 원자료 캐시 유지 이틀마다, 방문 세기를 한 트랜잭션으로·몰리는 요청 막기 |
 
 ### 시험했지만 쓰지 않은 것
 - **빅카인즈 뉴스 언급량**: 백테스트에서 개선이 없었고, 약관상 자동 수집이 안 돼요.
@@ -296,7 +299,9 @@
 | 결과·화면 | `export_zone.py` → `map/`(지도), `export_report_v3.py` → `report/`(보고서), `apt_score.py` → `apt/`(단지 검색), `highs_build.py` → `highs/`(신고가 단지), `sim_build.py` → `sim/`(모의 투자), `api_build.py` → `api/`(데이터 API), `site_build.py` → `site/`(Pages: 공통 머리글·사진 띠·바닥글·링크 미리보기를 입힘) |
 | 공통 겉모습 | `assets/skin.css`(스타일), `assets/img/`(CC0 사진, `credits.json` 출처), `assets/og/`(링크 미리보기 그림, `og_build.py`로 만듦) |
 | 수도권·광역시 | `regions.py`(지역·코드), `region_fetch.py`(실거래 처음 채우기), `region_src_fetch.py`(부동산원·KB 지역 자료), `region_store.py`(→ `data/molit_kr/`, 단지 표 `complexes.csv`), `region_backfill.py`(서버에서 실거래·단지 이름 채우기), `apt_region_study.py`(지역 단지 점수 고정값 → `data/apt_params.json`), `automation/backfill_left.py`(채울 일이 남았는지), `region_index.py` → `region_engine_study.py`(엔진 고르기) → `region_v3.py` → `export_region.py`(→ `results_region/`), `region_supply.py`(대구 공급 보정), `home_build.py` → `home/`(첫 화면), `build_geo_kr.py` → `data/korea_map.json`·`data/region_maps/` |
-| 운영 | `update_pipeline.py`(전체 갱신), `update.sh`, `live_track.py`(실시간 검증 기록), `.github/workflows/`, `automation/monthly_due.sh`(이번 달 갱신이 필요한지), `automation/push.sh`·`automation/merge_tables.py`(여러 작업이 동시에 올릴 때 얹기·단지 표 합치기) |
+| 운영 | `update_pipeline.py`(전체 갱신), `update.sh`, `live_track.py`(실시간 검증 기록), `.github/workflows/`, `automation/monthly_due.sh`(이번 달 갱신이 필요한지), `automation/push.sh`·`automation/merge_tables.py`(여러 작업이 동시에 올릴 때 얹기·단지 표 합치기), `automation/issue.sh`(실패 알림 이슈 열기·닫기) |
+| 주간 갱신 | `weekly_trades.py`(최근 3개월 실거래, 결과는 `data/weekly_state.json`), `news_build.py`(주간 소식 → `data/news/`, `news/template.html`), `automation/weekly_due.py`(이번 주 할 일·사이트 `status.json` 확인) |
+| 사용 신청·방문자 | `register/worker.js`(Cloudflare Worker: 사용 신청, 방문자 세기, 주간 방문 메일, 매일 사이트 감시), `register/schema.sql`(D1 표), `use/template.html`(데이터 사용하기) |
 | 분석 기록 | `audit.py`, `audit2.py`(엔진 점검), `eval_structure.py`(표 묶기 비교), `remedies.py`, `diag_time.py`(시점 의존), `public_variant.py`·`public_*.py`(공공데이터만, `kosis_fetch.py`·`houstat_fetch.py`), `gu_engine_study.py`(구 엔진 비교), `apt_study.py`(단지 점수 설계) |
 | 결과 파일 | `results_zone/map_data.json`(지도 자료), `live_log.csv`(실시간 기록), `update_summary.json`·`update_history.csv`·`update_status.json`(갱신 기록), `results_v2/report_data_v3.json`(보고서 자료), `data/molit/buildings.csv`(단지 기본 정보), `data/molit/bjdong.csv`(서울 법정동 코드표) |
 
@@ -325,7 +330,8 @@
 2. **Settings → Pages → Build and deployment → Source**를 `GitHub Actions`로 바꿔요.
    - 주소 `aptfeargreed.com`(2026-10-23, Cloudflare에서 등록)은 Pages의 **Custom domain**으로 연결해요. Cloudflare DNS에는 GitHub Pages 주소 A 4개(185.199.108~111.153)·AAAA 4개(2606:50c0:8000~8003::153)와 `www` → `won-topiaa.github.io` CNAME을 **DNS only**(주황 구름 끔)로 둬요. 그래야 GitHub이 HTTPS 인증서를 발급해요. 사이트 안의 주소는 `site_build.py`·`api_build.py`의 `SITE_URL`, 미리보기 이미지는 `og_build.py`의 `SITE`예요.
    - `.com.co`처럼 SK브로드밴드 DNS가 조회하지 못하는 주소가 있어서, 주소를 바꿀 때는 SK브로드밴드 DNS(210.220.163.82)에서도 조회되는지 확인해요.
-3. **Actions → 월간 자동 갱신 → Run workflow**로 한 번 실행해 봐요. 실행 목록 화면의 Run workflow를 눌러야 최신 코드로 돌아요. 예전 실행 안의 Re-run은 그때 코드로 돌아요.
+3. **Cloudflare Worker** `aptfeargreed-register`(사용 신청·방문자 세기·사이트 감시): 대시보드에서 만들고 `register/worker.js`를 코드 편집에 붙여 넣어 배포해요. 바인딩은 D1 `DB`(데이터베이스 `aptfeargreed-api`, 표는 Worker가 처음 쓸 때 만들고 `register/schema.sql`에 정리)와 Send Email `MAIL`(aptfeargreed.com Email Routing에서 확인한 받는 주소만 됨), 트리거 Cron `0 18 * * *`(한국 시간 새벽 3시), 사용자 지정 도메인 `register.aptfeargreed.com`. 관찰 기능의 'Include Invocation logs'는 꺼요(켜 두면 요청마다 원래 IP가 며칠 남아요).
+4. **Actions → 월간 자동 갱신 → Run workflow**로 한 번 실행해 봐요. 실행 목록 화면의 Run workflow를 눌러야 최신 코드로 돌아요. 예전 실행 안의 Re-run은 그때 코드로 돌아요.
 
 ## 로컬에서 돌리기
 ```
@@ -338,6 +344,8 @@ python -m venv .venv && .venv/bin/pip install -r requirements.txt
 .venv/bin/python bldg_fetch.py --regions        # 수도권·광역시 단지 건축물대장 (fill·land도 --regions 가능)
 .venv/bin/python apt_score.py busan              # 단지 점수를 한 지역만 (highs_build.py·sim_build.py도 같음, 인자 없으면 서울+모든 지역)
 .venv/bin/python og_build.py          # 링크 미리보기 그림 다시 만들기 (Chrome 필요)
+python3 news_build.py --check         # 이번 주 소식 호를 만들 차례인지 (만들기는 python3 news_build.py, 구글 뉴스만 부름)
+python3 automation/weekly_due.py      # 주간 갱신이 이번 주에 할 일 (실거래·소식·배포)
 ```
 
 ## 자료 출처와 이용 조건
@@ -345,6 +353,7 @@ python -m venv .venv && .venv/bin/pip install -r requirements.txt
 - 계산에 쓰는 원자료: KB부동산 데이터허브, 한국부동산원 R-ONE(대구 공급 보정의 국토부 주택착공실적 포함), 국토교통부 실거래가(공공데이터포털), 청약홈, 한국은행 ECOS, 네이버 금융, 구글 트렌드.
 - 공공판 시험에만 쓴 자료: KOSIS(국토연구원 주택시장 소비심리지수), 한국주택금융공사 HOUSTAT(주택구입부담지수 K-HAI).
 - 단지 정보: 국토교통부 건축물대장(건축HUB), 국토교통부 토지대장 면적(브이월드 토지임야목록).
+- 주간 소식: 구글 뉴스 검색 결과의 기사 제목·언론사·날짜·링크만 (기사 내용은 가져오지 않고, 링크는 각 언론사로).
 - 사진: 위키미디어 공용의 CC0·퍼블릭 도메인 사진 (출처는 바닥글과 `assets/img/credits.json`).
 - 각 원자료의 저작권과 이용 조건은 해당 기관에 있어요.
 - 이 저장소에는 공공데이터(국토부 실거래·건축물대장, 한국부동산원, 청약홈, 한국은행)와 계산 결과만 올려요. KB부동산·네이버 금융 원자료와 그 원값이 담긴 지표 표는 올리지 않아요.
@@ -358,4 +367,4 @@ python -m venv .venv && .venv/bin/pip install -r requirements.txt
 - 전세가율 (전월세 실거래 API 활용신청 필요)
 - 실시간 검증 기록 쌓기 (첫 채점은 2028년 하반기 예상)
 - 협업 검토: KB 자료 이용 조건 확인, 또는 협업 상대의 매물·호가 자료로 KB 설문 대체
-- 수도권·광역시: 부산·경기 건축물대장 채우기 마무리(서버가 매일 이어받음), 대구 공급 보정 효과는 실시간 기록(`-공급보정`)으로 따로 확인
+- 수도권·광역시: 대구 공급 보정 효과는 실시간 기록(`-공급보정`)으로 따로 확인 (실거래·단지 이름·건축물대장 채우기는 2026-10-24에 끝남, 새 단지는 서버가 매일 이어받음)
