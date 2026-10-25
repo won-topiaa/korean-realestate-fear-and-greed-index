@@ -1,15 +1,18 @@
 """주간 소식 (지수와 엮은 소식 정리) → data/news/YYYY-MM-DD.json (그 주 월요일 = 발행일, 저장소에 쌓음).
 화면은 site_build.py가 render()로 news/template.html에 넣어 만든다 (site/news/).
 
-매주 월요일 weekly-update.yml이 돈다. 구글 뉴스 RSS에서 발행일 전 7일(월요일 발행이면 지난주 월~일, 한국 시간) 국내 기사의 제목·언론사·날짜·링크만
-주제별로 모은다. 기사 내용은 가져오지 않고, 링크는 각 언론사 기사로 간다. 주제는 지수의 주제 점수와 같은 이름(자금·가격·거래·전세·공급)이고,
+매주 월요일 weekly-update.yml이 돈다(예비 실행은 월·화요일). 호 이름은 그 주 월요일이고, 기간은 지난 호 다음 날부터 그 전날 일요일까지
+(보통 지난주 월~일 7일, 한 주를 통째로 놓쳤으면 최대 14일). 그래서 예비 실행이 화요일에 만들어도 다음 호가 밀리지 않는다.
+구글 뉴스 RSS의 날짜 검색(after:/before:)으로 그 기간 국내 기사의 제목·언론사·날짜·링크만 주제별로 모은다. 기사 내용은 가져오지 않고, 링크는 각 언론사 기사로 간다. 주제는 지수의 주제 점수와 같은 이름(자금·가격·거래·전세·공급)이고,
 그 주제의 서울 점수(발행 때의 최신 달 값과 지난달 대비)를 함께 남겨 '이번 주 소식이 지수의 어느 칸에 닿는지' 보여 준다.
 고르는 규칙은 기계적이다: 구글 뉴스 관련도 순에 서울·수도권·정부·한국은행·통계처럼 시장 전체를 다룬 제목을 앞으로 당기고,
 해외·광고성(견본주택·분양 홍보 등) 기사를 빼고, 같은 사건을 다룬 기사(제목 글자 두 개씩 묶음이 많이 겹치는 것)는 하나만,
 한 주제 안에서 언론사는 하나씩. 사고팔 시점을 알려 주는 글이 아니다.
 
-사용: python news_build.py           # 오늘 발행. 지난 호가 6일 안에 나왔으면 건너뜀 (호끼리 기간이 겹치지 않게, 같은 날이면 덮어씀)
-      python news_build.py --force   # 그래도 오늘 발행 (구글 뉴스는 최근 7일만 주므로 지난 호는 다시 만들 수 없음)
+사용: python news_build.py           # 이번 주 호. 이미 있거나 지난 호 뒤로 7일이 안 됐으면 건너뜀
+      python news_build.py --force   # 이번 주 호를 다시 만듦 (있으면 덮어씀)
+      python news_build.py --check   # 만들 차례면 due, 아니면 done (weekly-update.yml의 할 일 확인)
+검색어 하나라도 끝내 실패한 주제가 있으면 호를 올리지 않고 실패로 끝낸다 (빈 주제가 섞인 호가 남지 않게, 예비 실행이 다시 만든다).
 """
 import datetime as dt
 import html
@@ -47,16 +50,32 @@ WIDE = re.compile(r"서울|수도권|전국|정부|국토부|국토교통부|한
 SAME = 0.3  # 제목 글자 두 개씩 묶음이 이만큼 겹치면 같은 사건으로 봄
 
 
-def week():
-    """(발행일 = 오늘, 정리 기간 첫날, 끝날): 발행일 전 7일 (구글 뉴스 'when:7d'와 같은 기간)."""
-    today = dt.datetime.now(KST).date()
-    return today, today - dt.timedelta(days=7), today - dt.timedelta(days=1)
+def plan(force=False, today=None):
+    """이번 주 호 (호 = 이번 주 월요일, 기간 첫날, 끝날 = 전날 일요일). 만들 차례가 아니면 None.
+    기간은 지난 호 다음 날부터 (보통 7일, 한 주를 놓쳤으면 최대 14일). 지난 호 뒤로 7일이 안 됐으면 다음 주로 미룬다
+    (예: 일요일에 낸 첫 호 다음 날 월요일에는 하루치뿐이라 건너뛰고, 다음 월요일에 8일치로)."""
+    today = today or dt.datetime.now(KST).date()
+    mon = today - dt.timedelta(days=today.weekday())
+    end = mon - dt.timedelta(days=1)
+    have = sorted(dt.date.fromisoformat(p.stem) for p in DIR.glob("*.json"))
+    if any(d >= mon for d in have) and not force:  # 이번 주 호가 이미 있음 (첫 호처럼 주 중간에 낸 호도)
+        return None
+    prev = [d for d in have if d < mon]
+    if not prev:
+        return mon, end - dt.timedelta(days=6), end
+    last_to = dt.date.fromisoformat(json.loads((DIR / f"{prev[-1]}.json").read_text())["to"])
+    if (end - last_to).days < 7 and not force:
+        return None
+    return mon, max(last_to + dt.timedelta(days=1), end - dt.timedelta(days=13)), end
 
 
-def fetch(q):
-    url = "https://news.google.com/rss/search?" + urllib.parse.urlencode({"q": q + " when:7d", "hl": "ko", "gl": "KR", "ceid": "KR:ko"})
-    # curl로 (다른 수집 스크립트와 같게: 맥의 파이썬은 인증서 저장소가 비어 있을 때가 있음)
-    r = subprocess.run(["curl", "-sS", "-f", "-m", "30", "-A", "Mozilla/5.0 (aptfeargreed.com weekly news)", url], capture_output=True, check=True)
+def fetch(q, start, end):
+    # 날짜 검색은 구글 쪽 날짜 기준이라 앞뒤로 하루씩 넉넉히 받고, 한국 시간 날짜로 다시 거른다 (build)
+    rng = f" after:{start - dt.timedelta(days=1)} before:{end + dt.timedelta(days=2)}"
+    url = "https://news.google.com/rss/search?" + urllib.parse.urlencode({"q": q + rng, "hl": "ko", "gl": "KR", "ceid": "KR:ko"})
+    # curl로 (다른 수집 스크립트와 같게: 맥의 파이썬은 인증서 저장소가 비어 있을 때가 있음). 잠깐 끊기면 세 번까지 다시
+    r = subprocess.run(["curl", "-sS", "-f", "-m", "30", "--retry", "3", "--retry-delay", "10", "--retry-all-errors",
+                        "-A", "Mozilla/5.0 (aptfeargreed.com weekly news)", url], capture_output=True, check=True)
     root = ET.fromstring(r.stdout)
     out = []
     for it in root.findall("./channel/item"):
@@ -97,18 +116,18 @@ def theme_scores():
 
 
 def build(force=False):
-    mon, start, end = week()
-    last = max((dt.date.fromisoformat(p.stem) for p in DIR.glob("*.json")), default=None)
-    if last and mon - dt.timedelta(days=6) <= last < mon and not force:
-        print(f"주간 소식: 지난 호({last})가 6일 안이라 건너뜀 — 다음 호는 {last + dt.timedelta(days=7)} 무렵")
+    p = plan(force)
+    if p is None:
+        print("주간 소식: 이번 주 호가 이미 있거나, 지난 호 뒤로 7일이 안 돼 다음 주로 넘김")
         return None
+    mon, start, end = p
     scores, month = theme_scores()
     taken, themes = [], []  # 이미 고른 기사의 제목 묶음 (주제끼리도 겹치지 않게)
     for name, sub, queries, note in THEMES:
         cands, errors = [], []
         for q in queries:
             try:
-                items = fetch(q)
+                items = fetch(q, start, end)
             except Exception as e:  # noqa: BLE001  (검색어 하나가 실패해도 나머지로)
                 errors.append(f"{q}: {type(e).__name__} {getattr(e, 'stderr', b'')[:80]!r}" if isinstance(e, subprocess.CalledProcessError) else f"{q}: {type(e).__name__}")
                 continue
@@ -129,9 +148,10 @@ def build(force=False):
         themes.append({"name": name, "sub": sub, "note": note, "score": sc[0], "prev": sc[1],
                        "items": sorted(picked, key=lambda x: x["d"], reverse=True), **({"errors": errors} if errors else {})})
     n = sum(len(t["items"]) for t in themes)
-    if not n:
-        errs = [e for t in themes for e in t.get("errors", [])]
-        raise SystemExit(f"주간 소식: 고른 기사가 없음 ({start}~{end}) — 지난 호 그대로" + (f" · 검색 실패 {len(errs)}건, 예: {errs[0]}" if errs else ""))
+    errs = [e for t in themes for e in t.get("errors", [])]
+    if not n or errs:  # 검색이 실패한 채로 올리면 그 주제가 비거나 덜 찬 호가 굳는다: 올리지 않고 예비 실행에 맡김
+        raise SystemExit(f"주간 소식: {'고른 기사가 없음' if not n else '검색 실패가 있어 올리지 않음'} ({start}~{end}) — 지난 호 그대로"
+                         + (f" · 검색 실패 {len(errs)}건, 예: {errs[0]}" if errs else ""))
     doc = {"issue": mon.isoformat(), "from": start.isoformat(), "to": end.isoformat(), "made": dt.datetime.now(KST).isoformat(timespec="minutes"),
            "month": month, "source": "구글 뉴스 검색 (제목·언론사·날짜·링크만)", "themes": themes}
     DIR.mkdir(parents=True, exist_ok=True)
@@ -196,4 +216,7 @@ def render(limit=12):
 
 if __name__ == "__main__":
     import sys
-    build(force="--force" in sys.argv)
+    if "--check" in sys.argv:
+        print("done" if plan() is None else "due")
+    else:
+        build(force="--force" in sys.argv)

@@ -3,13 +3,17 @@
 주소 뒤 ?r=지역id로 지역을 고르고, 자료는 data/ 아래 지역별), site/api/ (데이터 API 안내 페이지 + api_build.py가 만드는 JSON·CSV),
 site/use/ (데이터 사용하기), site/news/ (주간 소식: news_build.py가 쌓은 호를 news/template.html에 넣음).
 바닥글 스크립트가 페이지를 열 때마다 방문을 세고(register/worker.js의 /visit) 누적 방문자 수를 바닥글에 보여 준다.
+site/status.json에는 이 사이트가 담은 자료의 날짜(지수 달·주간 소식 호·실거래 주간 갱신·만든 때)를 남긴다: 주간 갱신이 배포를 확인하고,
+Worker의 매일 감시가 오래 안 바뀐 자료를 메일로 알린다.
 
 아티팩트용 HTML에는 문서 머리말이 없어서, 문자 인코딩·뷰포트·doctype을 감싸 정식 문서로 만든다.
 페이지마다 공통 겉모습(assets/skin.css: 레퍼런스 'Legacy Homes' 스타일)과 머리글·첫 화면 사진 띠(어둡게 깐 배경)·바닥글을 입힌다.
 사진은 위키미디어 공용의 CC0 사진 (출처: assets/img/credits.json).
 """
+import datetime as dt
 import hashlib
 import json
+import os
 import re
 import shutil
 from pathlib import Path
@@ -290,6 +294,18 @@ def region_fill(d):
             "__MAP_SRC__": "지도는 국토교통부 브이월드(VWorld) 시군구 경계(2026년 10월)예요."}
 
 
+def status(month):
+    """site/status.json: 배포된 자료의 날짜 (weekly-update.yml 배포 확인, register/worker.js 매일 감시)."""
+    issues = sorted(news_build.DIR.glob("*.json"))
+    news = json.loads(issues[-1].read_text()) if issues else {}
+    trades = (json.loads((ROOT / "data" / "weekly_state.json").read_text()) if (ROOT / "data" / "weekly_state.json").exists() else {}).get("trades") or {}
+    out = {"built": dt.datetime.now(dt.timezone(dt.timedelta(hours=9))).isoformat(timespec="minutes"), "commit": os.environ.get("GITHUB_SHA", "")[:7],
+           "index_month": month, "news_issue": news.get("issue"), "news_to": news.get("to"),
+           "trades_week": trades.get("week"), "trades_result": trades.get("result"), "trades_at": trades.get("at")}
+    (SITE / "status.json").write_text(json.dumps(out, ensure_ascii=False) + "\n")
+    print("status:", out)
+
+
 if __name__ == "__main__":
     shutil.rmtree(SITE / "assets", ignore_errors=True)
     shutil.copytree(ROOT / "assets", SITE / "assets", ignore=shutil.ignore_patterns("credits.json"))
@@ -372,5 +388,6 @@ if __name__ == "__main__":
          skin_args=("../", "주간 소식", ('<header style="display:grid;gap:6px">', "</header>"),
                     ("<h1>주간 소식</h1>", '<h1><span class="sk-h1a">지수와 엮은</span><span class="sk-h1b">주간 소식</span></h1>'),
                     ("bg-report", "45%"), 960))
+    status(month)
     (SITE / ".nojekyll").write_text("")
     print("site:", [str(p.relative_to(ROOT)) for p in SITE.rglob("*.html")])

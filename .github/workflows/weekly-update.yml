@@ -3,10 +3,20 @@ name: 주간 갱신 (실거래·신고가 · 주간 소식)
 # 매주 월요일 아침: 최근 3개 계약월의 서울·수도권·광역시 실거래를 다시 받고(weekly_trades.py), 지수와 엮은 주간 소식을
 # 정리해(news_build.py) 올린 뒤 '화면만 다시 배포'를 불러 단지 검색·신고가·모의 투자와 주간 소식 화면을 새로 만든다.
 # 지수는 그대로 매달 20일(월간 자동 갱신). 월간 갱신 무렵(KST 18~22일, 아직 안 끝났을 때)은 실거래 받기를 쉰다.
-# 한쪽이 실패해도 다른 쪽은 올리고, 실패한 쪽이 있으면 실행을 실패로 남겨 알 수 있게 한다.
+#
+# 꼭 돌게: GitHub 예약은 몇 시간 늦거나 빠지므로(2026-10-20·21) 월·화요일에 예비 예약을 여러 개 둔다. 매번 먼저
+# automation/weekly_due.py로 이번 주 할 일을 보고, 끝난 일은 건너뛴다 (실거래: data/weekly_state.json, 소식: data/news의 이번 주 호,
+# 배포: 사이트의 status.json이 저장소와 같은지). 그래서 앞 실행이 실패·일부 실패했거나 배포가 빠졌으면 다음 예비 실행이 그 부분만 다시 한다.
+# 배포를 부른 뒤에는 사이트에 실제로 올라갔는지 확인하고, 안 올라갔으면 실패로 남긴다 (다음 예비 실행이 다시 부름).
+# 한쪽이 실패해도 다른 쪽은 올리고, 실패한 쪽이 있으면 실행을 실패로 남긴다. 끝까지 안 되면 Worker의 매일 감시가 메일로 알린다.
 on:
   schedule:
-    - cron: "7 21 * * 0"   # 월요일 06:07 KST
+    - cron: "7 21 * * 0"    # 월요일 06:07 KST
+    - cron: "37 1 * * 1"    # 예비: 월요일 10:37 KST
+    - cron: "7 6 * * 1"     # 예비: 월요일 15:07 KST
+    - cron: "37 12 * * 1"   # 예비: 월요일 21:37 KST
+    - cron: "7 22 * * 1"    # 예비: 화요일 07:07 KST
+    - cron: "37 4 * * 2"    # 예비: 화요일 13:37 KST
   workflow_dispatch:
 
 permissions:
@@ -20,21 +30,31 @@ concurrency:
 jobs:
   update:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 120
     env:
       TZ: Asia/Seoul
     steps:
       - uses: actions/checkout@v4
         with:
           ref: main
+
+      - name: 이번 주 할 일 확인
+        id: due
+        run: |
+          set -o pipefail  # 확인이 실패하면 할 일이 없는 것처럼 지나가지 않게
+          python3 automation/weekly_due.py | tee -a "$GITHUB_OUTPUT" "$GITHUB_STEP_SUMMARY"
+
       - uses: actions/setup-python@v5
+        if: steps.due.outputs.trades == 'due'
         with:
           python-version: "3.12"
           cache: pip
-      - run: pip install -r requirements.txt
+      - if: steps.due.outputs.trades == 'due'
+        run: pip install -r requirements.txt
 
       - name: 실거래 받기 (이번 달과 지난 두 달)
         id: trades
+        if: steps.due.outputs.trades == 'due'
         continue-on-error: true
         env:
           DATA_GO_KR_KEY: ${{ secrets.DATA_GO_KR_KEY }}
@@ -49,29 +69,51 @@ jobs:
 
       - name: 주간 소식 정리
         id: news
+        if: steps.due.outputs.news == 'due'
         continue-on-error: true
-        run: python news_build.py
+        run: python3 news_build.py
 
       - name: 올리기
         id: push
+        if: steps.due.outputs.trades == 'due' || steps.due.outputs.news == 'due'
         run: |
           rm -f .env
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A data/molit data/molit_kr data/news
+          git add -A data/molit data/molit_kr data/news $(ls data/weekly_state.json 2>/dev/null)
           if git diff --cached --quiet; then echo "changed=false" >> "$GITHUB_OUTPUT"; exit 0; fi
           git commit -m "주간 갱신 $(date +%Y-%m-%d) (실거래·주간 소식)"
           bash automation/push.sh  # 다른 작업과 겹치면 얹어서 (단지 표는 단지 번호로 합침)
           echo "changed=true" >> "$GITHUB_OUTPUT"
 
       - name: 화면 배포 부르기
-        if: steps.push.outputs.changed == 'true'
+        id: deploy
+        if: steps.push.outputs.changed == 'true' || steps.due.outputs.deploy == 'need'
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh workflow run site-deploy.yml -R "$GITHUB_REPOSITORY" --ref main
+        run: |
+          for i in 1 2 3 4; do  # 부르기가 잠깐 실패해도 다시
+            gh workflow run site-deploy.yml -R "$GITHUB_REPOSITORY" --ref main && exit 0
+            sleep $((i * 20))
+          done
+          exit 1
+
+      - name: 사이트에 올라갔는지 확인
+        id: verify
+        if: steps.deploy.outcome == 'success'
+        run: |
+          set -o pipefail
+          # 월간 갱신이 도는 중이면 화면 배포가 그 뒤로 미뤄지므로 (몇 시간) 확인하지 않는다: 월간 갱신이 끝나며 최신 화면을 배포한다
+          busy=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/monthly-update.yml/runs?per_page=20" \
+            --jq '[.workflow_runs[] | select(.status != "completed")] | length' 2>/dev/null || echo 0)
+          if [ "$busy" != 0 ]; then echo "월간 갱신이 도는 중이라 배포 확인은 건너뜀" | tee -a "$GITHUB_STEP_SUMMARY"; exit 0; fi
+          python3 automation/weekly_due.py verify 50 | tee -a "$GITHUB_STEP_SUMMARY"
+        env:
+          GH_TOKEN: ${{ github.token }}
 
       - name: 실패한 쪽이 있으면 실패로 남기기
-        if: steps.trades.outcome == 'failure' || steps.news.outcome == 'failure'
+        if: always() && (steps.trades.outcome == 'failure' || steps.news.outcome == 'failure' || steps.deploy.outcome == 'failure' || steps.verify.outcome == 'failure')
         run: |
-          echo "실거래: ${{ steps.trades.outcome }} · 주간 소식: ${{ steps.news.outcome }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "실거래: ${{ steps.trades.outcome || '할 일 없음' }} · 주간 소식: ${{ steps.news.outcome || '할 일 없음' }} · 배포: ${{ steps.deploy.outcome || '할 일 없음' }} · 확인: ${{ steps.verify.outcome || '-' }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "다음 예비 실행이 못 한 부분만 다시 해요." >> "$GITHUB_STEP_SUMMARY"
           exit 1
