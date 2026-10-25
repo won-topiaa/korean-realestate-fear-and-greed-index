@@ -361,7 +361,10 @@ const FAV_KEY = "fgi-fav", FAV_MAX = 30;
 function favLoad() { try { const a = JSON.parse(localStorage.getItem(FAV_KEY) || "[]"); return Array.isArray(a) ? a.filter((f) => f && f.r && f.seq) : []; } catch (e) { return []; } }
 function favSave(a) { try { localStorage.setItem(FAV_KEY, JSON.stringify(a.slice(0, FAV_MAX))); } catch (e) {} }
 const favHas = (seq) => favLoad().some((f) => f.r === RG.id && f.seq === seq);
-const favSnap = (it, d) => ({ r: RG.id, rn: RG.name, seq: it.seq, code: it.code, name: it.name, sub: `${it.gu} ${it.dong}`.trim(), last: (d && d.lastAll) || "" });
+// last·n: 저장(또는 마지막으로 열어 본) 때의 마지막 거래일과 2년 거래 수. 계약 뒤 30일까지 늦게 신고된 거래는 마지막 거래일을 바꾸지 않으므로 수로도 본다
+const favN = (d) => +((d && d.n2y) || 0);
+const favSnap = (it, d) => ({ r: RG.id, rn: RG.name, seq: it.seq, code: it.code, name: it.name, sub: `${it.gu} ${it.dong}`.trim(), last: (d && d.lastAll) || "", n: favN(d) });
+const favNew = (f, d) => !!(f.last && d.lastAll && (d.lastAll > f.last || (f.n != null && favN(d) > f.n)));
 function favToggle(it, d) {
   const a = favLoad(), i = a.findIndex((f) => f.r === RG.id && f.seq === it.seq);
   if (i >= 0) a.splice(i, 1); else a.unshift(favSnap(it, d));
@@ -371,7 +374,7 @@ function favToggle(it, d) {
 }
 function favSeen(it, d) {  // 단지를 열어 봤으면 '새 거래' 표시를 지움 (지금 마지막 거래를 기억)
   const a = favLoad(), f = a.find((x) => x.r === RG.id && x.seq === it.seq);
-  if (!f || !d || !d.lastAll || f.last === d.lastAll) return;
+  if (!f || !d || !d.lastAll || (f.last === d.lastAll && f.n === favN(d))) return;
   Object.assign(f, favSnap(it, d));
   favSave(a);
   renderFavs();
@@ -402,10 +405,10 @@ function renderFavs() {
     favGu(f).then((g) => {
       const d = g[f.seq];
       if (!d || !d.lastAll) return;
-      const fresh = f.last && d.lastAll > f.last;
+      const fresh = favNew(f, d);
       st.className = "st" + (fresh ? " new" : "");
-      st.textContent = fresh ? `새 거래 ${dstr(d.lastAll).slice(5)}` : `최근 ${dstr(d.lastAll).slice(2)}`;
-      if (fresh) st.title = `저장한 뒤 새 거래가 들어왔어요 (마지막 거래 ${dstr(d.lastAll)})`;
+      st.textContent = fresh ? (d.lastAll > f.last ? `새 거래 ${dstr(d.lastAll).slice(5)}` : "새 거래") : `최근 ${dstr(d.lastAll).slice(2)}`;
+      if (fresh) st.title = d.lastAll > f.last ? `저장한 뒤 새 거래가 들어왔어요 (마지막 거래 ${dstr(d.lastAll)})` : "저장한 뒤 늦게 신고된 거래가 들어왔어요";
     }).catch(() => {});
   });
 }

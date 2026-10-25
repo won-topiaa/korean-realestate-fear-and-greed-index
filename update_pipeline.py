@@ -237,6 +237,50 @@ def molit_needed(failed):
     return sorted(ym for ym in failed if ym <= cut)
 
 
+def _fetch_grid(M, months, codes, save=False):
+    """(구·시군구, 달)마다 실거래를 받는다 (refresh_molit·refresh_molit_regions). 한 곳·한 달이 실패해도 나머지는 계속 받고,
+    한도가 아닌 실패(잠깐 끊김·덜 온 응답 등)는 한 바퀴 다 돈 뒤 30초 쉬고 한 번 더 받아 본다: 한 구가 잠깐 끊겨 그 달 전체를
+    지난 자료로 두는 일이 없게. 한도에 걸리면 남은 곳은 부르지 않는다. save=True면 받은 원자료를 data/raw에도 남긴다.
+    돌려줌: (호출 수, {달: [(코드, 거래)]}, {달: [실패 사유]})"""
+    new, bad, n, quota = {}, {}, 0, False
+
+    def one(ym, lawd):
+        nonlocal n
+        rows = M.fetch(lawd, ym)
+        if save:
+            M.save_json(M.OUT / f"{lawd}_{ym}.json", rows)  # 끊겨도 반쯤 쓴 파일이 남지 않게
+        new.setdefault(ym, []).append((lawd, rows))
+        n += 1
+        time.sleep(0.15)
+
+    for ym in months:
+        for lawd in codes:
+            if quota:
+                bad[(ym, lawd)] = f"{lawd} 호출 한도"
+                continue
+            try:
+                one(ym, lawd)
+            except M.QuotaExceeded:
+                quota = True
+                bad[(ym, lawd)] = f"{lawd} 호출 한도"
+            except Exception as e:  # noqa: BLE001
+                bad[(ym, lawd)] = str(e)[:200]
+    if bad and not quota:
+        time.sleep(30)
+        for ym, lawd in list(bad):
+            try:
+                one(ym, lawd)
+                del bad[(ym, lawd)]
+            except M.QuotaExceeded:
+                break
+            except Exception as e:  # noqa: BLE001
+                bad[(ym, lawd)] = str(e)[:200]
+    failed = {}
+    for (ym, _), msg in bad.items():
+        failed.setdefault(ym, []).append(msg)
+    return n, new, failed
+
+
 def refresh_molit(back=4):
     """최근 몇 달은 늦은 신고·해제가 반영되므로 다시 받는다."""
     import molit_fetch as M
@@ -248,21 +292,7 @@ def refresh_molit(back=4):
             y, m = y - 1, 12
     start, end = f"{y}{m:02d}", f"{today.year}{today.month:02d}"
     import molit_store
-    n, new, failed = 0, {}, {}
-    for ym in M.months(start, end):
-        for lawd in M.SEOUL:
-            try:
-                rows = M.fetch(lawd, ym)
-            except M.QuotaExceeded:
-                failed.setdefault(ym, []).append(f"{lawd} 호출 한도")
-                continue
-            except Exception as e:  # noqa: BLE001  (한 구·월이 실패해도 나머지는 계속)
-                failed.setdefault(ym, []).append(str(e)[:200])
-                continue
-            M.save_json(M.OUT / f"{lawd}_{ym}.json", rows)  # 끊겨도 반쯤 쓴 파일이 남지 않게
-            new.setdefault(ym, []).append((lawd, rows))
-            n += 1
-            time.sleep(0.15)
+    n, new, failed = _fetch_grid(M, M.months(start, end), M.SEOUL, save=True)
     complete = {ym: v for ym, v in new.items() if ym not in failed and len(v) == len(M.SEOUL)}
     if not complete:
         raise RuntimeError(f"실거래 갱신 실패 (모든 달) · 예: {next(iter(failed.values()))[0] if failed else '응답 없음'}")
@@ -299,20 +329,7 @@ def refresh_molit_regions(back=4):
             y, m = y - 1, 12
     start, end = f"{y}{m:02d}", f"{today.year}{today.month:02d}"
     codes = [c for r in rids for c in REGIONS[r]["lawd"]]
-    new, failed, n = {}, {}, 0
-    for ym in M.months(start, end):
-        for lawd in codes:
-            try:
-                rows = M.fetch(lawd, ym)
-            except M.QuotaExceeded:
-                failed.setdefault(ym, []).append(f"{lawd} 호출 한도")
-                continue
-            except Exception as e:  # noqa: BLE001  (한 곳·한 달이 실패해도 나머지는 계속)
-                failed.setdefault(ym, []).append(str(e)[:200])
-                continue
-            new.setdefault(ym, []).append((lawd, rows))
-            n += 1
-            time.sleep(0.15)
+    n, new, failed = _fetch_grid(M, M.months(start, end), codes)
     complete = {ym: v for ym, v in new.items() if ym not in failed and len(v) == len(codes)}
     if not complete:
         raise RuntimeError(f"지역 실거래 갱신 실패 (모든 달) · 예: {next(iter(failed.values()))[0] if failed else '응답 없음'}")

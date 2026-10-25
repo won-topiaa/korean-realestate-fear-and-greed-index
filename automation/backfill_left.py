@@ -5,6 +5,7 @@
   bldg=  건축물대장을 아직 조회하지 않은 지역 단지 수 + 용적률을 아직 계산하지 못한 단지 수 (하루 한도로 남은 것)
   fix=   true면 최종 지역 엔진이 아직 없음 (임시 엔진이거나 없음)
   busy=  true면 월간 갱신을 앞뒀거나 아직 못 끝낸 때 (KST 18~22일): 채우기를 쉬어 그날 호출 한도를 월간 갱신이 다 쓰게 한다
+  weekly= true면 월·화요일인데 이번 주 실거래 주간 갱신(weekly_trades.py)이 아직: 실거래 채우기를 쉬어 한도를 주간 갱신에 남긴다
 
 사용: python automation/backfill_left.py >> "$GITHUB_OUTPUT"
 """
@@ -19,6 +20,7 @@ sys.path.insert(0, str(ROOT))
 import bldg_fetch  # noqa: E402
 import region_backfill  # noqa: E402
 import region_store  # noqa: E402
+import weekly_trades  # noqa: E402
 from regions import REGIONS  # noqa: E402
 
 
@@ -33,12 +35,19 @@ def monthly_busy(today=None):
     return last[:8] < f"{today:%Y%m}20" or s.get("complete") is False  # 자료가 덜 들어온 실행은 다시 받으므로 아직 바쁨
 
 
+def weekly_waiting(now=None):
+    """월·화요일(KST)이고 이번 주 실거래 주간 갱신이 아직이면 True (같은 실거래 API 하루 한도를 나눠 쓰므로)."""
+    now = now or dt.datetime.now(dt.timezone(dt.timedelta(hours=9)))
+    return now.weekday() <= 1 and weekly_trades.due(now=now)
+
+
 def main():
     have = set(region_store.regions_in_store())
     eng = ROOT / "data" / "region_engine.json"
     fix = json.loads(eng.read_text()).get("provisional", True) if eng.exists() else True
     out = {"left": ",".join(r for r in REGIONS if r not in have), "names": len(region_backfill.names_todo()[1]),
-           "bldg": bldg_fetch.left(True) + bldg_fetch.land_left(True), "fix": "true" if fix else "false", "busy": "true" if monthly_busy() else "false"}
+           "bldg": bldg_fetch.left(True) + bldg_fetch.land_left(True), "fix": "true" if fix else "false", "busy": "true" if monthly_busy() else "false",
+           "weekly": "true" if weekly_waiting() else "false"}
     print("\n".join(f"{k}={v}" for k, v in out.items()))
 
 

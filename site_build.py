@@ -301,7 +301,7 @@ def status(month):
     trades = (json.loads((ROOT / "data" / "weekly_state.json").read_text()) if (ROOT / "data" / "weekly_state.json").exists() else {}).get("trades") or {}
     out = {"built": dt.datetime.now(dt.timezone(dt.timedelta(hours=9))).isoformat(timespec="minutes"), "commit": os.environ.get("GITHUB_SHA", "")[:7],
            "index_month": month, "news_issue": news.get("issue"), "news_to": news.get("to"),
-           "trades_week": trades.get("week"), "trades_result": trades.get("result"), "trades_at": trades.get("at")}
+           "trades_week": trades.get("week"), "trades_result": trades.get("result"), "trades_at": trades.get("at"), "trades_tries": trades.get("tries")}
     (SITE / "status.json").write_text(json.dumps(out, ensure_ascii=False) + "\n")
     print("status:", out)
 

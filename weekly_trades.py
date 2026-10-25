@@ -14,6 +14,7 @@
 """
 import datetime as dt
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -22,6 +23,7 @@ STATE = ROOT / "data" / "weekly_state.json"
 KST = dt.timezone(dt.timedelta(hours=9))
 BACK = 2   # 이번 달 + 지난 두 달 (월간 갱신은 4)
 TRIES = 3  # 일부 달만 받은 주에 다시 받아 보는 횟수 (예비 실행마다 한 번)
+BUDGET = {"서울": 15, "수도권·광역시": 30}  # 분. 보통 2분·6분 (2026-10-25: 75회·294회 호출). 서버가 늘어지면 끊고 다음 예비 실행에
 
 
 def monday(now=None):
@@ -63,15 +65,15 @@ def main():
     ok, partial, notes = 0, False, []
     for name, fn in [("서울", P.refresh_molit), ("수도권·광역시", P.refresh_molit_regions)]:
         try:
-            msg = fn(back=BACK)
+            msg = P.with_budget(lambda: fn(back=BACK), BUDGET[name])  # 받은 것은 끝에 한꺼번에 저장하므로, 끊기면 그쪽은 지난 자료 그대로
             ok += 1
             partial |= "일부 실패" in msg
         except RuntimeError as e:  # 모든 달이 실패한 경우만 아무것도 저장하지 않음 (지수에 쓰는 달 실패 알림은 주간엔 상관없음)
-            msg = P._scrub(str(e))
+            msg = re.sub(r"^RuntimeError\(['\"](.*)['\"]\)$", r"\1", P._scrub(str(e)))  # 시간 한도용 자식 프로세스가 감싼 이름 떼기
             got = "모든 달" not in msg
             ok += got
             partial = True
-        except Exception as e:  # noqa: BLE001  (한쪽이 예상 못 한 오류로 멈춰도 다른 쪽은 받는다)
+        except Exception as e:  # noqa: BLE001  (시간 한도·예상 못 한 오류로 멈춰도 다른 쪽은 받는다)
             msg = P._scrub(f"{type(e).__name__}: {e}")
             partial = True
         print(f"{name}: {msg}")

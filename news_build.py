@@ -14,6 +14,7 @@
       python news_build.py --check   # 만들 차례면 due, 아니면 done (weekly-update.yml의 할 일 확인)
 검색어 하나라도 끝내 실패한 주제가 있으면 호를 올리지 않고 실패로 끝낸다 (빈 주제가 섞인 호가 남지 않게, 예비 실행이 다시 만든다).
 """
+# 표준 라이브러리만 쓴다: automation/weekly_due.py가 패키지 설치 전에 이 파일을 불러 할 일을 본다
 import datetime as dt
 import html
 import json
@@ -76,13 +77,19 @@ def fetch(q, start, end):
     # curl로 (다른 수집 스크립트와 같게: 맥의 파이썬은 인증서 저장소가 비어 있을 때가 있음). 잠깐 끊기면 세 번까지 다시
     r = subprocess.run(["curl", "-sS", "-f", "-m", "30", "--retry", "3", "--retry-delay", "10", "--retry-all-errors",
                         "-A", "Mozilla/5.0 (aptfeargreed.com weekly news)", url], capture_output=True, check=True)
-    root = ET.fromstring(r.stdout)
+    items = ET.fromstring(r.stdout).findall("./channel/item")
+    names = {(it.findtext("source") or "").strip() for it in items} - {""}  # 이 검색 결과에 나온 언론사 이름들
     out = []
-    for it in root.findall("./channel/item"):
+    for it in items:
         src = (it.findtext("source") or "").strip()
         title = (it.findtext("title") or "").strip()
-        for _ in range(2):  # 끝의 ' - 언론사' (구글 뉴스가 붙인 것과 기사 제목에 원래 있던 것, 영문 이름일 때도)
-            title = re.sub(r"\s+-\s+[^-]{1,20}$", "", title).strip()
+        for _ in range(2):  # 끝의 ' - 언론사' (구글 뉴스가 붙인 것과 기사 제목에 원래 있던 것, 영문 이름일 때도). 언론사 이름일 때만 떼어
+            m = re.search(r"\s+-\s+([^-]{1,20})$", title)  # 제목 속 ' - 시장 반응은' 같은 말은 남긴다
+            if not m or (m.group(1).strip() not in names and m.group(1).strip() != src):
+                break
+            title = title[:m.start()].strip()
+        if src and title.endswith(" - " + src):  # 이름에 '-'가 든 언론사 (e-대한경제 등)
+            title = title[:-len(" - " + src)].strip()
         title = title.rstrip(" |")
         try:
             when = parsedate_to_datetime(it.findtext("pubDate")).astimezone(KST).date()

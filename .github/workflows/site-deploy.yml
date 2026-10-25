@@ -42,6 +42,7 @@ permissions:
   pages: write
   id-token: write
   actions: read   # 월간 자동 갱신이 돌고 있는지 확인
+  issues: write   # 배포가 실패하거나 일부 지역을 빼면 알림 (봇이 부른 실행은 실패 메일이 아무에게도 안 감)
 
 jobs:
   # 월간 자동 갱신이 돌거나 기다리는 중이면 끝날 때까지 기다렸다가 배포한다. 같은 묶음(pages)에서 기다리는 작업은 하나만 남고
@@ -79,6 +80,8 @@ jobs:
       cancel-in-progress: false
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    outputs:
+      partial: ${{ steps.build.outputs.partial }}
     environment:
       name: github-pages
       url: ${{ steps.deploy.outputs.page_url }}
@@ -93,6 +96,7 @@ jobs:
       - name: 패키지 설치 (단지 검색 계산용)
         run: pip install -r requirements.txt
       - name: 저장소에 있는 최신 결과로 지도·보고서·단지 검색·사이트 만들기
+        id: build
         run: |
           python map/build.py
           python report/build.py
@@ -107,6 +111,8 @@ jobs:
           ok $ca || { echo "단지 검색 계산 실패 (apt_score.py)"; exit 1; }
           ok $ch || { echo "신고가 계산 실패 (highs_build.py)"; exit 1; }
           ok $cs || { echo "모의 투자 계산 실패 (sim_build.py)"; exit 1; }
+          p=""; [ $ca = 2 ] && p="$p 단지 검색"; [ $ch = 2 ] && p="$p 신고가"; [ $cs = 2 ] && p="$p 모의 투자"
+          echo "partial=${p# }" >> "$GITHUB_OUTPUT"  # 서울 밖 일부 지역을 빼고 만든 화면 (알림 이슈로)
           python home_build.py
           python site_build.py
       - uses: actions/configure-pages@v5
@@ -115,3 +121,30 @@ jobs:
           path: site
       - id: deploy
         uses: actions/deploy-pages@v4
+      - name: 배포가 다시 되면 알림 이슈 닫기
+        if: steps.build.outputs.partial == ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash automation/issue.sh close "사이트 배포 확인 필요" "$(TZ=Asia/Seoul date '+%m-%d %H:%M') 배포가 다시 됐어요 (자동으로 닫음)" || true
+
+  # 배포 실패 · 월간 갱신을 너무 오래 기다려 건너뜀 · 서울 밖 일부 지역을 빼고 배포 → 이슈로 알림 (같은 제목이 열려 있으면 댓글)
+  notify:
+    needs: [yield, deploy]
+    if: always() && (needs.yield.result == 'failure' || needs.yield.outputs.go == 'false' || needs.deploy.result == 'failure' || needs.deploy.outputs.partial != '')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: automation
+      - env:
+          GH_TOKEN: ${{ github.token }}
+          YIELD: ${{ needs.yield.result }}
+          GO: ${{ needs.yield.outputs.go }}
+          DEPLOY: ${{ needs.deploy.result }}
+          PARTIAL: ${{ needs.deploy.outputs.partial }}
+        run: |
+          if [ "$DEPLOY" = failure ] || [ "$YIELD" = failure ]; then why="배포가 실패했어요 (사이트는 지난 화면 그대로예요)"
+          elif [ "$GO" = false ]; then why="월간 갱신이 너무 오래 돌아 배포를 건너뛰었어요"
+          else why="서울 밖 일부 지역 계산이 실패해 그 지역을 빼고 배포했어요 ($PARTIAL)"; fi
+          bash automation/issue.sh open "사이트 배포 확인 필요" "$(TZ=Asia/Seoul date '+%m-%d %H:%M') $why — ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }} (Actions → 화면만 다시 배포 → Run workflow)"

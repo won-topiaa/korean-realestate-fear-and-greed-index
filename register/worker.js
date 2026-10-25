@@ -6,6 +6,8 @@
 // 새 신청은 메일로도 알린다: 바인딩 MAIL(Send Email) → wontopiaaa@gmail.com (aptfeargreed.com Email Routing에서 확인한 받는 주소만 됨).
 // 방문자 세기(/visit)도 여기서: 사이트 바닥글 스크립트가 페이지를 열 때마다 보내고, 누적 방문자 수를 돌려받아 바닥글에 보여 준다.
 // 매주 월요일 새벽 예약 작업이 지난주 방문 요약을 같은 메일로 보낸다.
+// 사이트 감시도 매일 예약 작업에서: 사이트의 status.json(site_build.py가 만듦)을 읽어 주간 소식·실거래 주간 갱신·배포·지수가 오래 안 바뀌었으면
+// 같은 메일로 알린다 (GitHub 예약이 빠지거나 갱신·배포가 실패해도 GitHub 밖에서 알 수 있게). 같은 문제는 3일에 한 번, 고쳐지면 한 번.
 // 고친 뒤에는 Cloudflare 대시보드 → Workers → aptfeargreed-register → 코드 편집에 이 파일을 붙여 넣고 배포한다.
 import { EmailMessage } from "cloudflare:email";
 
@@ -74,17 +76,33 @@ const VISIT_TABLES = [
 const kstDay = (ms = Date.now()) => new Date(ms + 9 * 3600e3).toISOString().slice(0, 10);
 const total = async (db) => +((await db.prepare("SELECT v FROM meta WHERE k = 'visitors_total'").first("v")) || 0);
 
+// 막기: 같은 IP에서 1분에 30번 넘게 오거나(IP는 이 Worker 메모리에만 잠깐 두고 저장하지 않음) 하루 새 방문자가 DAY_CAP을 넘으면
+// 세지 않고 수만 돌려준다 (가짜 번호를 마구 보내 누적 수를 부풀리거나 D1 하루 쓰기 한도를 다 써서 신청까지 막지 못하게)
+const RATE = { ms: 60e3, max: 30 }, DAY_CAP = 5000, hits = new Map();
+function limited(ip) {
+  const t = Date.now(), h = hits.get(ip);
+  if (!h || t - h.t > RATE.ms) {
+    if (hits.size > 5000) hits.clear();
+    hits.set(ip, { t, n: 1 });
+    return false;
+  }
+  return ++h.n > RATE.max;
+}
+
 async function visit(db, b) {
   const day = kstDay(), page = /^\/(?:[a-z-]{1,20}\/)?$/.test(b.p || "") ? b.p : "기타";  // "/", "/seoul/", "/apt/" …
   const v = /^[0-9a-f]{32}$/.test(b.v || "") ? b.v : null;  // 저장을 막아 둔 브라우저는 번호 없이 조회만 셈
-  let kind = null;
-  if (v) {  // 문장 하나씩 조건을 걸어, 같은 사람이 탭 두 개로 동시에 열어도 두 번 세지 않게
-    if ((await db.prepare("INSERT OR IGNORE INTO visitors (vid, first_day, last_day, days) VALUES (?, ?, ?, 1)").bind(v, day, day).run()).meta.changes) kind = "first_time";
-    else if ((await db.prepare("UPDATE visitors SET last_day = ?, days = days + 1 WHERE vid = ? AND last_day < ?").bind(day, v, day).run()).meta.changes) kind = "revisit";
-  }
+  if (((await db.prepare("SELECT first_time FROM visit_days WHERE day = ?").bind(day).first("first_time")) || 0) >= DAY_CAP) return total(db);
+  // 한 묶음(D1에서는 한 트랜잭션)으로: 처음 온 사람·다른 날 다시 온 사람인지는 방문자 표를 바꾸기 전에 SQL 조건으로 판단한다.
+  // 중간에 실패하면 전부 되돌려, 번호만 남고 날짜별 수·누적 수가 빠지는 일이 없게. 같은 사람이 탭 두 개로 동시에 열어도 한 번만 센다
+  const NEW = "NOT EXISTS (SELECT 1 FROM visitors WHERE vid = ?1)", BACK = "EXISTS (SELECT 1 FROM visitors WHERE vid = ?1 AND last_day < ?2)";
   const st = [db.prepare("INSERT INTO page_views (day, page, views) VALUES (?, ?, 1) ON CONFLICT (day, page) DO UPDATE SET views = views + 1").bind(day, page)];
-  if (kind) st.push(db.prepare(`INSERT INTO visit_days (day, visitors, ${kind}) VALUES (?, 1, 1) ON CONFLICT (day) DO UPDATE SET visitors = visitors + 1, ${kind} = ${kind} + 1`).bind(day));
-  if (kind === "first_time") st.push(db.prepare("INSERT INTO meta (k, v) VALUES ('visitors_total', '1') ON CONFLICT (k) DO UPDATE SET v = CAST(v AS INTEGER) + 1"));
+  if (v) st.push(
+    db.prepare(`INSERT INTO visit_days (day, visitors, first_time, revisit) SELECT ?2, 1, ${NEW}, ${BACK} WHERE ${NEW} OR ${BACK}
+                ON CONFLICT (day) DO UPDATE SET visitors = visitors + 1, first_time = first_time + excluded.first_time, revisit = revisit + excluded.revisit`).bind(v, day),
+    db.prepare(`INSERT INTO meta (k, v) SELECT 'visitors_total', '1' WHERE ${NEW} ON CONFLICT (k) DO UPDATE SET v = CAST(v AS INTEGER) + 1`).bind(v),
+    db.prepare(`INSERT INTO visitors (vid, first_day, last_day, days) VALUES (?1, ?2, ?2, 1)
+                ON CONFLICT (vid) DO UPDATE SET last_day = excluded.last_day, days = days + 1 WHERE last_day < excluded.last_day`).bind(v, day));
   await db.batch(st);
   return total(db);
 }
@@ -93,10 +111,10 @@ async function visit(db, b) {
 async function weekly(env, now) {
   const db = env.DB, from = kstDay(now - 7 * 864e5), to = kstDay(now - 864e5);
   const w = await db.prepare("SELECT COALESCE(SUM(visitors), 0) AS v, COALESCE(SUM(first_time), 0) AS n, COALESCE(SUM(revisit), 0) AS r FROM visit_days WHERE day BETWEEN ? AND ?").bind(from, to).first();
-  const people = await db.prepare("SELECT COUNT(*) AS c FROM visitors WHERE last_day >= ?").bind(from).first("c");
+  const people = await db.prepare("SELECT COUNT(*) AS c FROM visitors WHERE last_day >= ? AND first_day <= ?").bind(from, to).first("c");  // 월요일 새벽(메일 전)에 처음 온 사람은 빼고
   const loyal = await db.prepare("SELECT COUNT(*) AS c FROM visitors WHERE days >= 2").first("c");
   const pages = (await db.prepare("SELECT page, SUM(views) AS views FROM page_views WHERE day BETWEEN ? AND ? GROUP BY page ORDER BY views DESC LIMIT 12").bind(from, to).all()).results;
-  const regs = await db.prepare("SELECT COUNT(*) AS c FROM registrations WHERE created_kst >= ?").bind(from).first("c");
+  const regs = await db.prepare("SELECT COUNT(*) AS c FROM registrations WHERE created_kst >= ? AND created_kst < ?").bind(from, kstDay(now)).first("c");
   const days = (await db.prepare("SELECT day, visitors, first_time, revisit FROM visit_days WHERE day BETWEEN ? AND ? ORDER BY day").bind(from, to).all()).results;
   const pct = (a, b) => (b ? Math.round((a / b) * 100) + "%" : "-");
   const body = [`아파트 공포탐욕지수 지난주 방문 요약 (${from} ~ ${to}, 한국 시간)`, "",
@@ -110,6 +128,45 @@ async function weekly(env, now) {
 }
 
 // 보유 기간: 신청은 2년, IP 값은 하루 제한에만 쓰니 하루, 방문자 번호는 400일 동안 안 오면 (방문 수 합계는 남음)
+// 사이트 감시: 기준 날짜 = 주간 소식 호·실거래 주간 갱신은 그 주 월요일 (예비 실행이 화요일 낮까지 다시 하므로 8일 넘으면 알림)
+const SITE_STATUS = "https://aptfeargreed.com/status.json";
+const ACTIONS = "https://github.com/won-topiaa/korean-realestate-fear-and-greed-index/actions";
+const ago = (today, d) => Math.round((Date.parse(today) - Date.parse(d)) / 864e5);  // "YYYY-MM-DD"끼리 날 수
+
+async function watch(env, now) {
+  const db = env.DB, today = kstDay(now), probs = [];  // [이름, 설명]
+  let s = null;
+  try {
+    const r = await fetch(`${SITE_STATUS}?t=${now}`, { headers: { "Cache-Control": "no-cache" } });
+    if (r.ok) s = await r.json(); else probs.push(["status", `사이트의 status.json을 못 읽음 (HTTP ${r.status})`]);
+  } catch (e) {
+    probs.push(["status", `사이트에 접속하지 못함 (${e.message})`]);
+  }
+  if (s) {
+    const old = (key, label, d) => { if (d && ago(today, d.slice(0, 10)) > 8) probs.push([key, `${label}: ${d.slice(0, 10)} 이후 ${ago(today, d.slice(0, 10))}일째 그대로`]); };
+    old("news", "주간 소식", s.news_issue);
+    old("trades", "실거래 주간 갱신", s.trades_week);
+    old("built", "사이트 배포", s.built);
+    if (s.trades_result === "failed") probs.push(["trades_failed", `실거래 주간 갱신 실패 (${s.trades_week} 주, 서울·지역 모두 못 받음)`]);
+    else if (s.trades_result === "partial" && s.trades_tries >= 3) probs.push(["trades_partial", `실거래 주간 갱신: ${s.trades_week} 주에 세 번 받아도 일부 달·지역이 빠짐 (그 달은 지난 자료 그대로)`]);
+    const [y, m, d] = today.split("-").map(Number), want = new Date(Date.UTC(y, m - 2, 1)).toISOString().slice(0, 7);  // 20일 갱신 뒤엔 지난달 지수
+    if (d >= 22 && s.index_month && s.index_month < want) probs.push(["index", `지수: ${want} 지수가 나와야 하는데 아직 ${s.index_month}`]);
+  }
+  const sig = probs.map((p) => p[0]).join(","), prev = JSON.parse((await db.prepare("SELECT v FROM meta WHERE k = 'watch'").first("v")) || "{}");
+  let subject = null;
+  if (sig && (sig !== prev.sig || ago(today, prev.day || "2000-01-01") >= 3)) subject = `[사이트 감시] 확인이 필요해요: ${probs.map((p) => p[1].split(":")[0]).join(" · ")}`;
+  else if (!sig && prev.sig) subject = "[사이트 감시] 다시 정상이에요";
+  if (!subject) return;
+  const body = (sig ? ["아파트 공포탐욕지수 사이트의 자료가 제때 바뀌지 않았어요 (매일 새벽 3시 확인).", "", ...probs.map((p) => `- ${p[1]}`), "",
+    `GitHub Actions에서 실패한 실행을 보거나 다시 돌릴 수 있어요: ${ACTIONS}`,
+    "- 주간 소식·실거래: '주간 갱신' → Run workflow (끝난 일은 건너뛰고 못 한 일만 해요)",
+    "- 사이트 배포: '화면만 다시 배포' → Run workflow", "- 지수: '월간 자동 갱신' → Run workflow",
+    "", "같은 문제는 3일에 한 번 다시 알리고, 고쳐지면 한 번 알려 드려요."]
+    : ["지난번에 알린 문제가 모두 풀렸어요.", "", `사이트 상태: 지수 ${s.index_month} · 주간 소식 ${s.news_issue} · 실거래 ${s.trades_week} · 배포 ${s.built}`]).join("\r\n");
+  await send(env, subject, body);
+  await db.prepare("INSERT INTO meta (k, v) VALUES ('watch', ?) ON CONFLICT(k) DO UPDATE SET v = excluded.v").bind(JSON.stringify({ sig, day: today })).run();
+}
+
 async function cleanup(db) {
   await db.batch([
     ...VISIT_TABLES.map((s) => db.prepare(s)),  // 방문 표가 아직 없을 때도 (신청이 먼저 들어온 경우)
@@ -130,7 +187,8 @@ export default {
       if (!ORIGINS.includes(origin)) return json({ ok: false }, 403, cors);
       let v = {};
       try { v = JSON.parse(await req.text()) || {}; } catch {}
-      const run = () => (v.n || typeof v.p !== "string" ? total(env.DB) : visit(env.DB, v));  // n: 이 브라우저는 세지 않음 (?nocount=1, 사이트 주인용) · 주소가 없는 본문은 세지 않음
+      const skip = v.n || typeof v.p !== "string" || limited(req.headers.get("CF-Connecting-IP") || "");
+      const run = () => (skip ? total(env.DB) : visit(env.DB, v));  // n: 이 브라우저는 세지 않음 (?nocount=1, 사이트 주인용) · 주소가 없는 본문·너무 잦은 요청은 세지 않음
       let n;
       try { n = await run(); } catch (e) {
         if (!/no such table/.test(e.message)) throw e;
@@ -171,9 +229,12 @@ export default {
 
   // 매일 한 번 (대시보드 → aptfeargreed-register → 설정 → 트리거 이벤트 → Cron "0 18 * * *", 한국 시간 새벽 3시). 월요일이면 지난주 방문 요약 메일도
   async scheduled(event, env, ctx) {
+    const t = event.scheduledTime, run = (name, f) => f().catch((e) => console.log(`${name} 실패:`, e.message));  // 하나가 실패해도 나머지는
     ctx.waitUntil((async () => {
-      await cleanup(env.DB);
-      if (env.MAIL && new Date(event.scheduledTime + 9 * 3600e3).getUTCDay() === 1) await weekly(env, event.scheduledTime);
+      await run("정리", () => cleanup(env.DB));
+      if (!env.MAIL) return;
+      if (new Date(t + 9 * 3600e3).getUTCDay() === 1) await run("주간 방문 메일", () => weekly(env, t));
+      await run("사이트 감시", () => watch(env, t));
     })());
   },
 };
