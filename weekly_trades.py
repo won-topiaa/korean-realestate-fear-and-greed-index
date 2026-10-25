@@ -64,6 +64,7 @@ def main():
         return 2
     ok, partial, notes = 0, False, []
     for name, fn in [("서울", P.refresh_molit), ("수도권·광역시", P.refresh_molit_regions)]:
+        print(f"{name} 실거래 받기 (시간 한도 {BUDGET[name]}분)", flush=True)
         try:
             msg = P.with_budget(lambda: fn(back=BACK), BUDGET[name])  # 받은 것은 끝에 한꺼번에 저장하므로, 끊기면 그쪽은 지난 자료 그대로
             ok += 1
@@ -76,7 +77,7 @@ def main():
         except Exception as e:  # noqa: BLE001  (시간 한도·예상 못 한 오류로 멈춰도 다른 쪽은 받는다)
             msg = P._scrub(f"{type(e).__name__}: {e}")
             partial = True
-        print(f"{name}: {msg}")
+        print(f"{name}: {msg}", flush=True)
         notes.append(f"{name}: {msg}")
     save("failed" if not ok else "partial" if partial else "full", " / ".join(notes))
     return 0 if ok else 1

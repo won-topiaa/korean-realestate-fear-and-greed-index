@@ -75,6 +75,7 @@ jobs:
         timeout-minutes: 55   # 안쪽 시간 한도(서울 15분·지역 30분)가 못 끊었을 때의 마지막 안전판
         env:
           DATA_GO_KR_KEY: ${{ secrets.DATA_GO_KR_KEY }}
+          PYTHONUNBUFFERED: "1"   # 진행 줄이 바로 보이게
         run: |
           printf 'DATA_GO_KR_KEY=%s\n' "$DATA_GO_KR_KEY" > .env
           set +e

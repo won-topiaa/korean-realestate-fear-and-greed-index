@@ -254,6 +254,7 @@ def _fetch_grid(M, months, codes, save=False):
         time.sleep(0.15)
 
     for ym in months:
+        t0 = time.time()
         for lawd in codes:
             if quota:
                 bad[(ym, lawd)] = f"{lawd} 호출 한도"
@@ -265,7 +266,10 @@ def _fetch_grid(M, months, codes, save=False):
                 bad[(ym, lawd)] = f"{lawd} 호출 한도"
             except Exception as e:  # noqa: BLE001
                 bad[(ym, lawd)] = str(e)[:200]
+        miss = sum(k[0] == ym for k in bad)  # 늘어지는지 실행 기록에서 바로 보이게 (예전엔 끝날 때까지 아무 줄도 없었음)
+        print(f"  실거래 {ym}: {len(codes) - miss}/{len(codes)}곳 ({time.time() - t0:.0f}초)" + (f" · 실패 예: {next(v for k, v in bad.items() if k[0] == ym)}" if miss else ""), flush=True)
     if bad and not quota:
+        print(f"  실거래 {len(bad)}곳·달 다시 받기", flush=True)
         time.sleep(30)
         for ym, lawd in list(bad):
             try:
