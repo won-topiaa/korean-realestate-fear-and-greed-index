@@ -117,8 +117,7 @@ def footer(base, rq=""):
             f'<div class="sk-contact"><h4>문의</h4><p>지수나 데이터 오류, 제안, 제휴 문의는 메일로 보내 주세요.</p>'
             f'<a class="sk-mail" href="{MAILTO}">{CONTACT}</a><a class="sk-mailbtn" href="{MAILTO}">메일 보내기 →</a></div>'
             f'<p class="sk-copy">사진: 위키미디어 공용 CC0·퍼블릭 도메인 (저작권 없음) — {who}</p>'
-            '<p class="sk-copy sk-visits">누적 방문자 <b id="sk-visits">–</b>명 <span>(2026년 10월 25일부터) · 방문자 수를 세려고 이 브라우저에 무작위 번호 하나를 저장해요. '
-            '이름·IP와 연결하지 않아요.</span></p></div></footer>\n')
+            '<p class="sk-copy sk-visits">누적 방문자 <b id="sk-visits">–</b>명 <span>(2026년 10월 25일부터)</span></p></div></footer>\n')
 
 
 # 방문 세기: 이 브라우저의 무작위 번호(처음 오면 만듦)와 페이지 주소만 보낸다 → 누적 방문자 수를 받아 바닥글에.

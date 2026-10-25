@@ -238,6 +238,7 @@
 - 페이지마다 바닥글 스크립트가 `https://register.aptfeargreed.com/visit`(신청 창구와 같은 Worker, `register/worker.js`)로 이 브라우저의 무작위 번호(localStorage `fgi-vid`)와 페이지 주소만 보내고, 누적 방문자 수를 받아 바닥글에 보여 줘요. IP·브라우저 정보는 D1에 저장하지 않아요.
 - D1 표: `visitors`(번호별 첫·마지막 방문일·방문한 날 수, 400일 안 오면 지움), `visit_days`(날짜별 방문자 `first_time` 처음·`revisit` 다른 날 다시 온 사람), `page_views`(날짜·페이지별 조회), `meta.visitors_total`(누적). 같은 날 여러 번 열어도 방문자는 한 번만 세요.
 - 매주 월요일 03:00 KST(같은 Cron) 지난주 요약 메일. 자동으로 여는 브라우저(`navigator.webdriver`)는 세지 않고, 사이트 주인은 아무 페이지나 `?nocount=1`로 한 번 열면 그 브라우저는 세지 않아요(`?nocount=0`으로 되돌림).
+- Worker 설정 → Observability → Logs의 'Include Invocation logs'는 꺼 뒀어요(2026-10-25). 켜 두면 요청마다 원래 IP가 든 호출 기록이 대시보드에 며칠 남아요. 코드가 남기는 기록(알림 메일 실패 등)은 그대로 남아요.
 - 확인: D1 Console에서 `SELECT * FROM visit_days ORDER BY day DESC;`, `SELECT page, SUM(views) FROM page_views GROUP BY page ORDER BY 2 DESC;`.
 
 ## 겉모습과 쓰기 편하게
