@@ -1,0 +1,175 @@
+{
+ "issue": "2026-11-16",
+ "from": "2026-11-09",
+ "to": "2026-11-15",
+ "made": "2026-11-16T09:57+09:00",
+ "month": "2026-09",
+ "source": "구글 뉴스 검색 (제목·언론사·날짜·링크만)",
+ "themes": [
+  {
+   "name": "자금",
+   "sub": "금리·대출",
+   "note": "대출 금리가 오르거나 대출 규제가 조이면 이 점수는 공포 쪽으로, 금리가 내리고 대출이 풀리면 탐욕 쪽으로 움직여요.",
+   "score": 14.4,
+   "prev": 17.6,
+   "items": [
+    {
+     "t": "\"갚으면 다시 못 빌릴라\"…대출 규제에 빚 상환도 꺼린다",
+     "s": "미래경제",
+     "d": "2026-11-14",
+     "u": "https://news.google.com/rss/articles/CBMibEFVX3lxTE96WlhSZW5mb3hYQnRSbHV2RDg2TFBHSkF4UC1ObkczcDZYR2JnTDE2cThNTlRlZXJ2NGdzdEtjU3pTWWhqWkhMTnk5TUc0Um5VMnhMclhfMUt4dVU1WXFjZTUwZ2dXc3lReFJyVA?oc=5"
+    },
+    {
+     "t": "은행들 주담대 '방공제' 속속 해제···연초 대출 빗장 푼다",
+     "s": "뉴스프리존",
+     "d": "2026-11-13",
+     "u": "https://news.google.com/rss/articles/CBMic0FVX3lxTFBmYWdnSGp2aE9SeEZ5cXhIU0lzLXYzdVpCS091MGdVOFNBVlVfRlVYUTZScHFYWE80d29veEZYUjlTVzlHLV9IYjVaYmVVUjM5V2FyTXZzSmFYaVoxVW5FMTFiQ002V3hjYWZjdTZhbVlpUWPSAXdBVV95cUxNcXhpR25BajRpb0xoYmUtQ2JPdjRUN2M2SWMyNVRybW52NGhDNFU1azdaMFJJQThDSGlXZnRBU2lsdU5yRHBYZkpGS1ZzLWEzVmJxLXJIX2ptdVZYeElWYXRVXzFPc21hOWdhSTZCTHhkZTg2OFhwbw?oc=5"
+    },
+    {
+     "t": "하나은행, 변동형 주담대 모기지보험 재개",
+     "s": "PRESS9",
+     "d": "2026-11-11",
+     "u": "https://news.google.com/rss/articles/CBMiZEFVX3lxTFBHS1FLdmpBZWdKX3V2U2ZpMFVtdVVUbk9SQ2tWQ3owOTVoX3AxRTIxV1JlWllqblhNWHpDZW9DY24xakxSSHc1b29RS0xSaW1qQ0tLZG5ENzYxVGhPeDI3ekVuWXk?oc=5"
+    },
+    {
+     "t": "주담대 금리 상단 9% 찍은 인뱅…경쟁력 '의문'",
+     "s": "뉴스토마토",
+     "d": "2026-11-10",
+     "u": "https://news.google.com/rss/articles/CBMiYEFVX3lxTE5EdGtqVUVVMDV4VWVTX205dUZnX3Y0ZTFmOGl5ZHpwSllWLVQtZlpqZGpKSWdqNFNLeTcySy1Ib3o2Q2ZVQmZINk9xMl9vRjIyY01QLXJic0txS1pYN2lqNA?oc=5"
+    }
+   ]
+  },
+  {
+   "name": "가격",
+   "sub": "매매가격",
+   "note": "가격이 빠르게 오르면 탐욕 쪽, 내리면 공포 쪽으로 움직여요.",
+   "score": 58.9,
+   "prev": 58.9,
+   "items": [
+    {
+     "t": "경기 아파트 매매가 상승률 9주 연속 서울 웃돌아",
+     "s": "인천일보",
+     "d": "2026-11-15",
+     "u": "https://news.google.com/rss/articles/CBMicEFVX3lxTFBmazBwU2RXai1MUjVzUGljOHNFeG5vclNvc2ZpTTM1a2RqbTFremsxcG5GcE1NTENhSUMyaDhObHFuSGx2Z2xSS2VVRWdlSkNJbWRBcDZ3V2trc2hrVlhUZUhSMmtaMVRFaTV2cHpSdXc?oc=5"
+    },
+    {
+     "t": "서울 강북·경기 남부 아파트 값 강세 이어가",
+     "s": "조선일보",
+     "d": "2026-11-13",
+     "u": "https://news.google.com/rss/articles/CBMiiAFBVV95cUxQdXFtV1J3VlloUXAzc1QtNHprY2t0VmFIbjVmM2VUTmtzb3cxbXBGLWpLekpNNDVsTHhlN0NsS1AyaERHeEd1cXFyakVCeGpHVTRtNkM2LWdwTnlxNF9PSW1LSFdJZXFBZHF0N1ltV2hucV9hcmVVNnEtaGZVZnE3eGRwTkZjWmNv?oc=5"
+    },
+    {
+     "t": "서울 아파트값 '극과 극'…성북 0.39%↑·송파 0.35%↓",
+     "s": "딜사이트",
+     "d": "2026-11-12",
+     "u": "https://news.google.com/rss/articles/CBMiT0FVX3lxTE5xNDVkQkxHMHVYVFJKNU1va3ZuRjNqcGZnRXlzV1FVUk1pRGZBWmZBOG5tRGR1VmllVW9YX2djTm1lYXJySFJJRUwxa1VjSFE?oc=5"
+    },
+    {
+     "t": "서울 아파트 상승폭 또 줄었다…전세는 상승 지역 더 늘어",
+     "s": ":: 위즈경제 ::",
+     "d": "2026-11-10",
+     "u": "https://news.google.com/rss/articles/CBMiVEFVX3lxTE1sUHMtRDNoeDN4M0FEVXFTZGxBQ3dMdGxmaEdBb3FTZ1B5d0RldVpRb3lJRWpjb2lEanZIWlduU0ZTQldJR2o0dUFhUWllYndxYkQxaA?oc=5"
+    }
+   ]
+  },
+  {
+   "name": "거래",
+   "sub": "거래량·거래 규제",
+   "note": "거래가 늘면 탐욕 쪽, 줄면 공포 쪽으로 움직여요.",
+   "score": 40.9,
+   "prev": 54.6,
+   "items": [
+    {
+     "t": "10월 서울 토지거래허가 신청 2개월 연속 증가…",
+     "s": "경찰뉴스24",
+     "d": "2026-11-13",
+     "u": "https://news.google.com/rss/articles/CBMicEFVX3lxTE1LaWdleHRHZnBuTEQtV2RoRnpkVjFoZ0cydDhuZWlUS0EyXzgyM0NJNU9Pb0c5YlpEbWt6d0FCbXNzcmEtOFJGdHVwTWFQYVdXSFlRdnRpYlRncnl5SmlrVWdVNmhRYmN2dHVxcm1vN3M?oc=5"
+    },
+    {
+     "t": "\"집 내놔도 안 팔려\" 서울 아파트 거래 '반토막'...매수심리 연중 최저",
+     "s": "머니투데이",
+     "d": "2026-11-13",
+     "u": "https://news.google.com/rss/articles/CBMib0FVX3lxTE5NNjdUQTFUcENWbGh1aHp0ckx1aVRWUF9GLVZZWHN2T2w5R0dqS0JsckswMEtiOWlKZkV3MGlUUjNNRnRpeTd0WC1EWnFpNXFEOW9zb0ZGWTJtSEJDTEZ2Slh0SHVISW1keWlmaU14MNIBb0FVX3lxTE5NNjdUQTFUcENWbGh1aHp0ckx1aVRWUF9GLVZZWHN2T2w5R0dqS0JsckswMEtiOWlKZkV3MGlUUjNNRnRpeTd0WC1EWnFpNXFEOW9zb0ZGWTJtSEJDTEZ2Slh0SHVISW1keWlmaU14MA?oc=5"
+    },
+    {
+     "t": "3분기 서울 아파트 매매거래량 43.9% 급감",
+     "s": "https://www.2news.co.kr/",
+     "d": "2026-11-12",
+     "u": "https://news.google.com/rss/articles/CBMiaEFVX3lxTE0zMHpUQzdtbkpKUlM4ZkVLNlVuYlBab2FUbTBlTUxibXItdHBiTnhMeXFHaTJGWXR0X1JZVFhtWkNDUGdVSlREZ1dIb2dBYUhrTnk1czhmeGxDXzhCWjI3NXZLVVg4V1cx?oc=5"
+    },
+    {
+     "t": "서울 아파트 소형 거래 비중 47.2%…2년 연속 확대",
+     "s": "연합인포맥스",
+     "d": "2026-11-10",
+     "u": "https://news.google.com/rss/articles/CBMidEFVX3lxTE9Db0gtVDFFM3V5NjdjTVNDOXpSRmRfbnhKdndSenpYRERGWTltMGltazNIdEtLSlR4TndpS25wTDByVldQWHBsNml4dU02cHZLbUQyZHRRWjZIa2h0S0xPZllydm9zMmEwZ0ZCZmlrRDdnYmRS?oc=5"
+    }
+   ]
+  },
+  {
+   "name": "전세",
+   "sub": "전셋값·전세 매물",
+   "note": "전셋값이 오르면 매매로 옮겨 가는 수요가 늘어 탐욕 쪽, 내리면 공포 쪽으로 움직여요.",
+   "score": 91.7,
+   "prev": 93.8,
+   "items": [
+    {
+     "t": "수도권 ‘전세대란’… 세입자는 서럽다",
+     "s": "용인신문",
+     "d": "2026-11-14",
+     "u": "https://news.google.com/rss/articles/CBMiZEFVX3lxTFA0dDA2ME5ObEJIRU9IWGx0aXc1THE3UmxkNGt0TkhnaC1acV9vTUZjbkwwd2Z3ai01bXZCREEtajJwSnQtaUVoS1lfdG5qb2Q1RUF4QTR1bFhfdjg2Uktocktoa00?oc=5"
+    },
+    {
+     "t": "92주째 오르는 서울 전셋값…세입자 '발동동'",
+     "s": "뉴스토마토",
+     "d": "2026-11-13",
+     "u": "https://news.google.com/rss/articles/CBMiYEFVX3lxTE1NYWhWd3NtTkVaOENqTnNKcFFxZFEtS0pzdUx2V0x3Y0xLRUF0MjlJVEhjaFhQQ0I1QVNRakRudU5jcGtZM2lYWWZKRXJaVk9naFY3TFY3MGNFYkEwVE83aQ?oc=5"
+    },
+    {
+     "t": "\"전세 구하기가 하늘의 별 따기\"… 서울 전세 매물 1년 새 15.7% 줄고 월세 51%로 '역전'",
+     "s": "경제시그널",
+     "d": "2026-11-13",
+     "u": "https://news.google.com/rss/articles/CBMic0FVX3lxTE9ZcjVzZkVJeTF2V19hM0t2aHYtTzJGQzREdzZET2NQQlFLSTBMTHd5bU1wLVh4bFNsMzdRTGc3UEwyYVMzUTJLSUp5eHJVbUZGWEpUWi1jU0h5Y3NrYkw1TlZOTko1RjlEY1lxNFoyRGxwMzQ?oc=5"
+    },
+    {
+     "t": "“팔 집 넘치는데 전셋집 없어”···서울 전세난 심해질 동네는",
+     "s": "시사저널e",
+     "d": "2026-11-11",
+     "u": "https://news.google.com/rss/articles/CBMickFVX3lxTE9LeDg3YmJCMXdnU2hUeGhRQTJYM0VNN0tJaklaTnZ6VExGMTJaME1mUHkxYWFSX05WZ0w5blNfcGdqNDNZMnk3WFF0WGQ5eDRyTGlqU1NJU1ZKREdNT0M0andiNzdjYkJrbkJFZmdDLTZGd9IBdkFVX3lxTFBjNEk2eHVlTnlJdGNpMVBqbEVvYjhNanlNUWlSNkE5NG1ydnNCT2ZPWlBpbjJuekNiSFYwbDM1RTJFVWlsaEN0MVhBcThvd0E0YmdrRWZIbEowcHM3TkFQaS1pMFFCT3NPUlk2dm5xR1hNWS01RXc?oc=5"
+    }
+   ]
+  },
+  {
+   "name": "공급",
+   "sub": "공급·미분양",
+   "note": "미분양이 쌓이면 공포 쪽, 줄어들면 탐욕 쪽으로 움직여요.",
+   "score": 36.2,
+   "prev": 17.9,
+   "items": [
+    {
+     "t": "서울 주택 인허가 33%·착공 36% 증가…수도권 4만4000가구 입주 예정",
+     "s": "에너지경제신문",
+     "d": "2026-11-13",
+     "u": "https://news.google.com/rss/articles/CBMiW0FVX3lxTFBxdGN0TVBVTVRvOGM0U1RvbXg1RHBDTTdSSUNIRTZseTgtZ3IxTDMwd2VnaXBmeGYzV0xqNW1EU2l5NkktSzlMYXpWaWJtdk1TR0U0V3FoY2VoUXc?oc=5"
+    },
+    {
+     "t": "정부 “서울 주택시장 하향 안정 지표 확대”…아파트값 상승 둔화, 매물 증가 지목",
+     "s": "한겨레",
+     "d": "2026-11-13",
+     "u": "https://news.google.com/rss/articles/CBMiaEFVX3lxTE1WOEVWYm13RmNObk1TcWhQdFFGQjNITG5hQ3pOZUR2RzBwSk1wYnByMjlfdWYzbHM3b0M3WFhUaVpORlFFeWdHdmlnVXdMM3ZYR1dwQUx4ck0zQ0hEajJCa2RXblpvbF8z?oc=5"
+    },
+    {
+     "t": "인허가는 빨라졌는데 6만호가 못 짓는다…서울 주택공급 막힌 곳은 '착공'",
+     "s": "더파워",
+     "d": "2026-11-12",
+     "u": "https://news.google.com/rss/articles/CBMifkFVX3lxTE5JbjhPQWRKLVc1M2g3MlpMcDBwa3RUZUMxM193cWZuLXlVTmNkYy1HWEE2UVFLa2ZsWGN0TGk0X1p2UEdKcGJNRHQwUVNWcU1sLTZWTUFGWl9zMmkybElndUpCUXA0RDU0RFFrNUVTVUhITnhUNnM2a011MHE2UQ?oc=5"
+    },
+    {
+     "t": "울산 아파트값 4.2% 상승·미분양 감소…서울산 개발사업도 속도 By EBN",
+     "s": "Investing.com 한국어",
+     "d": "2026-11-11",
+     "u": "https://news.google.com/rss/articles/CBMicEFVX3lxTE9Ra0pDZ1NLWmJNLVZhSkxmNG9BNHFCSzdEWVJ0S3dkeGdqS1o3ZUczTVNxVnVMNTUtNXBDVHc2R21WRTVsZ1dIZ0Uyc3NodGlKdjJqT1RuMXk3VmgtWE5VaDNsTEMwN2hkRTNMdzNnNXg?oc=5"
+    }
+   ]
+  }
+ ]
+}
