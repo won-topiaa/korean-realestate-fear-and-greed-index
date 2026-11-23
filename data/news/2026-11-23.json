@@ -1,0 +1,175 @@
+{
+ "issue": "2026-11-23",
+ "from": "2026-11-16",
+ "to": "2026-11-22",
+ "made": "2026-11-23T10:36+09:00",
+ "month": "2026-10",
+ "source": "구글 뉴스 검색 (제목·언론사·날짜·링크만)",
+ "themes": [
+  {
+   "name": "자금",
+   "sub": "금리·대출",
+   "note": "대출 금리가 오르거나 대출 규제가 조이면 이 점수는 공포 쪽으로, 금리가 내리고 대출이 풀리면 탐욕 쪽으로 움직여요.",
+   "score": 15.6,
+   "prev": 14.4,
+   "items": [
+    {
+     "t": "한은, 석 달 만에 금리 인상 재개 전망…\"내년까지 긴축\"",
+     "s": "연합뉴스",
+     "d": "2026-11-22",
+     "u": "https://news.google.com/rss/articles/CBMiYEFVX3lxTE84QW1BNzNXUkRhQUxvZkVWWTUtLVV4QU5USEFPZEdFWEhEbHp1TExKZVN4MHA0TkxhVUtoQ3pmQ0FFUzZPRXp5eGVDTXZyUDlFUlUyLUxHeUkxcDZuZ3h6dtIBYEFVX3lxTE84QW1BNzNXUkRhQUxvZkVWWTUtLVV4QU5USEFPZEdFWEhEbHp1TExKZVN4MHA0TkxhVUtoQ3pmQ0FFUzZPRXp5eGVDTXZyUDlFUlUyLUxHeUkxcDZuZ3h6dg?oc=5"
+    },
+    {
+     "t": "원화 강세에도 금리 더 올리나…환율 안정 이후 한은 선택은",
+     "s": "KB Think",
+     "d": "2026-11-18",
+     "u": "https://news.google.com/rss/articles/CBMickFVX3lxTE9hQWNRbUJmZW5sSndpdGtJZWJfMGlfbGpJbm9EaWdRWmFkdGZWcHJrS1c4NHd3SHR2TmNpNzkwMmVncWd6XzNlQW1MYndNYzBNMDY5UHBCYmlxckx1OTZtUVllc0NUVXVfNzF1TDB6SjhCdw?oc=5"
+    },
+    {
+     "t": "[이슈분석] 내년 주담대 영업 서두르는 은행들…연말 ‘빚투’가 복병",
+     "s": "조세금융신문",
+     "d": "2026-11-18",
+     "u": "https://news.google.com/rss/articles/CBMiY0FVX3lxTE40c0NHdXhBZWMydFRaSFJac0dZZTloS1lBZFVHT0ptWTM2bHVHbENfOWRaUW8tTmpncC13U0NuTnQ2RWYtZ0NMNVlrS3pIZzN2TkQ5UG5IYTlIOWlreGRfM0s4TQ?oc=5"
+    },
+    {
+     "t": "고금리에도 집 사는 3040…대출 규제에 비은행권·대부업까지 눈 돌린다",
+     "s": "https://www.thedailyeconomy.kr/",
+     "d": "2026-11-17",
+     "u": "https://news.google.com/rss/articles/CBMicEFVX3lxTE5US19TaDNoQXJfcHlTaklqcndjVmNWd29aYllnQ2V2Wi0xVEFXRXkxREJ2VVI2WTdiVk9VSjNWXzNuYzNiQjNrakVMOUFyay1lb1FGcGVyVEU3WEVZMXBhMy1HbUdERlVOZ1ZWUlpqQ3g?oc=5"
+    }
+   ]
+  },
+  {
+   "name": "가격",
+   "sub": "매매가격",
+   "note": "가격이 빠르게 오르면 탐욕 쪽, 내리면 공포 쪽으로 움직여요.",
+   "score": 53.8,
+   "prev": 58.8,
+   "items": [
+    {
+     "t": "집값 10% 넘게 오른 서울 외곽…아직 전고점 못 넘은 곳들도",
+     "s": "연합인포맥스",
+     "d": "2026-11-22",
+     "u": "https://news.google.com/rss/articles/CBMicEFVX3lxTFBPUU9sR2lVeUoyaXMtZkVTaV9SWjJSNldJV3JKOUQ1cmZUdV9lcHFiWkJpeU1QSl9rbjVEa1dTZFJRbHM2R1ZQU2twNEpUdEJvN0FkQzV1X0hIMGFuQ0lLOWRzZldhSXJOY1p1WkRnc1I?oc=5"
+    },
+    {
+     "t": "한국부동산원, 전국 아파트값 0.06%·전셋값 0.08% 상승…서울 매매 0.03%",
+     "s": "국제뉴스",
+     "d": "2026-11-19",
+     "u": "https://news.google.com/rss/articles/CBMibkFVX3lxTE1qV2ZoYWtTajh6d2FheElPUTlMazlTU1g3bTdnVlJPbUZma1pISzN3TjN2ZUtjME55UTZnMDZDMWlPbk40U01hU0NqTDRzWWpjSHNya1dKaC1fRTBpRHdzdVJQWm93RjEyOFFHajJ3?oc=5"
+    },
+    {
+     "t": "서울 아파트값 93주째 상승에도 오름폭 축소‥하락 지역 확대",
+     "s": "MBC 뉴스",
+     "d": "2026-11-19",
+     "u": "https://news.google.com/rss/articles/CBMidEFVX3lxTFBoYlVUTGhGbl9rYV9LU0lxS1hMU2xKYktVTWg4QnV2ZjR2U1pia0QtRHhMT25WTHZlNXFmemxKRGxmNEJsdUxLaTRpUlhaUTM0WXpXSFZmc05JSlJyZmZOWWlLMkVoeTJjSF9hREVnWEJZX09P0gF0QVVfeXFMTmpYSjJzMUVLUThiRVZKXzBMMS1jWFpmMFVwdDR0OHdNdXQ0VmhyaWhiWUdUT1lFaXlnODlLR3FVLWVpeERwNWFsOTBaSHV6ZkhPWFAzTGpTelpoZ2hqMmhRcUJ5U1p3dmxOYnBvR091R1NlRzE?oc=5"
+    },
+    {
+     "t": "수원 영통·화성 동탄 ‘날았다’…경기도 집값 상승률, 서울 앞질렀다",
+     "s": "경기일보",
+     "d": "2026-11-16",
+     "u": "https://news.google.com/rss/articles/CBMiW0FVX3lxTFBYVnRzYjR4eFM3SFBFYS05M3l0Vng2aDZFRnJ4YUUzcnhCZ3RSa3pONHVVWjhWX0E1M0Vib1d2a00wcWtlZklROHZWeWJKLWN5V01hNDVPdmxnQ2s?oc=5"
+    }
+   ]
+  },
+  {
+   "name": "거래",
+   "sub": "거래량·거래 규제",
+   "note": "거래가 늘면 탐욕 쪽, 줄면 공포 쪽으로 움직여요.",
+   "score": 38.6,
+   "prev": 40.9,
+   "items": [
+    {
+     "t": "서울 빌라 거래량 28% 폭증… 아파트값·대출규제 콤보가 부른 ‘풍선효과’",
+     "s": "미디어써치",
+     "d": "2026-11-20",
+     "u": "https://news.google.com/rss/articles/CBMicEFVX3lxTE5BR01xdDE1ZUVuS0xHeTlLWEhjeEZrS09iT0JqQUI3MTJ5LWR3b2VaeXlUd0hhMENDVEVnQWZRQ3NaSVBRa0hRa1lRUWJJendZdTFEM0FCZWdST3ZvRnNIY3NLWXlxckpYY1YzbUt0QVU?oc=5"
+    },
+    {
+     "t": "서울 토허구역 연장될까? 12월 31일 만료 앞두고 집값 향방 촉각",
+     "s": "경제시그널",
+     "d": "2026-11-18",
+     "u": "https://news.google.com/rss/articles/CBMic0FVX3lxTE82S0Z0dXlkRkRmU3ZFTW02N2FHNUVCMUhsTWR5ZHV3OUVHNWx4Z2p5UFNuMHgwWlFCa0QySVlrOWZHZmhSb3dyX3lHMWRqRDlZX1d5aGt4LVE4QTdFeU9rZXlqUEt2M2RkMXhmRUF1bnZqR1k?oc=5"
+    },
+    {
+     "t": "아파트값 부담에 빌라 시장 ‘꿈틀’…서울 연립·다세대 거래량 18% 증가",
+     "s": "Chosunbiz",
+     "d": "2026-11-17",
+     "u": "https://news.google.com/rss/articles/CBMimAFBVV95cUxOXzQxVFcycnhlQ3NOYUZSYXRiLWg0cTBIb2c1ektvWDMzNkFCajdjaVFJRzdsZkc3ZU9uMEhwdURwaWIyWjA1ekNrRTVDRzgtUGgySUZPd3hMdk5LRW9iQmxPRS11Mm5FUmh3VFdiSi1aU2VzLUd0aFBKR0QyZFdNbGxnMWdSU3hFcDhyN3hJa085aHNJdGFZMdIBrAFBVV95cUxNMjhuSXJNYnRnd0gxMnFHWm0tU2NpSDV5eDdvTGh5bVpQQ2hvTUkzT0hDd2w2S3VtMWdpa2dIOVVrWlJPOU1fZGwwZjVwSFNLVF9raks0MElfMmxhMG5oRjdlanBaUWVwcmN5elZ6MDBGTjMwYzc4UjU1WDY1UEhkRklVTnBlOFFDUnZGbmNXcUJqTG5LMkotLWVNOVljSklxYnhuX2Y5UFhya1F5?oc=5"
+    },
+    {
+     "t": "서울시, 신통기획 후보지 6곳 ‘토지거래허가구역’ 지정",
+     "s": "한국주택경제신문",
+     "d": "2026-11-16",
+     "u": "https://news.google.com/rss/articles/CBMiaEFVX3lxTE01RnhZdWpCX3dzZDNPSGxBTnBLb1lYMUxLcWtfYUFKLXM0Z01BMWVuZWExVXg1RFpjMVQ5VGJqajIwdnYtWlhfSnBnMWt3ODR2UmdSQjVmVzkteUpLM05YbnU2TjFiZlNi?oc=5"
+    }
+   ]
+  },
+  {
+   "name": "전세",
+   "sub": "전셋값·전세 매물",
+   "note": "전셋값이 오르면 매매로 옮겨 가는 수요가 늘어 탐욕 쪽, 내리면 공포 쪽으로 움직여요.",
+   "score": 87.9,
+   "prev": 91.7,
+   "items": [
+    {
+     "t": "[프리즘] \"일단 살고 보자\"…서울 밖으로 밀려나 집 사는 세입자들",
+     "s": "연합뉴스",
+     "d": "2026-11-22",
+     "u": "https://news.google.com/rss/articles/CBMiYEFVX3lxTFAxT3hrMUhlR0xsS2RpdWxXYTlodWNmVTl3N2hPNy1lbnZRTXFLdGRsbTNLOEFWVTE0MmQ5MU9abFplZGl1T2F3Z05paVdQcFJkMUVUbGU0NUJZV2VzdjkwR9IBYEFVX3lxTFAxT3hrMUhlR0xsS2RpdWxXYTlodWNmVTl3N2hPNy1lbnZRTXFLdGRsbTNLOEFWVTE0MmQ5MU9abFplZGl1T2F3Z05paVdQcFJkMUVUbGU0NUJZV2VzdjkwRw?oc=5"
+    },
+    {
+     "t": "전세 매물 줄고 매매가 오르자 청약시장 주목… ‘북서울 하늘채 시그니프’ 12월 분양",
+     "s": "뉴스로드",
+     "d": "2026-11-20",
+     "u": "https://news.google.com/rss/articles/CBMibEFVX3lxTE1mT0pKdlFXb2szeUQ2RnlrNEFtaWZkbTBGLTBublowRW9jU1pjTE5WXzQtX1dnZHp0NXhEd3pMd3VFcVFrRmxvTW1tNnA3ZVdEaFBHMThHZzIwYzk5UVZ5dGdtMmM1M0xVTnF2d9IBb0FVX3lxTE14SDU5M1ZMWExmM184ZUtxRGdpX0hCN0ROWmxybVZGWGY1YUQ0TFU1UHhGNjVSYVdSeUNGckQ5WnQ4a1dCekx4bzFtV0cyTkZFV0txa29LdVRFUnFrLTBGc2dGWEpvS2Z0OHA2M2NYQQ?oc=5"
+    },
+    {
+     "t": "올해 서울 아파트 전셋값 상승률, 작년 4배 육박…평균 6억4538만원",
+     "s": "뉴스1",
+     "d": "2026-11-18",
+     "u": "https://news.google.com/rss/articles/CBMiW0FVX3lxTE1YS3pDemMyaFk3OF9wekY5eGcyNHl6eTRScUpQYm5hcEh6N08xZ3ByOFc5ZmJlQ3hyQk85SVJNN3AweHktTTFlaUVOTVVFRDJ5Zk52dkV2UzBPVFk?oc=5"
+    },
+    {
+     "t": "매물 늘어도 전세는 불안…내년 서울 집값 변수는 임대차",
+     "s": "메트로신문",
+     "d": "2026-11-16",
+     "u": "https://news.google.com/rss/articles/CBMiYEFVX3lxTE5XcTIwckc4TlhrbkdpZUxEeEhRZFR0VFpFS19hazNIUHZQdF9Gc05OeG9JYnZKM1lxaDVRZ3ZMMk5ZbHhYR0hWV1dQR3Vnb2dnMWtOUzhoUXBORHdpVzNxTw?oc=5"
+    }
+   ]
+  },
+  {
+   "name": "공급",
+   "sub": "공급·미분양",
+   "note": "미분양이 쌓이면 공포 쪽, 줄어들면 탐욕 쪽으로 움직여요.",
+   "score": 16.7,
+   "prev": 36.2,
+   "items": [
+    {
+     "t": "오세훈 서울시장, 국토부와 주택공급 실무 TF 가동…국회는 '주택공급 3법' 처리 무산",
+     "s": "CEO저널",
+     "d": "2026-11-20",
+     "u": "https://news.google.com/rss/articles/CBMiZ0FVX3lxTFBPa3lGYXRnazhnZk1PRERCZDhzZF9xdlg2N3p2NERiZU5UaGhMaFY4eE5CV1EwT1BMMkF5QzZoVHk4ZURmYmRORDByX2Jfam9NRGVNVzNvV1JwRW1hZkNlVjE0ZDN3V2PSAWtBVV95cUxPbXlBSU44aHdBOG1IdFVReFZtUV9oamxUREpyLUVaSUtnMDJ2N0tnb3ZvM3l5TkQxOFMzYnA3RS14T2R3dXlBQ3huRzhqVzAxc2V6MXNaakU3NFBBUTdoWll6X2J0a2pKZVlCcw?oc=5"
+    },
+    {
+     "t": "[Who Is ?] 홍지선 국토교통부 장관",
+     "s": "비즈니스포스트",
+     "d": "2026-11-20",
+     "u": "https://news.google.com/rss/articles/CBMic0FVX3lxTE1RdUJfc1EyaTVRdnVkbHRaNHptZnNzUGR5QVU3UlJjaGwzR0hZcmJTMDQ1NXdKZXBuUEpFbTNXV0IzVkszU1BvRTI3MzdyOWx3QmkzUFlpNndMdHZCb2hlWS02TlI1YTJsbWpVdVdjUTFJLVE?oc=5"
+    },
+    {
+     "t": "주택 10만4천호 적기 공급 추진…정부·경기도 24개 지자체 협력 강화",
+     "s": "뉴스후플러스",
+     "d": "2026-11-19",
+     "u": "https://news.google.com/rss/articles/CBMibkFVX3lxTE5HR0JVNWtrX2JZS19zeHNubDdCNjN4MWItVl9yb3A0LU9jdzkzRHB0dmVfSi1aS0ZrT1VGaTI4cV9OOG1ndW5UX3pfWXBERmtxMmt6UmxDLVVmNVFQZlBneUR4X3BQQ0p0cmw4bTRR?oc=5"
+    },
+    {
+     "t": "LH, 서울 도심 주택공급 속도…2030년까지 1만1000가구 착공",
+     "s": "아이뉴스24",
+     "d": "2026-11-18",
+     "u": "https://news.google.com/rss/articles/CBMiS0FVX3lxTE0tSXJUbHo3NzBLd2w0alcwVHRCc0tuclpHT09UTEFJYWwwdGZKcVRKcnJpWlN6YzZCdTVma2VFeV8zZFpuVjNMMDE5TQ?oc=5"
+    }
+   ]
+  }
+ ]
+}
